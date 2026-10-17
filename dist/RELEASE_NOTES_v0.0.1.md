@@ -8,7 +8,7 @@ Release of **Global 3D Isometric Weather Widget** (`com.antigravity.yorktownweat
 
 * **18 Pre-Generated Regional, Timezone, NPS & UNESCO 3D Isometric Diorama Sets (54 Cutout PNGs)**:
   * Every pre-generated diorama features **Jamestown-style translucent turquoise cutaway water** and includes **Daylight**, **Golden Hour / Sunset**, and **Starry Night** transparent PNG variants selectable from a clean dropdown menu:
-    1. `yorktown` — **Historic Yorktown, VA** (NPS Colonial Historical Park — 1781 Waterfront, Coleman Bridge & Tall Ship)
+    1. `yorktown` — **Historic Yorktown, VA** (NPS Colonial Historical Park — upgraded to the rounded geological cliff & translucent turquoise York River base with Victory Monument, 1781 Siege Redoubts, Colonial Brick Main Street, Coleman Bridge & Tall Ship)
     2. `jamestown` — **Historic Jamestown, VA** (NPS 1607 Settlement — Triangular James Fort Palisade, 3 Ships & Turquoise River)
     3. `washington_dc` — **Washington, D.C. & Mid-Atlantic** (`America/New_York` — U.S. Capitol, Washington Monument, Lincoln Memorial & Tidal Basin)
     4. `new_york` — **New York City & Northeast** (`America/New_York` UNESCO / NPS — Statue of Liberty, Brooklyn Bridge & Empire State)

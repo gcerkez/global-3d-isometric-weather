@@ -99,6 +99,7 @@ All 18 pre-generated 3D isometric floating-island dioramas feature **Jamestown-s
 │       └── res/xml/isometric_weather_widget_info.xml      # 4x3 default grid, horizontal|vertical resizable
 ├── scripts/
 │   ├── build_all_pregenerated_dioramas.py  # Offline 3D diorama cutout & Day/Sunset/Night generator script
+│   ├── upgrade_yorktown_diorama.py         # Composites Yorktown landmarks onto the rounded-cliff turquoise-water island base (run after the script above)
 │   ├── install_android_usb.sh              # One-command USB ADB installer for Android phones
 │   └── publish_github_release.sh           # Packages & publishes v0.0.1 release assets to GitHub
 ├── WALKTHROUGH.md                          # Detailed architectural walkthrough & implementation reference
