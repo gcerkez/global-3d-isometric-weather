@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Global 3D Isometric Weather</string>
+    <string name="widget_name">Global 3D Isometric Weather</string>
+    <string name="widget_description">Real-time 3D Isometric Diorama Weather Widget for Homescreen &amp; Lockscreen</string>
+</resources>

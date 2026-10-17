@@ -3,7 +3,7 @@
 # publish_github_release.sh
 # -------------------------
 # Pushes main & tag v0.0.1 over SSH (git@github.com:gcerkez/global-3d-isometric-weather.git)
-# and publishes/updates GitHub Release v0.0.1 with the packaged .plasmoid and .zip assets.
+# and publishes/updates GitHub Release v0.0.1 with the packaged .plasmoid, .apk, and .zip assets.
 # =============================================================================
 set -euo pipefail
 
@@ -29,24 +29,26 @@ git remote set-url origin "${SSH_REMOTE}"
 git push -u origin main
 git push origin v0.0.1 --force
 
-echo "=== 3. Updating GitHub Release v0.0.1 with Widget Packages ==="
+echo "=== 3. Updating GitHub Release v0.0.1 with Widget Packages (.plasmoid, .apk, .zip) ==="
 if "${GH_BIN}" release view v0.0.1 --repo "${REPO_SLUG}" >/dev/null 2>&1; then
     "${GH_BIN}" release edit v0.0.1 \
         --repo "${REPO_SLUG}" \
-        --title "v0.0.1 — Global 3D Isometric Weather Widget (KDE Plasma 6 / Web / Android)" \
+        --title "v0.0.1 — Global 3D Isometric Weather Widget (KDE Plasma 6 / Android APK / Web)" \
         --notes-file dist/RELEASE_NOTES_v0.0.1.md
     "${GH_BIN}" release upload v0.0.1 \
+        dist/global-3d-isometric-weather-v0.0.1.apk \
         dist/global-3d-isometric-weather-v0.0.1.plasmoid \
         dist/global-3d-isometric-weather-web-android-v0.0.1.zip \
         dist/SHA256SUMS.txt \
         --clobber --repo "${REPO_SLUG}"
 else
     "${GH_BIN}" release create v0.0.1 \
+        dist/global-3d-isometric-weather-v0.0.1.apk \
         dist/global-3d-isometric-weather-v0.0.1.plasmoid \
         dist/global-3d-isometric-weather-web-android-v0.0.1.zip \
         dist/SHA256SUMS.txt \
         --repo "${REPO_SLUG}" \
-        --title "v0.0.1 — Global 3D Isometric Weather Widget (KDE Plasma 6 / Web / Android)" \
+        --title "v0.0.1 — Global 3D Isometric Weather Widget (KDE Plasma 6 / Android APK / Web)" \
         --notes-file dist/RELEASE_NOTES_v0.0.1.md
 fi
 

@@ -132,17 +132,29 @@ python3 -m http.server 8080 --directory web
 
 ---
 
-### Option D: Android Homescreen & Lockscreen Widget (OnePlus 13 / OxygenOS 15 & Android 12+)
+### Option D: Android Homescreen & Lockscreen Widget (OnePlus 13 / OxygenOS 15 & Android 8.0+)
 
-The `android/` directory provides a native Kotlin `AppWidgetProvider` (`IsometricWeatherWidgetProvider.kt`) configured with `android:widgetCategory="home_screen|keyguard"` so it works on both the **OnePlus 13 Homescreen** and **Lockscreen / Ambient Display**:
+The Android app & widget are packaged as a signed `.apk` (`global-3d-isometric-weather-v0.0.1.apk`) containing both:
+- **Homescreen & Lockscreen AppWidget (`IsometricWeatherWidgetProvider.kt`)**: Configured with `android:widgetCategory="home_screen|keyguard"` so it can be placed on your **OnePlus 13 Homescreen** or **Lockscreen**.
+- **Interactive 3D Isometric Weather App & City Configurator (`MainActivity.kt`)**: Full interactive 3D Isometric WebView + native city search bar and presets that immediately update your placed widgets.
 
-1. **Native APK Build**:
-   - Open the `android/` module in **Android Studio Ladybug (2024.2+)** with Android SDK 34/35.
-   - Copy `package/contents/images/yorktown_island*.png` into `android/app/src/main/assets/`.
-   - Build & install onto your OnePlus 13 via `adb install app-debug.apk`.
-   - Long-press the OnePlus 13 Homescreen → **Widgets** → **Global 3D Isometric Weather** and drag to your Homescreen or Lockscreen.
-2. **Instant PWA / KWGT Mode on OnePlus 13**:
-   - Host or serve the `web/` bundle (or GitHub Pages) and add it to the OnePlus 13 Homescreen via Chrome (**Add to Home screen**), or load `web/index.html` inside a **KWGT (Kustom Widget Maker)** WebView/Bitmap layer.
+#### 1. Install Directly on Your Phone from GitHub Releases
+Download `global-3d-isometric-weather-v0.0.1.apk` from the [GitHub Releases](../../releases) page on your phone and tap to install.
+
+#### 2. Install Over USB Cable from Your Computer (`adb`)
+1. On your OnePlus 13, enable **Developer options** (*Settings → About device → Version → Tap Build number 7 times*) and turn on **USB debugging** (*Settings → Additional settings → Developer options → USB debugging*).
+2. Plug your phone into your computer via USB and tap **Allow** on the *Allow USB debugging?* prompt.
+3. Run the included one-step USB installer:
+   ```bash
+   ./scripts/install_android_usb.sh
+   ```
+4. Long-press your OnePlus 13 Homescreen → **Widgets** → **Global 3D Isometric Weather** and drag the widget onto your Homescreen or Lockscreen. Tap the widget anytime to search and switch cities!
+
+#### 3. Build `.apk` from Source
+```bash
+gradle -p android assembleRelease
+# Output APK: android/app/build/outputs/apk/release/app-release.apk
+```
 
 ---
 

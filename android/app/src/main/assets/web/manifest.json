@@ -1,0 +1,16 @@
+{
+  "name": "Global 3D Isometric Weather Widget",
+  "short_name": "IsoWeather3D",
+  "description": "Real-time Global 3D Isometric generative weather diorama widget for KDE Plasma 6, Web/PWA, and Android (OnePlus 13).",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0d1b2a",
+  "theme_color": "#7fc4f2",
+  "icons": [
+    {
+      "src": "images/yorktown_island.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
