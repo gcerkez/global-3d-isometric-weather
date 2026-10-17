@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+      http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+    <kcfgfile name=""/>
+
+    <group name="General">
+        <entry name="locationName" type="String">
+            <label>Location Name</label>
+            <default>Yorktown, VA</default>
+        </entry>
+        <entry name="regionSubtitle" type="String">
+            <label>Region Subtitle / Historical Theme</label>
+            <default>Historic Colonial Waterfront &amp; 1781 Battlefield</default>
+        </entry>
+        <entry name="latitude" type="Double">
+            <label>Latitude</label>
+            <default>37.2388</default>
+        </entry>
+        <entry name="longitude" type="Double">
+            <label>Longitude</label>
+            <default>-76.5097</default>
+        </entry>
+        <entry name="temperatureUnit" type="String">
+            <label>Temperature Unit (BOTH, F, C)</label>
+            <default>BOTH</default>
+        </entry>
+        <entry name="windSpeedUnit" type="String">
+            <label>Wind Speed Unit (mph, kmh, kn, ms)</label>
+            <default>mph</default>
+        </entry>
+        <entry name="refreshIntervalMinutes" type="Int">
+            <label>Refresh Interval in Minutes</label>
+            <default>15</default>
+        </entry>
+        <entry name="renderMode" type="String">
+            <label>Render Mode (hybrid, procedural3d)</label>
+            <default>hybrid</default>
+        </entry>
+        <entry name="timeOfDayMode" type="String">
+            <label>Time of Day Mode (realtime, day, sunset, night)</label>
+            <default>realtime</default>
+        </entry>
+        <entry name="weatherOverride" type="String">
+            <label>Weather Condition Override (realtime, clear, partly_cloudy, overcast, rain, thunderstorm, snow, fog)</label>
+            <default>realtime</default>
+        </entry>
+        <entry name="hudPosition" type="String">
+            <label>Weather HUD Overlay Position (top-right, top-left, bottom-right, bottom-left)</label>
+            <default>top-right</default>
+        </entry>
+        <entry name="hudOpacity" type="Double">
+            <label>Weather HUD Card Opacity</label>
+            <default>0.82</default>
+        </entry>
+        <entry name="transparentBackground" type="Bool">
+            <label>Transparent Desktop Cutout Mode (hide sky box)</label>
+            <default>false</default>
+        </entry>
+        <entry name="showLandmarkLabels" type="Bool">
+            <label>Show Interactive Landmark Pins on Hover</label>
+            <default>true</default>
+        </entry>
+        <entry name="showLocationBadge" type="Bool">
+            <label>Show Location &amp; Mode Badge</label>
+            <default>true</default>
+        </entry>
+        <entry name="particleDensity" type="Double">
+            <label>Weather Particle Density Multiplier</label>
+            <default>1.0</default>
+        </entry>
+    </group>
+</kcfg>

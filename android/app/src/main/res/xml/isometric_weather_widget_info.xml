@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android AppWidgetProviderInfo for OnePlus 13 (OxygenOS 15) & Android 12+
+  Supports both Homescreen (home_screen) and Lockscreen / Ambient Display (keyguard).
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="320dp"
+    android:minHeight="180dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:minResizeWidth="250dp"
+    android:minResizeHeight="140dp"
+    android:maxResizeWidth="680dp"
+    android:maxResizeHeight="420dp"
+    android:updatePeriodMillis="900000"
+    android:initialLayout="@layout/widget_isometric_weather"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen|keyguard"
+    android:widgetFeatures="reconfigurable|configuration_optional"
+    android:description="@string/widget_description" />

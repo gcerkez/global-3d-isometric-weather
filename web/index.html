@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Isometric Generative Weather Widget — Yorktown, VA &amp; Global</title>
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    :root {
+      --hud-bg: rgba(45, 65, 84, 0.84);
+      --hud-border: rgba(255, 255, 255, 0.25);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Noto Sans", system-ui, sans-serif; }
+    body {
+      background: #0d1b2a;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .widget-frame {
+      position: relative;
+      width: min(96vw, 960px);
+      aspect-ratio: 1376 / 768;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+      border: 1.5px solid rgba(188, 224, 247, 0.65);
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .hud-card {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      width: 280px;
+      background: var(--hud-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--hud-border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      user-select: none;
+    }
+    .hud-condition { font-size: 13px; font-weight: 700; letter-spacing: 0.7px; }
+    .hud-temp { font-size: 17px; font-weight: 800; margin-top: 2px; }
+    .hud-meta { font-size: 12px; color: #ebf4fa; margin-top: 2px; }
+    .hud-divider { height: 1px; background: rgba(255, 255, 255, 0.2); margin: 10px 0; }
+    .hud-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .pill {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 5px;
+      background: rgba(18, 30, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+    }
+    .hud-controls { display: flex; gap: 5px; margin-top: 10px; flex-wrap: wrap; }
+    .hud-controls button, .hud-controls input {
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .hud-controls input { flex: 1; min-width: 110px; cursor: text; }
+    .location-badge {
+      position: absolute;
+      right: 16px;
+      bottom: 14px;
+      background: rgba(34, 48, 62, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 6px;
+      padding: 4px 11px;
+      font-size: 11px;
+      color: #eef6fc;
+    }
+  </style>
+</head>
+<body>
+  <div class="widget-frame">
+    <canvas id="isoCanvas" width="1376" height="768"></canvas>
+
+    <div class="hud-card">
+      <div class="hud-condition" id="hudCondition">CLEAR WEATHER</div>
+      <div class="hud-temp" id="hudTemp">68°F (20°C)</div>
+      <div class="hud-meta" id="hudHumidity">64% HUMIDITY</div>
+      <div class="hud-meta" id="hudWind">8 MPH NNE WIND</div>
+      <div class="hud-divider"></div>
+      <div class="hud-meta" id="hudLoc">📍 YORKTOWN, VA • FEELS 67°F</div>
+      <div class="hud-badges">
+        <span class="pill" id="hudAqi" style="color:#4cd137">AQI 24 GOOD</span>
+        <span class="pill" id="hudUv" style="color:#fbc531">UV 3.2</span>
+        <span class="pill" id="hudMoon">🌔 Waxing Gibbous</span>
+      </div>
+      <div class="hud-controls">
+        <input id="citySearch" type="text" placeholder="Search any city..." />
+        <button id="btnSearch">Go</button>
+        <button id="btnMode">🎨 Mode</button>
+        <button id="btnTime">☀️ Time</button>
+      </div>
+    </div>
+
+    <div class="location-badge" id="locBadge">Yorktown, VA • 3D Isometric</div>
+  </div>
+
+  <script type="module">
+    import { IsometricWeatherEngine } from "./isometric-weather.js";
+
+    const canvas = document.getElementById("isoCanvas");
+    const engine = new IsometricWeatherEngine(canvas, {
+      onHudUpdate: (st) => {
+        const c = Math.round((st.tempF - 32) * 5 / 9);
+        document.getElementById("hudTemp").textContent = `${Math.round(st.tempF)}°F (${c}°C)`;
+        document.getElementById("hudHumidity").textContent = `${st.humidity}% HUMIDITY`;
+        document.getElementById("hudWind").textContent = `${Math.round(st.windMph)} MPH WIND`;
+        document.getElementById("hudLoc").textContent = `📍 ${st.locationName.toUpperCase()} • FEELS ${Math.round(st.feelsLikeF)}°F`;
+        document.getElementById("hudAqi").textContent = `AQI ${st.usAqi}`;
+        document.getElementById("hudUv").textContent = `UV ${st.uvIndex.toFixed(1)}`;
+        const moon = engine.computeMoonPhase();
+        document.getElementById("hudMoon").textContent = `${moon.emoji} ${moon.name}`;
+        document.getElementById("locBadge").textContent = `${st.locationName} • ${st.renderMode === "ai_generative" ? "AI Generative 3D" : "3D Isometric"}`;
+      }
+    });
+
+    engine.start();
+    engine.refreshAll();
+
+    document.getElementById("btnTime").addEventListener("click", () => {
+      const modes = ["realtime", "day", "sunset", "night"];
+      engine.state.timeMode = modes[(modes.indexOf(engine.state.timeMode) + 1) % modes.length];
+    });
+
+    document.getElementById("btnMode").addEventListener("click", () => {
+      engine.state.renderMode = engine.state.renderMode === "hybrid" ? "ai_generative" : "hybrid";
+      engine.onHudUpdate(engine.state);
+    });
+
+    document.getElementById("btnSearch").addEventListener("click", async () => {
+      const q = document.getElementById("citySearch").value.trim();
+      if (q.length < 2) return;
+      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=en&format=json`);
+      const data = await res.json();
+      if (data.results && data.results.length > 0) {
+        const r = data.results[0];
+        engine.state.locationName = `${r.name}${r.admin1 ? ", " + r.admin1 : ""}`;
+        engine.state.latitude = r.latitude;
+        engine.state.longitude = r.longitude;
+        engine.state.renderMode = "ai_generative";
+        await engine.refreshAll();
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "gcerkez@users.noreply.github.com",
+                "Name": "gcerkez"
+            }
+        ],
+        "BugReportUrl": "https://github.com/gcerkez/yorktown-3d-isometric-weather/issues",
+        "Category": "Weather",
+        "Description": "3D Isometric Generative Weather Widget themed around Historic Yorktown, VA (and any city globally) with real-time Open-Meteo weather, AQI/UV/Moon telemetry, 12h sparkline, and Hybrid/Procedural/AI 3D modes.",
+        "EnabledByDefault": true,
+        "FormFactors": [
+            "desktop",
+            "tablet",
+            "handset"
+        ],
+        "Icon": "weather-clear",
+        "Id": "com.antigravity.yorktownweather",
+        "License": "GPL-3.0-or-later",
+        "Name": "Yorktown 3D Isometric Weather",
+        "Version": "0.0.1",
+        "Website": "https://github.com/gcerkez/yorktown-3d-isometric-weather"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-MainScript": "ui/main.qml"
+}
