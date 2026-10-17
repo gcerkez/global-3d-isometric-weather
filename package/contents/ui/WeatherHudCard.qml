@@ -9,9 +9,7 @@ import QtQuick.Layouts
  *   - Left: Animated vector weather icon (sun, moon, cloud, rain, thunderstorm, snow)
  *   - Right: 4-line uppercase telemetry (Condition, Dual/Single Temperature, Humidity, Wind)
  *
- * Expanded drawer state (toggled by clicking the card) integrates desktop weather features
- * reconstructed via REA from `pnedyalkov91/advanced-weather-widget` and
- * `Samy879/minimalist-animated-weather`:
+ * Expanded drawer state (toggled by clicking the card) provides extended weather telemetry:
  *   - Color-coded US EPA Air Quality Index (AQI) & WHO UV Index badges + Lunar phase
  *   - 12-hour temperature sparkline curve with precipitation probability bars
  *   - 3-day high/low forecast strip
@@ -32,7 +30,7 @@ Item {
     property double cardOpacity: 0.82
     property real scaleFactor: 1.0
 
-    // Extended REA telemetry properties
+    // Extended telemetry properties
     property int aqiValue: 24
     property string aqiLabel: "GOOD"
     property string aqiColor: "#4ade80"
@@ -323,7 +321,7 @@ Item {
                     elide: Text.ElideRight
                 }
 
-                // AQI, UV & Lunar Phase Badges (reconstructed via REA from advanced-weather-widget)
+                // AQI, UV & Lunar Phase Badges
                 Row {
                     width: parent.width
                     spacing: Math.round(5 * hudRoot.scaleFactor)
@@ -380,7 +378,7 @@ Item {
                     }
                 }
 
-                // 12h Hourly Temperature & Precipitation Sparkline (reconstructed via REA from minimalist-animated-weather)
+                // 12h Hourly Temperature & Precipitation Sparkline
                 Rectangle {
                     width: parent.width
                     height: Math.round(44 * hudRoot.scaleFactor)

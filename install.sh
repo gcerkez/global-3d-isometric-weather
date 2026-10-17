@@ -23,11 +23,11 @@ else
 fi
 
 # Package a distributable .plasmoid archive as well
-PLASMOID_FILE="${SCRIPT_DIR}/yorktown-3d-isometric-weather.plasmoid"
+PLASMOID_FILE="${SCRIPT_DIR}/global-3d-isometric-weather.plasmoid"
 (cd "${PKG_DIR}" && python3 -m zipfile -c "${PLASMOID_FILE}" .)
 
 echo ""
 echo "✅ Installed successfully!"
 echo "   • Distribute archive: ${PLASMOID_FILE}"
-echo "   • Add to KDE Desktop: Right-click desktop -> 'Enter Edit Mode' -> 'Add or Manage Widgets...' -> Search 'Yorktown 3D Isometric Weather'"
+echo "   • Add to KDE Desktop: Right-click desktop -> 'Enter Edit Mode' -> 'Add or Manage Widgets...' -> Search 'Global 3D Isometric Weather'"
 echo "   • Preview in window : plasmawindowed ${PLUGIN_ID}"

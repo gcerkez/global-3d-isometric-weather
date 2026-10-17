@@ -1,2 +1,2 @@
-141f87c6b16005945f91624cc0bc6bd12ed9680651c88f8f2ea97b15dca67a1f  yorktown-3d-isometric-weather-v0.0.1.plasmoid
-2f2cccbe16edc5402e98e0d4ff0625694224ac3b609875784513ba6cfc7550b3  yorktown-3d-isometric-weather-web-android-v0.0.1.zip
+33ef4d05a6f326b423b9f9055a0679cdff564678f5f3345613b9c203bc5dddeb  global-3d-isometric-weather-v0.0.1.plasmoid
+faac3f079ef8c612d607ea396ea50a7d96af03f504b97e5e2fafe94ed125a0c5  global-3d-isometric-weather-web-android-v0.0.1.zip

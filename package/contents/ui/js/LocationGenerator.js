@@ -6,12 +6,8 @@
  * Makes any location on Earth dynamically renderable in both Hybrid AI Isometric Mode
  * and Live 3D Isometric Mode by combining:
  *   1. Wikipedia GeoSearch API for real-world local landmarks & historical context.
- *   2. OpenStreetMap Overpass API for live 3D building footprints & heights
- *      (reconstructed via REA from diwaspoudell/citycubes,
- *       Evidence ID: ev_7b77041625e5efa5fcd20b824e884e3bf420fc6c4b4e0669a9f7a285371509a0).
- *   3. Generative AI Isometric Diorama Prompt & Image synthesis
- *      (reconstructed via REA from RamAnanth/skytile,
- *       Evidence ID: ev_8aa42db2b2e13feac3fbc224d085f691f81db67fcad0e7fc5d5322d6da0a993f).
+ *   2. OpenStreetMap Overpass API for live 3D building footprints & heights.
+ *   3. Generative AI Isometric Diorama Prompt & Image synthesis.
  *   4. Deterministic coordinate-seeded procedural 3D city & biome generator fallback.
  */
 
@@ -217,7 +213,7 @@ function inferRegionalArchetype(locationName, lat, lon, landmarks) {
         };
     }
 
-    // Mediterranean / Cycladic Island (inspired by REA analysis of mykonos-island-voxels)
+    // Mediterranean / Cycladic Island
     if (/mykonos|santorini|athens|greece|mediterranean|amalfi|dubrovnik|malta|ibiza/.test(combinedText)) {
         return {
             archetypeId: "mediterranean_island",
@@ -293,8 +289,6 @@ function inferRegionalArchetype(locationName, lat, lon, landmarks) {
 /**
  * Queries OpenStreetMap Overpass API for real building footprints and heights around
  * `(centerLat, centerLon)` and normalizes them into the `[-8..+8]` 3D isometric world grid.
- * Reconstructed from REA analysis of `diwaspoudell/citycubes`
- * (`ev_7b77041625e5efa5fcd20b824e884e3bf420fc6c4b4e0669a9f7a285371509a0`).
  *
  * @param {number} centerLat - Latitude in decimal degrees.
  * @param {number} centerLon - Longitude in decimal degrees.
@@ -387,8 +381,6 @@ function fetchOsmBuildings(centerLat, centerLon, callback) {
 /**
  * Builds a rich, location-specific 3D isometric diorama prompt for AI image generation
  * (Gemini / Imagen / Flux), incorporating discovered Wikipedia landmarks.
- * Reconstructed and expanded from REA analysis of `RamAnanth/skytile`
- * (`ev_8aa42db2b2e13feac3fbc224d085f691f81db67fcad0e7fc5d5322d6da0a993f`).
  *
  * @param {string} locationName - City/Town display name.
  * @param {Array<{title: string, desc: string}>} landmarks - Discovered Wikipedia landmarks.

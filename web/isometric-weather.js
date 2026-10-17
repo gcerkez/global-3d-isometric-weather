@@ -1,12 +1,11 @@
 /**
  * isometric-weather.js
  * ====================
- * Cross-platform portable ES6 + HTML5 Canvas engine for the 3D Isometric
- * Generative Weather Widget (shared across Web/PWA, Electron/Tauri, and the
- * Android Homescreen/Lockscreen WebView & Canvas renderer).
+ * Cross-platform portable ES6 + HTML5 Canvas engine for the Global 3D Isometric
+ * Weather Widget (shared across Web/PWA, Electron/Tauri, and the Android
+ * Homescreen/Lockscreen WebView & Canvas renderer).
  *
- * Implements all features discovered during the REA (Reverse Engineer Anything)
- * analysis of 8 isometric weather & city repositories:
+ * Core features:
  *   - Open-Meteo Forecast & Air Quality live telemetry (Temp, Feels Like,
  *     Humidity, 16-compass Wind, US EPA AQI, UV Index, 12h Sparkline, 3-Day Forecast)
  *   - Astronomical Lunar Synodic Phase & Solar Golden Hour calculation

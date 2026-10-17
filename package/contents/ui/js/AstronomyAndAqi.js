@@ -4,10 +4,6 @@
  * @file AstronomyAndAqi.js
  * @description Astronomical calculation helpers (Lunar synodic phase, solar arc progress,
  * golden hour detection) and Air Quality / UV Index classification utilities.
- *
- * Reconstructed and adapted using the REA 5-Stage Framework from:
- * - pnedyalkov91/advanced-weather-widget (Evidence ID: ev_0b811fd40fcac6f3139892849db1fe27b60353ae5370afb74b5cb99ab1cebbf9)
- * - Samy879/minimalist-animated-weather (Evidence ID: ev_94739ca0ea684467e034f554fbab5a41cc708bef3a702dd7df681cce0afa0a03)
  */
 
 /** Mean synodic month length in days (New Moon to New Moon). */

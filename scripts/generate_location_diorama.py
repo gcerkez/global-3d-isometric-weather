@@ -9,8 +9,7 @@ Given any city or town name (or latitude/longitude), this script:
 2. Queries Wikipedia's GeoSearch API to discover the city's real-world
    historical & architectural landmarks.
 3. Synthesizes a 3D isometric miniature city diorama image using either:
-   - Google Gemini (`GEMINI_API_KEY` / `GOOGLE_API_KEY` environment variable,
-     reconstructed via REA from RamAnanth/skytile), OR
+   - Google Gemini (`GEMINI_API_KEY` / `GOOGLE_API_KEY` environment variable), OR
    - Free zero-key Flux image generation endpoint.
 4. Automatically extracts a clean transparent-background PNG cutout
    (`<slug>_island.png`) plus color-graded `<slug>_island_sunset.png` and
