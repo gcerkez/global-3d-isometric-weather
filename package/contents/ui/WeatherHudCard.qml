@@ -35,9 +35,11 @@ Item {
     property string aqiLabel: "GOOD"
     property string aqiColor: "#4ade80"
     property real uvIndex: 3.5
+    property string uvLabel: "Mod"
     property string uvColor: "#facc15"
     property string moonPhaseName: "Waxing Gibbous"
     property string moonEmoji: "🌔"
+    property alias moonPhaseIcon: hudRoot.moonEmoji
     property string sunriseText: "6:58 AM"
     property string sunsetText: "6:24 PM"
     property var hourlyTemps: [66, 68, 70, 71, 69, 65, 61, 58]

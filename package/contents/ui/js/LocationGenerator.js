@@ -415,3 +415,10 @@ function buildZeroKeyAiDioramaUrl(locationName, landmarks, seed) {
         + encodeURIComponent(prompt)
         + "?width=1376&height=768&seed=" + s + "&nologo=true&model=flux";
 }
+
+function buildGenerativeDioramaUrl(locationName, landmarks, timeState, weatherCategory) {
+    var list = (landmarks || []).map(function(item) {
+        return (typeof item === "string") ? { title: item, desc: "" } : item;
+    });
+    return buildZeroKeyAiDioramaUrl(locationName, list);
+}

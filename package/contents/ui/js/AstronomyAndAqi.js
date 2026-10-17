@@ -173,3 +173,11 @@ function classifyUvIndex(uv) {
     if (v < 11) return { value: v, label: "V.High", color: "#f87171" };
     return { value: v, label: "Extreme", color: "#c084fc" };
 }
+
+function computeMoonPhase(dateOrMs) {
+    return calculateMoonPhase(dateOrMs);
+}
+
+function evaluateSolarCycle(nowMs, sunriseIso, sunsetIso, fallbackIsDay) {
+    return computeSolarState(nowMs, sunriseIso, sunsetIso, fallbackIsDay);
+}
