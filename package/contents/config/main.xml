@@ -35,8 +35,24 @@
             <default>15</default>
         </entry>
         <entry name="renderMode" type="String">
-            <label>Render Mode (hybrid, procedural3d)</label>
+            <label>Render Mode (hybrid, procedural3d, ai_generative)</label>
             <default>hybrid</default>
+        </entry>
+        <entry name="dioramaTheme" type="String">
+            <label>3D Diorama Scene Theme (yorktown, coastal, modern, alpine, custom_city)</label>
+            <default>yorktown</default>
+        </entry>
+        <entry name="customDioramaUrl" type="String">
+            <label>Custom Generated City Diorama URL or Local Path</label>
+            <default></default>
+        </entry>
+        <entry name="dioramaZoom" type="Double">
+            <label>Isometric Diorama Zoom Factor (0.70 to 2.25)</label>
+            <default>1.0</default>
+        </entry>
+        <entry name="dioramaOffsetX" type="Int">
+            <label>Isometric Horizontal Offset in Pixels (-260 to +260)</label>
+            <default>0</default>
         </entry>
         <entry name="timeOfDayMode" type="String">
             <label>Time of Day Mode (realtime, day, sunset, night)</label>
@@ -68,7 +84,7 @@
         </entry>
         <entry name="particleDensity" type="Double">
             <label>Weather Particle Density Multiplier</label>
-            <default>1.0</default>
+            <default>0.5</default>
         </entry>
     </group>
 </kcfg>

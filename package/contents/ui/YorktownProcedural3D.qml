@@ -22,13 +22,18 @@ Item {
     property var regionalArchetype: null
     property var osmBuildings: []
 
-    // Interactive 3D Isometric Camera parameters
-    property real cameraYaw: 0.785398   // 45 degrees classic isometric
-    property real cameraPitch: 0.54     // ~31 degrees isometric elevation
+    // Fixed classic 3D Isometric Camera angles + Interactive Zoom & Horizontal Centering
+    readonly property real cameraYaw: 0.785398   // 45 degrees classic isometric
+    readonly property real cameraPitch: 0.54     // ~31 degrees isometric elevation
     property real cameraZoom: 1.0
+    property real cameraPanX: 0.0
+    property real cameraPanY: 0.0
     property real animTime: 0.0
     property bool bridgeSwinging: false
     property real bridgeSwingAngle: 0.0
+
+    signal zoomEdited(real newZoom)
+    signal panXEdited(int newPanX)
 
     Timer {
         interval: 33
@@ -49,6 +54,8 @@ Item {
     onWeatherCategoryChanged: scene3dCanvas.requestPaint()
     onRegionalArchetypeChanged: scene3dCanvas.requestPaint()
     onOsmBuildingsChanged: scene3dCanvas.requestPaint()
+    onCameraZoomChanged: scene3dCanvas.requestPaint()
+    onCameraPanXChanged: scene3dCanvas.requestPaint()
 
     Canvas {
         id: scene3dCanvas
@@ -60,8 +67,8 @@ Item {
             ctx.clearRect(0, 0, width, height)
             if (width <= 10 || height <= 10) return
 
-            var cx = width * 0.455
-            var cy = height * 0.59
+            var cx = width * 0.48 + proc3dRoot.cameraPanX
+            var cy = height * 0.59 + proc3dRoot.cameraPanY
             var baseScale = Math.min(width / 34.0, height / 21.0) * proc3dRoot.cameraZoom
             var yaw = proc3dRoot.cameraYaw
             var pitch = proc3dRoot.cameraPitch
@@ -75,7 +82,6 @@ Item {
             var isSnow = (proc3dRoot.weatherCategory === "snow")
 
             // Project 3D world coordinate (wx, wy, wz) -> 2D screen + depth
-            // wx: left(-10) to right(+10), wy: back(-10) to front(+10), wz: height(0..10)
             function project(wx, wy, wz) {
                 var rx = wx * cosY - wy * sinY
                 var ry = wx * sinY + wy * cosY
@@ -141,24 +147,11 @@ Item {
                         var p111 = project(x1, y1, z1), p011 = project(x0, y1, z1)
 
                         var sCol = sideHex || topHex
-                        // Determine which 2 vertical pairs of faces face the camera
-                        if (cosY >= 0 && sinY >= 0) {
-                            // Front-left (+y) and Front-right (+x) visible
-                            drawPoly([p010, p110, p111, p011], shadeHex(sCol, 0.88), shadeHex(sCol, 0.78), 0.7)
-                            drawPoly([p100, p110, p111, p101], shadeHex(sCol, 0.68), shadeHex(sCol, 0.60), 0.7)
-                        } else if (cosY < 0 && sinY >= 0) {
-                            drawPoly([p100, p110, p111, p101], shadeHex(sCol, 0.88), shadeHex(sCol, 0.78), 0.7)
-                            drawPoly([p000, p100, p101, p001], shadeHex(sCol, 0.68), shadeHex(sCol, 0.60), 0.7)
-                        } else if (cosY < 0 && sinY < 0) {
-                            drawPoly([p000, p100, p101, p001], shadeHex(sCol, 0.88), shadeHex(sCol, 0.78), 0.7)
-                            drawPoly([p000, p010, p011, p001], shadeHex(sCol, 0.68), shadeHex(sCol, 0.60), 0.7)
-                        } else {
-                            drawPoly([p000, p010, p011, p001], shadeHex(sCol, 0.88), shadeHex(sCol, 0.78), 0.7)
-                            drawPoly([p010, p110, p111, p011], shadeHex(sCol, 0.68), shadeHex(sCol, 0.60), 0.7)
-                        }
+                        drawPoly([p010, p110, p111, p011], shadeHex(sCol, 0.88), shadeHex(sCol, 0.78), 0.7)
+                        drawPoly([p100, p110, p111, p101], shadeHex(sCol, 0.68), shadeHex(sCol, 0.60), 0.7)
 
                         // Windows on colonial buildings
-                        if (hasWindows && cosY >= -0.3 && sinY >= -0.3) {
+                        if (hasWindows) {
                             var winCol = (isNight || isSunset) ? "#ffd875" : "#dcebf7"
                             var rows = 2
                             var cols = Math.max(2, Math.round(dx * 1.3))
@@ -201,7 +194,6 @@ Item {
             drawPoly([sh0, sh1, sh2, sh3], "rgba(12, 24, 42, 0.22)", null, 0)
 
             // 1. Non-overlapping Terrain Base Blocks (Layer Tier 0)
-            // 1A. Left-Side York River Earth Bed & Deep Water Block (-9..-0.8 in X, -9..9 in Y)
             enqueueBox(-9.0, -9.0, 0.0, 8.2, 18.0, 0.65, "#9c6340", "#9c6340", null, false, 0)
             enqueueBox(-9.0, -9.0, 0.65, 8.2, 18.0, 1.75, "#2b6ca3", "#1d4e7a", null, false, 0)
 
@@ -229,7 +221,6 @@ Item {
 
             // 1C. Historic Main Street Cobblestone Town Platoon (0.8..5.4 in X)
             enqueueBox(0.8, -9.0, 0.0, 4.6, 18.0, 2.60, "#8dc055", "#9c6340", null, false, 0)
-            // Cobblestone road network
             enqueueBox(1.1, -7.5, 2.60, 3.8, 15.0, 0.08, "#b8b0a8", "#9a928c", null, false, 0)
 
             // 1D. Right-Side Rising Grassy Bluff & 1781 Battlefield Heights (5.4..9.0 in X)
@@ -247,14 +238,14 @@ Item {
                 hasRedoubts: true
             }
 
-            // 2A. Bridge over River/Bay (Coleman Steel Truss, Golden Gate Suspension, or European Stone Arch)
+            // 2A. Bridge over River/Bay
             var pierCol = (arch.bridgeStyle === "suspension_golden") ? "#c84b31" : "#bfc7cf"
             enqueueBox(-8.2, -1.8, 2.4, 0.7, 1.2, 1.5, pierCol, "#9aa3ad", null, false, 1)
             enqueueBox(-4.5, -2.1, 2.4, 1.6, 1.8, 0.6, "#8c8680", "#635e59", null, false, 1)
             enqueueBox(-4.1, -1.8, 3.0, 0.8, 1.2, (arch.bridgeStyle === "suspension_golden") ? 2.4 : 0.9, pierCol, "#9aa3ad", null, false, 1)
             enqueueBox(-0.4, -1.8, 2.4, 0.7, 1.2, 1.5, pierCol, "#9aa3ad", null, false, 1)
 
-            // Bridge roadway & steel truss / suspension cable structure
+            // Bridge roadway & steel truss + static miniature cars
             drawQueue.push({
                 depth: 1 * 100.0 + project(-4.0, -1.2, 4.3).depth + 0.4,
                 render: function() {
@@ -294,26 +285,27 @@ Item {
                         }
                     }
 
-                    // Animated miniature cars crossing Bridge
-                    var carX = -8.0 + ((t * 1.8) % 9.0)
-                    var cp = project(carX, -1.2, 4.02)
-                    ctx.fillStyle = isNight ? "#ffee88" : "#e63946"
-                    ctx.beginPath()
-                    ctx.arc(cp.x, cp.y, Math.max(2.5, baseScale * 0.14), 0, Math.PI * 2)
-                    ctx.fill()
+                    // Static miniature cars on Bridge
+                    var staticBridgeCars = [-5.4, -2.1]
+                    for (var sbi = 0; sbi < staticBridgeCars.length; sbi++) {
+                        var cp = project(staticBridgeCars[sbi], -1.2, 4.02)
+                        ctx.fillStyle = isNight ? "#ffee88" : (sbi === 0 ? "#e63946" : "#2a9d8f")
+                        ctx.beginPath()
+                        ctx.arc(cp.x, cp.y, Math.max(2.5, baseScale * 0.14), 0, Math.PI * 2)
+                        ctx.fill()
+                    }
                 }
             })
 
-            // 2B. Three-Masted Tall Ship / Harbor Vessel sailing on the River
+            // 2B. Three-Masted Tall Ship / Harbor Vessel on the River
             if (arch.hasTallShip !== false) {
                 drawQueue.push({
                     depth: 1 * 100.0 + project(-5.2, 3.2, 3.0).depth + 0.5,
                     render: function() {
-                        var shipY = 3.0 + Math.sin(t * 0.8) * 0.35
-                        var bobZ = 2.45 + Math.sin(t * 2.1) * 0.08
+                        var shipY = 3.0
+                        var bobZ = 2.45 + Math.sin(t * 1.6) * 0.05
                         var sx = -5.2
 
-                        // Wooden ship hull
                         var h0 = project(sx - 0.6, shipY - 1.5, bobZ)
                         var h1 = project(sx + 0.6, shipY - 1.5, bobZ)
                         var h2 = project(sx + 0.7, shipY + 1.4, bobZ + 0.45)
@@ -321,7 +313,6 @@ Item {
                         var h4 = project(sx - 0.7, shipY + 1.4, bobZ + 0.45)
                         drawPoly([h0, h1, h2, h3, h4], shadeHex("#6e4228", 0.95), shadeHex("#3d2212", 1.0), 1.2)
 
-                        // Three tall masts with billowing white square-rigged sails
                         var mastOffsets = [-0.9, 0.1, 1.0]
                         var mastHeights = [2.4, 2.9, 2.2]
                         for (var m = 0; m < 3; m++) {
@@ -337,7 +328,6 @@ Item {
                             ctx.lineTo(mTop.x, mTop.y)
                             ctx.stroke()
 
-                            // Lower & upper square sails
                             var sL0 = project(sx - 0.65, my + 0.15, bobZ + 0.65)
                             var sR0 = project(sx + 0.65, my + 0.15, bobZ + 0.65)
                             var sR1 = project(sx + 0.55, my,        bobZ + 0.35 + mh * 0.88)
@@ -348,7 +338,7 @@ Item {
                 })
             }
 
-            // 2C. Buildings: Uses live OpenStreetMap Overpass 3D footprints for non-Yorktown cities, or Historic Yorktown Main Street
+            // 2C. Buildings
             if (arch.id !== "yorktown_1781" && proc3dRoot.osmBuildings && proc3dRoot.osmBuildings.length >= 3) {
                 for (var oi = 0; oi < proc3dRoot.osmBuildings.length; oi++) {
                     var ob = proc3dRoot.osmBuildings[oi]
@@ -373,7 +363,7 @@ Item {
                 }
             }
 
-            // 2D. Bluff Monument (Yorktown Victory Monument, Pagoda Tower, or Modern Spire)
+            // 2D. Bluff Monument
             var monColor = (arch.monumentStyle === "pagoda_tower") ? "#c84630" : "#f5f8fa"
             enqueueBox(6.2, -6.8, 5.0, 2.2, 2.2, 0.35, "#e6eaee", "#cfd6de", null, false, 1)
             enqueueBox(6.55, -6.45, 5.35, 1.5, 1.5, 0.55, "#eef2f6", "#d5dce3", null, false, 1)
@@ -381,7 +371,7 @@ Item {
             enqueueBox(6.82, -6.18, 10.1, 0.96, 0.96, 0.32, "#ffffff", "#dee5ec", null, false, 1)
             enqueueBox(7.12, -5.88, 10.42, 0.36, 0.36, 0.65, "#f0f4f8", "#cfd8e0", null, false, 1)
 
-            // 2E. Revolutionary War 1781 Siege Redoubts & Bronze Cannons on the Bluff (or Scenic Overlook Park)
+            // 2E. Revolutionary War 1781 Siege Redoubts & Bronze Cannons on the Bluff
             enqueueBox(6.1, -1.2, 5.0, 2.3, 0.45, 0.45, "#87ab4b", "#6e8f38", null, false, 1)
             enqueueBox(8.0, -1.2, 5.0, 0.45, 3.6, 0.45, "#87ab4b", "#6e8f38", null, false, 1)
             enqueueBox(6.1, 2.0,  5.0, 2.3, 0.45, 0.45, "#87ab4b", "#6e8f38", null, false, 1)
@@ -390,7 +380,7 @@ Item {
                 enqueueBox(6.8, 1.0,  5.0, 0.65, 0.32, 0.30, "#3b3530", "#292420", null, false, 1)
             }
 
-            // 2F. Swaying 3D Isometric Trees along the Yorktown Bluff
+            // 2F. 3D Isometric Trees along the Yorktown Bluff
             var treeCoords = [
                 { x: 5.7, y: -7.5, z: 5.0, r: 0.55 }, { x: 5.7, y: -6.2, z: 5.0, r: 0.62 },
                 { x: 5.7, y: -4.8, z: 5.0, r: 0.58 }, { x: 5.7, y: -3.2, z: 5.0, r: 0.64 },
@@ -403,8 +393,7 @@ Item {
                     drawQueue.push({
                         depth: 1 * 100.0 + tp.depth + 0.3,
                         render: function() {
-                            var sway = Math.sin(t * 2.0 + idx) * 0.08
-                            var cPos = project(tr.x + sway, tr.y, tr.z + 0.65)
+                            var cPos = project(tr.x, tr.y, tr.z + 0.65)
                             var rad = tr.r * baseScale
                             ctx.fillStyle = shadeHex("#4a7c29", 0.85)
                             ctx.beginPath()
@@ -420,28 +409,17 @@ Item {
                 })(treeCoords[ti], ti)
             }
 
-            // 2G. 4-5 Tiny Proportional Moving Sprites in 3D Space (Horse & Carriage / Town Car, 2 Path Pedestrians, 1 Ship Sailor; plus Bridge Car above)
-            function pingPong3D(val) {
-                var m = val % 2.0
-                if (m < 0) m += 2.0
-                return m <= 1.0 ? m : (2.0 - m)
-            }
-
-            // Sprite 1: Horse & Carriage (in Colonial Yorktown) or Town Car (in modern cities) along Main Street
-            var hcRaw = (t * 0.12) % 2.0
-            var hcProg = pingPong3D(hcRaw)
-            var hcDir = (hcRaw < 1.0) ? 1.0 : -1.0
-            var hcY = -4.5 + hcProg * 9.0
+            // 2G. Static Horse & Carriage (or Town Car) stationed on Main Street
             var hcX = 2.35
+            var hcY = 0.8
             var hcPos = project(hcX, hcY, 2.75)
             drawQueue.push({
                 depth: 1 * 100.0 + hcPos.depth + 0.4,
                 render: function() {
                     var cBody = project(hcX, hcY, 2.80)
-                    var hPos  = project(hcX, hcY + hcDir * 0.72, 2.78)
+                    var hPos  = project(hcX, hcY + 0.72, 2.78)
                     var sz = Math.max(1.8, baseScale * 0.11)
                     if (arch.id === "yorktown_1781" || arch.id === "european_old_town") {
-                        // Horse dot + harness + carriage
                         ctx.strokeStyle = "rgba(70,45,25,0.8)"
                         ctx.lineWidth = Math.max(0.8, sz * 0.45)
                         ctx.beginPath()
@@ -459,7 +437,6 @@ Item {
                         ctx.arc(cBody.x, cBody.y, sz * 1.25, 0, Math.PI * 2)
                         ctx.fill()
                     } else {
-                        // Modern miniature car on avenue
                         ctx.fillStyle = isNight ? "#ffd166" : "#2a9d8f"
                         ctx.beginPath()
                         ctx.arc(cBody.x, cBody.y, sz * 1.15, 0, Math.PI * 2)
@@ -467,57 +444,6 @@ Item {
                     }
                 }
             })
-
-            // Sprite 2 & 3: Tiny Pedestrians strolling along the Riverwalk & Victory Monument Bluff Path
-            var peds3D = [
-                { x: 0.25, y0: -4.2, y1: 4.2, z: 2.52, speed: 0.09, offset: 0.2, col: "#264653" },
-                { x: 6.15, y0: -4.5, y1: 1.5, z: 5.06, speed: 0.08, offset: 1.1, col: "#b5382a" }
-            ]
-            for (var pi = 0; pi < peds3D.length; pi++) {
-                (function(pd) {
-                    var py = pd.y0 + pingPong3D(t * pd.speed + pd.offset) * (pd.y1 - pd.y0)
-                    var pProj = project(pd.x, py, pd.z)
-                    drawQueue.push({
-                        depth: 1 * 100.0 + pProj.depth + 0.35,
-                        render: function() {
-                            var bob = Math.abs(Math.sin(t * 4.2 + pd.offset)) * 0.05
-                            var foot = project(pd.x, py, pd.z + bob)
-                            var head = project(pd.x, py, pd.z + 0.26 + bob)
-                            var r = Math.max(1.4, baseScale * 0.08)
-                            ctx.fillStyle = pd.col
-                            ctx.beginPath()
-                            ctx.arc(foot.x, foot.y, r * 1.05, 0, Math.PI * 2)
-                            ctx.fill()
-                            ctx.fillStyle = "#f4d3b8"
-                            ctx.beginPath()
-                            ctx.arc(head.x, head.y, r * 0.72, 0, Math.PI * 2)
-                            ctx.fill()
-                        }
-                    })
-                })(peds3D[pi])
-            }
-
-            // Sprite 4: Tiny Sailor moving along the Tall Ship Deck
-            if (arch.hasTallShip !== false) {
-                var shipCenterY = 3.0 + Math.sin(t * 0.8) * 0.35
-                var shipDeckZ = 2.85 + Math.sin(t * 2.1) * 0.08
-                var sailorY = shipCenterY - 0.65 + pingPong3D(t * 0.11 + 0.5) * 1.3
-                var sProj = project(-5.2, sailorY, shipDeckZ)
-                drawQueue.push({
-                    depth: 1 * 100.0 + sProj.depth + 0.65,
-                    render: function() {
-                        var r = Math.max(1.3, baseScale * 0.075)
-                        ctx.fillStyle = "#1d3557"
-                        ctx.beginPath()
-                        ctx.arc(sProj.x, sProj.y, r, 0, Math.PI * 2)
-                        ctx.fill()
-                        ctx.fillStyle = "#f1faee"
-                        ctx.beginPath()
-                        ctx.arc(sProj.x, sProj.y - r * 1.1, r * 0.7, 0, Math.PI * 2)
-                        ctx.fill()
-                    }
-                })
-            }
 
             // Sort painter queue back-to-front by isometric depth
             drawQueue.sort(function(a, b) { return a.depth - b.depth })
@@ -527,7 +453,7 @@ Item {
         }
     }
 
-    // Interactive Mouse Orbit / Pitch / Zoom + Double-Click to Reset Isometric Camera
+    // Interactive Mouse Horizontal Centering / Pan + Scroll-Wheel Zoom (No Rotation)
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -542,8 +468,9 @@ Item {
             if (pressed) {
                 var dx = mouse.x - lastX
                 var dy = mouse.y - lastY
-                proc3dRoot.cameraYaw += dx * 0.007
-                proc3dRoot.cameraPitch = Math.max(0.28, Math.min(1.05, proc3dRoot.cameraPitch + dy * 0.005))
+                proc3dRoot.cameraPanX = Math.max(-260, Math.min(260, proc3dRoot.cameraPanX + dx))
+                proc3dRoot.cameraPanY = Math.max(-90, Math.min(90, proc3dRoot.cameraPanY + dy * 0.5))
+                proc3dRoot.panXEdited(Math.round(proc3dRoot.cameraPanX))
                 lastX = mouse.x
                 lastY = mouse.y
                 scene3dCanvas.requestPaint()
@@ -552,18 +479,20 @@ Item {
         onWheel: function(wheel) {
             var delta = wheel.angleDelta.y > 0 ? 1.08 : 0.92
             proc3dRoot.cameraZoom = Math.max(0.65, Math.min(2.15, proc3dRoot.cameraZoom * delta))
+            proc3dRoot.zoomEdited(proc3dRoot.cameraZoom)
             scene3dCanvas.requestPaint()
         }
         onDoubleClicked: {
-            proc3dRoot.cameraYaw = 0.785398
-            proc3dRoot.cameraPitch = 0.54
             proc3dRoot.cameraZoom = 1.0
-            proc3dRoot.bridgeSwinging = !proc3dRoot.bridgeSwinging
+            proc3dRoot.cameraPanX = 0.0
+            proc3dRoot.cameraPanY = 0.0
+            proc3dRoot.zoomEdited(1.0)
+            proc3dRoot.panXEdited(0)
             scene3dCanvas.requestPaint()
         }
     }
 
-    // Interactive Zoom & Rotate Control Pill in Bottom-Left
+    // Interactive Zoom & Horizontal Centering Control Pill in Bottom-Left (No Rotation)
     Rectangle {
         anchors.left: parent.left
         anchors.bottom: parent.bottom
@@ -585,9 +514,9 @@ Item {
                 model: [
                     { label: "➖", act: "zoom_out" },
                     { label: "➕", act: "zoom_in" },
-                    { label: "↺", act: "rot_left" },
-                    { label: "↻", act: "rot_right" },
-                    { label: "⟲", act: "reset" }
+                    { label: "◀", act: "pan_left" },
+                    { label: "🎯", act: "center" },
+                    { label: "▶", act: "pan_right" }
                 ]
                 delegate: Rectangle {
                     width: 22
@@ -610,16 +539,22 @@ Item {
                         onClicked: {
                             if (modelData.act === "zoom_in") {
                                 proc3dRoot.cameraZoom = Math.min(2.15, proc3dRoot.cameraZoom * 1.15)
+                                proc3dRoot.zoomEdited(proc3dRoot.cameraZoom)
                             } else if (modelData.act === "zoom_out") {
                                 proc3dRoot.cameraZoom = Math.max(0.65, proc3dRoot.cameraZoom / 1.15)
-                            } else if (modelData.act === "rot_left") {
-                                proc3dRoot.cameraYaw -= 0.18
-                            } else if (modelData.act === "rot_right") {
-                                proc3dRoot.cameraYaw += 0.18
-                            } else if (modelData.act === "reset") {
-                                proc3dRoot.cameraYaw = 0.785398
-                                proc3dRoot.cameraPitch = 0.54
+                                proc3dRoot.zoomEdited(proc3dRoot.cameraZoom)
+                            } else if (modelData.act === "pan_left") {
+                                proc3dRoot.cameraPanX = Math.max(-260, proc3dRoot.cameraPanX - 24)
+                                proc3dRoot.panXEdited(Math.round(proc3dRoot.cameraPanX))
+                            } else if (modelData.act === "pan_right") {
+                                proc3dRoot.cameraPanX = Math.min(260, proc3dRoot.cameraPanX + 24)
+                                proc3dRoot.panXEdited(Math.round(proc3dRoot.cameraPanX))
+                            } else if (modelData.act === "center") {
                                 proc3dRoot.cameraZoom = 1.0
+                                proc3dRoot.cameraPanX = 0.0
+                                proc3dRoot.cameraPanY = 0.0
+                                proc3dRoot.zoomEdited(1.0)
+                                proc3dRoot.panXEdited(0)
                             }
                             scene3dCanvas.requestPaint()
                         }

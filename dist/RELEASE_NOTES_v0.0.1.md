@@ -6,22 +6,22 @@ Release of **Global 3D Isometric Weather Widget** (`com.antigravity.yorktownweat
 
 ### Highlights in `v0.0.1`
 
-* **Living Miniature Diorama Sprites (5 Proportional Active Sprites)**:
-  * **Horse & Carriage on Historic Main Street** (or miniature town car in modern cities) trotting between the Custom House, Nelson House, and Swan Tavern.
-  * **Miniature Car on the George P. Coleman Memorial Bridge** crossing the double-swing steel truss bridge over the York River with glowing headlights at night.
-  * **2 Miniature Pedestrians** strolling along the Yorktown Riverwalk shoreline path and the Victory Monument / Siege Redoubts bluff path.
-  * **18th-Century Tall Ship Sailor Sprite** moving along the wooden deck of the three-masted schooner on the York River.
-* **Interactive Isometric Zoom & Rotation (Desktop & Android)**:
-  * **KDE Plasma 6 & Web**: Scroll wheel or pinch to zoom (`0.70x`–`2.25x`), drag to rotate/tilt in **both** Hybrid and Procedural 3D modes, double-click to reset, or use the bottom-left camera toolbar (`➖` `➕` `↺` `↻` `⟲`).
-  * **Android Homescreen Widget & App**: Tap `➖` `➕` `↺` `↻` `⟲` `⚙️` directly on the bottom-left corner of the Homescreen widget (or in the config app) to zoom and rotate your placed widget.
-* **Android 4×3 Resizable Widget with Live Multi-Frame Homescreen Animation**:
-  * Defaults to a **4×3 grid size** with full horizontal & vertical resizability (`resizeMode="horizontal|vertical"`, `onAppWidgetOptionsChanged`).
-  * Uses an auto-animating 4-frame `<ViewFlipper>` (`widget_isometric_weather.xml`) so falling rain/snow, York River water sparkles, and the 5 miniature sprites continuously animate live on your Homescreen.
-* **Generative Location Engine (Works for Any City on Earth)**:
-  * **Open-Meteo Geocoding Search**, **Wikipedia GeoSearch Landmark Discovery**, **OpenStreetMap Overpass 3D Building Extrusion**, and **AI Generative Diorama Mode** (`ai_generative` & `scripts/generate_location_diorama.py`).
+* **Built-In Pre-Generated Generic Dioramas + In-Menu Custom High-Res City Cutout Generator**:
+  * Includes **4 Pre-Generated High-Resolution 3D Isometric Diorama Sets** (`1376×768` RGBA with Day, Sunset & Night variants):
+    1. `yorktown` — Historic Yorktown, VA (1781 Colonial Waterfront & Coleman Bridge)
+    2. `coastal` — Pre-Generated Generic: Coastal Harbor & Lighthouse Town (Non-City-Specific)
+    3. `modern` — Pre-Generated Generic: Modern Downtown Metropolis & Suspension Bridge (Non-City-Specific)
+    4. `alpine` — Pre-Generated Generic: Alpine Mountain & Lake Village (Non-City-Specific)
+  * **Built-In Config Menu "Generate Custom High-Res Diorama Cutout for Any City"**: Directly inside the KDE and Android Configuration Menus, enter any city name and click **Generate High-Res Cutout** to discover local Wikipedia landmarks, synthesize a 3D isometric island, remove the background, and generate Day/Sunset/Night cutouts on-device.
+* **Isometric Zoom & Horizontal Centering (Rotation Removed, HUD Stays Stationary)**:
+  * Move the entire 3D isometric diorama left (`◀`), center (`🎯`), or right (`▶`) and zoom (`➖` / `➕`) on both Desktop and Android while leaving the Weather HUD Overlay fixed in its configured position.
+* **Static Scenic Miniature Sprites**:
+  * Features static miniature sprites (stationed Colonial Horse & Carriage on Historic Main Street, miniature cars on the Coleman Bridge, and harbor sailboats) with animated walking people removed.
+* **Extrapolated, High-Readability Android Homescreen HUD & Scroll-Safe Config Menu**:
+  * Native high-DPI `RemoteViews` **Top-Sky Split Banner** and **Corner HUD Card** with `100% / 115% / 130%` text scaling that sits in the open upper sky without covering the 3D isometric town.
+  * Full-screen scroll-safe Android configuration menu (`MainActivity.kt`) using modal `AlertDialog` pickers instead of hair-trigger `Spinner`s so scrolling never triggers accidental taps.
 * **Atmospheric, Astronomical & Environmental Telemetry**:
-  * **Calm, Natural-Speed Weather Particles** (gentle rain/snow cadence with `25%`, `50%`, and `100%` intensity controls).
-  * **US EPA Air Quality Index (AQI)**, **WHO UV Index**, **Astronomical Lunar Synodic Phase**, **12-Hour Temperature & Precipitation Sparkline**, **3D Volumetric Cloud Ground Shadows**, **Post-Rain Rainbow Arc**, and **High-Wind Gust Streaks**.
+  * Calm, natural-speed rain/snow physics (`25%`, `50%`, `100%`), US EPA AQI, WHO UV Index, Lunar Synodic Phase, 12-Hour Temperature & Precipitation Sparkline, 3D Volumetric Cloud Ground Shadows, and Post-Rain Rainbow arcs.
 
 ---
 

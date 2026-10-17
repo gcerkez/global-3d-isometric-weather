@@ -19,16 +19,18 @@ Item {
     property string timeState: "day" // day, sunset, night
     property bool showLandmarkLabels: true
     property real animPhase: 0.0
+    property string dioramaTheme: "yorktown" // "yorktown" | "coastal" | "modern" | "alpine" | "custom_city"
     property string aiDioramaUrl: ""
     property bool useAiDiorama: false
     property var dynamicLandmarks: []
 
-    // Interactive Zoom & 3D Tilt/Rotation properties for Hybrid Scene
+    // Interactive Zoom & Horizontal Centering/Offset (moves isometric left/right while HUD stays fixed)
     property real cameraZoom: 1.0
-    property real cameraYawDeg: 0.0
-    property real cameraPitchDeg: 0.0
     property real cameraPanX: 0.0
     property real cameraPanY: 0.0
+
+    signal zoomEdited(real newZoom)
+    signal panXEdited(int newPanX)
 
     readonly property var defaultYorktownLandmarks: [
         {
@@ -70,8 +72,9 @@ Item {
 
     onTimeStateChanged: waterAndLightsCanvas.requestPaint()
     onWeatherCategoryChanged: waterAndLightsCanvas.requestPaint()
+    onDioramaThemeChanged: waterAndLightsCanvas.requestPaint()
 
-    // Background MouseArea for drag-to-rotate/pan, scroll-to-zoom, and double-click reset
+    // Background MouseArea for horizontal drag-to-center/move, scroll-to-zoom, and double-click center reset
     MouseArea {
         id: sceneDragArea
         anchors.fill: parent
@@ -87,13 +90,9 @@ Item {
             if (pressed) {
                 var dx = mouse.x - lastX
                 var dy = mouse.y - lastY
-                if (mouse.buttons & Qt.RightButton) {
-                    hybridScene.cameraPanX = Math.max(-180, Math.min(180, hybridScene.cameraPanX + dx))
-                    hybridScene.cameraPanY = Math.max(-120, Math.min(120, hybridScene.cameraPanY + dy))
-                } else {
-                    hybridScene.cameraYawDeg = Math.max(-32, Math.min(32, hybridScene.cameraYawDeg + dx * 0.18))
-                    hybridScene.cameraPitchDeg = Math.max(-18, Math.min(18, hybridScene.cameraPitchDeg - dy * 0.12))
-                }
+                hybridScene.cameraPanX = Math.max(-260, Math.min(260, hybridScene.cameraPanX + dx))
+                hybridScene.cameraPanY = Math.max(-90, Math.min(90, hybridScene.cameraPanY + dy * 0.5))
+                hybridScene.panXEdited(Math.round(hybridScene.cameraPanX))
                 lastX = mouse.x
                 lastY = mouse.y
             }
@@ -101,14 +100,23 @@ Item {
         onWheel: function(wheel) {
             var factor = wheel.angleDelta.y > 0 ? 1.10 : 0.91
             hybridScene.cameraZoom = Math.max(0.70, Math.min(2.25, hybridScene.cameraZoom * factor))
+            hybridScene.zoomEdited(hybridScene.cameraZoom)
         }
         onDoubleClicked: {
             hybridScene.cameraZoom = 1.0
-            hybridScene.cameraYawDeg = 0.0
-            hybridScene.cameraPitchDeg = 0.0
             hybridScene.cameraPanX = 0.0
             hybridScene.cameraPanY = 0.0
+            hybridScene.zoomEdited(1.0)
+            hybridScene.panXEdited(0)
         }
+    }
+
+    // Resolve image prefix for pre-generated themes ("yorktown", "coastal", "modern", "alpine")
+    readonly property string resolvedThemePrefix: {
+        if (hybridScene.dioramaTheme === "coastal" || hybridScene.dioramaTheme === "modern" || hybridScene.dioramaTheme === "alpine") {
+            return hybridScene.dioramaTheme
+        }
+        return "yorktown"
     }
 
     // Aspect-ratio preserving container matching the 1376x768 diorama coordinates
@@ -117,7 +125,7 @@ Item {
         width: Math.min(parent.width, parent.height * (1376.0 / 768.0))
         height: width * (768.0 / 1376.0)
         anchors.centerIn: parent
-        anchors.horizontalCenterOffset: -Math.round(parent.width * 0.042) + hybridScene.cameraPanX
+        anchors.horizontalCenterOffset: hybridScene.cameraPanX
         anchors.verticalCenterOffset: hybridScene.cameraPanY
 
         transform: [
@@ -126,44 +134,26 @@ Item {
                 origin.y: islandViewport.height / 2
                 xScale: hybridScene.cameraZoom
                 yScale: hybridScene.cameraZoom
-            },
-            Rotation {
-                origin.x: islandViewport.width / 2
-                origin.y: islandViewport.height / 2
-                axis { x: 0; y: 1; z: 0 }
-                angle: hybridScene.cameraYawDeg
-            },
-            Rotation {
-                origin.x: islandViewport.width / 2
-                origin.y: islandViewport.height / 2
-                axis { x: 1; y: 0; z: 0 }
-                angle: hybridScene.cameraPitchDeg
-            },
-            Rotation {
-                origin.x: islandViewport.width / 2
-                origin.y: islandViewport.height / 2
-                axis { x: 0; y: 0; z: 1 }
-                angle: hybridScene.cameraYawDeg * 0.28
             }
         ]
 
-        // Main transparent cutout of Historic Yorktown 3D Isometric Diorama (or AI Generative location diorama)
+        // Main transparent cutout of the selected 3D Isometric Diorama (Yorktown, Pre-Generated Generic, or Custom City AI Cutout)
         Image {
             id: dioramaImage
             anchors.fill: parent
-            source: (hybridScene.useAiDiorama && hybridScene.aiDioramaUrl.length > 0)
+            source: ((hybridScene.useAiDiorama || hybridScene.dioramaTheme === "custom_city") && hybridScene.aiDioramaUrl.length > 0)
                 ? hybridScene.aiDioramaUrl
                 : (hybridScene.timeState === "night"
-                    ? "../images/yorktown_island_night.png"
+                    ? ("../images/" + hybridScene.resolvedThemePrefix + "_island_night.png")
                     : (hybridScene.timeState === "sunset"
-                        ? "../images/yorktown_island_sunset.png"
-                        : "../images/yorktown_island.png"))
+                        ? ("../images/" + hybridScene.resolvedThemePrefix + "_island_sunset.png")
+                        : ("../images/" + hybridScene.resolvedThemePrefix + "_island.png")))
             fillMode: Image.PreserveAspectFit
             smooth: true
             mipmap: true
         }
 
-        // Dynamic Water Shimmer, Snow Frost, Miniature Sprites & Night/Evening Emissive Illumination Layer
+        // Dynamic Water Shimmer, Snow Frost, Static Scenic Sprites & Night/Evening Emissive Illumination Layer
         Canvas {
             id: waterAndLightsCanvas
             anchors.fill: parent
@@ -207,52 +197,15 @@ Item {
                 var p = hybridScene.animPhase
                 var tState = hybridScene.timeState
                 var cat = hybridScene.weatherCategory
+                var isYorktownTheme = (hybridScene.dioramaTheme === "yorktown" && !hybridScene.useAiDiorama)
 
-                // Helper for smooth back-and-forth ping-pong (0..1..0)
-                function pingPong(val) {
-                    var m = val % 2.0
-                    if (m < 0) m += 2.0
-                    return m <= 1.0 ? m : (2.0 - m)
-                }
-
-                // Helper to draw a tiny proportional pedestrian sprite (dot head + miniature coat body + shadow)
-                function drawTinyPerson(nx, ny, coatColor, hatColor, walkPhase) {
-                    var px = nx * width
-                    var py = ny * height
-                    var bob = Math.abs(Math.sin(walkPhase)) * 1.1 * s
-
-                    // Tiny ground shadow
-                    ctx.fillStyle = "rgba(10, 18, 28, 0.38)"
-                    ctx.beginPath()
-                    ctx.ellipse(px - 1.8 * s, py - 0.5 * s, 3.6 * s, 1.6 * s)
-                    ctx.fill()
-
-                    // Coat / torso
-                    ctx.fillStyle = coatColor
-                    ctx.beginPath()
-                    ctx.ellipse(px - 1.5 * s, py - (4.2 * s + bob), 3.0 * s, 3.8 * s)
-                    ctx.fill()
-
-                    // Tiny head
-                    ctx.fillStyle = "#f4d3b8"
-                    ctx.beginPath()
-                    ctx.arc(px, py - (5.2 * s + bob), 1.25 * s, 0, Math.PI * 2)
-                    ctx.fill()
-
-                    // Tiny tricorn / cap hint
-                    if (hatColor) {
-                        ctx.fillStyle = hatColor
-                        ctx.beginPath()
-                        ctx.arc(px, py - (6.0 * s + bob), 1.35 * s, Math.PI, 0)
-                        ctx.fill()
-                    }
-                }
-
-                // 1. Animated York River water wave sparkles / ripples
-                var waterPoints = [
+                // 1. Animated water wave sparkles / ripples
+                var waterPoints = isYorktownTheme ? [
                     { x: 0.14, y: 0.47 }, { x: 0.18, y: 0.52 }, { x: 0.24, y: 0.56 },
                     { x: 0.28, y: 0.46 }, { x: 0.33, y: 0.42 }, { x: 0.38, y: 0.34 },
                     { x: 0.44, y: 0.28 }, { x: 0.49, y: 0.32 }, { x: 0.21, y: 0.39 }
+                ] : [
+                    { x: 0.38, y: 0.68 }, { x: 0.45, y: 0.72 }, { x: 0.52, y: 0.70 }
                 ]
                 for (var wi = 0; wi < waterPoints.length; wi++) {
                     var wp = waterPoints[wi]
@@ -295,7 +248,7 @@ Item {
 
                 // 3. Evening / Night / Thunderstorm Illumination
                 var lightsActive = (tState === "night" || tState === "sunset" || cat === "thunderstorm")
-                if (lightsActive) {
+                if (lightsActive && isYorktownTheme) {
                     var intensity = (tState === "night") ? 1.0 : (tState === "sunset" ? 0.68 : 0.55)
 
                     // Victory Monument architectural uplighting on the hill
@@ -367,7 +320,7 @@ Item {
                         ctx.fill()
                     }
 
-                    // Center swing-pier marine channel marker light (green/red)
+                    // Center swing-pier marine channel marker light
                     ctx.fillStyle = "rgba(80, 255, 150, " + (0.85 * intensity).toFixed(3) + ")"
                     ctx.beginPath()
                     ctx.arc(0.335 * width, 0.415 * height, 3.2 * s, 0, Math.PI * 2)
@@ -392,112 +345,96 @@ Item {
                     }
                 }
 
-                // 4. Tiny Proportional Living Diorama Sprites (5 total: Horse & Carriage, Bridge Car, 2 Path Pedestrians, 1 Ship Sailor)
-                // 4A. Sprite #1: Horse & Carriage (or miniature town car) traveling along Historic Main Street
-                var hcRaw = (p * 0.055) % 2.0
-                var hcProg = pingPong(hcRaw)
-                var hcDir = (hcRaw < 1.0) ? 1.0 : -1.0
-                var hcX = (0.352 + hcProg * (0.535 - 0.352)) * width
-                var hcY = (0.712 + hcProg * (0.582 - 0.712)) * height
-                var stepX = 0.79 * hcDir * s
-                var stepY = -0.58 * hcDir * s
+                // 4. Static Scenic Miniature Sprites (No animated walking people; static parked Horse & Carriage and Bridge Cars)
+                if (isYorktownTheme) {
+                    // 4A. Static Colonial Horse & Carriage stationed on Historic Main Street by the Custom House
+                    var hcX = 0.440 * width
+                    var hcY = 0.648 * height
+                    var stepX = 0.79 * s
+                    var stepY = -0.58 * s
 
-                // Carriage shadow
-                ctx.fillStyle = "rgba(10, 18, 28, 0.42)"
-                ctx.beginPath()
-                ctx.ellipse(hcX - 4.2 * s, hcY - 1.5 * s, 8.4 * s, 3.4 * s)
-                ctx.fill()
-
-                // Horse in front of the carriage (with gentle trotting bob)
-                var horseBob = Math.abs(Math.sin(p * 3.8)) * 0.9 * s
-                var hx = hcX + stepX * 5.2
-                var hy = hcY + stepY * 5.2 - horseBob
-                ctx.fillStyle = "#6e4226"
-                ctx.beginPath()
-                ctx.ellipse(hx - 2.1 * s, hy - 2.8 * s, 4.2 * s, 2.6 * s)
-                ctx.fill()
-                // Horse head/neck
-                ctx.fillStyle = "#59331b"
-                ctx.beginPath()
-                ctx.arc(hx + stepX * 1.8, hy - 2.6 * s, 1.3 * s, 0, Math.PI * 2)
-                ctx.fill()
-
-                // Harness trace connecting horse and carriage
-                ctx.strokeStyle = "rgba(70, 48, 32, 0.75)"
-                ctx.lineWidth = 0.9 * s
-                ctx.beginPath()
-                ctx.moveTo(hcX, hcY - 2.0 * s)
-                ctx.lineTo(hx, hy - 1.6 * s)
-                ctx.stroke()
-
-                // Colonial Carriage body & canopy
-                ctx.fillStyle = "#3b2316"
-                ctx.beginPath()
-                ctx.ellipse(hcX - 3.6 * s, hcY - 4.6 * s, 7.2 * s, 4.2 * s)
-                ctx.fill()
-                ctx.fillStyle = "#9e3b2b"
-                ctx.beginPath()
-                ctx.ellipse(hcX - 2.8 * s, hcY - 5.4 * s, 5.6 * s, 3.0 * s)
-                ctx.fill()
-                // Tiny gold-rimmed carriage wheels
-                ctx.fillStyle = "#d9a75a"
-                ctx.beginPath()
-                ctx.arc(hcX - 2.0 * s, hcY - 0.8 * s, 1.3 * s, 0, Math.PI * 2)
-                ctx.arc(hcX + 2.0 * s, hcY - 1.2 * s, 1.3 * s, 0, Math.PI * 2)
-                ctx.fill()
-                if (lightsActive) {
-                    ctx.fillStyle = "rgba(255, 232, 150, 0.92)"
+                    // Carriage shadow
+                    ctx.fillStyle = "rgba(10, 18, 28, 0.42)"
                     ctx.beginPath()
-                    ctx.arc(hcX + stepX * 2.5, hcY + stepY * 2.5 - 3.0 * s, 1.5 * s, 0, Math.PI * 2)
+                    ctx.ellipse(hcX - 4.2 * s, hcY - 1.5 * s, 8.4 * s, 3.4 * s)
                     ctx.fill()
-                }
 
-                // 4B. Sprite #2: Miniature Car crossing the George P. Coleman Memorial Bridge
-                var carFrac = (p * 0.085) % 1.0
-                var carX = (0.270 + carFrac * (0.476 - 0.270)) * width
-                var carY = (0.318 + carFrac * (0.462 - 0.318)) * height
-                ctx.fillStyle = "rgba(12, 20, 30, 0.36)"
-                ctx.beginPath()
-                ctx.ellipse(carX - 2.6 * s, carY - 1.0 * s, 5.2 * s, 2.2 * s)
-                ctx.fill()
-                ctx.fillStyle = "#d64035"
-                ctx.beginPath()
-                ctx.ellipse(carX - 2.4 * s, carY - 2.4 * s, 4.8 * s, 2.5 * s)
-                ctx.fill()
-                ctx.fillStyle = "#f2f6fa"
-                ctx.beginPath()
-                ctx.ellipse(carX - 1.4 * s, carY - 3.0 * s, 2.8 * s, 1.6 * s)
-                ctx.fill()
-                if (lightsActive) {
-                    ctx.fillStyle = "rgba(255, 245, 185, 0.9)"
+                    // Static Horse in front of the carriage
+                    var hx = hcX + stepX * 5.2
+                    var hy = hcY + stepY * 5.2
+                    ctx.fillStyle = "#6e4226"
                     ctx.beginPath()
-                    ctx.arc(carX + 2.5 * s, carY + 1.4 * s, 1.6 * s, 0, Math.PI * 2)
+                    ctx.ellipse(hx - 2.1 * s, hy - 2.8 * s, 4.2 * s, 2.6 * s)
                     ctx.fill()
+                    ctx.fillStyle = "#59331b"
+                    ctx.beginPath()
+                    ctx.arc(hx + stepX * 1.8, hy - 2.6 * s, 1.3 * s, 0, Math.PI * 2)
+                    ctx.fill()
+
+                    // Harness trace
+                    ctx.strokeStyle = "rgba(70, 48, 32, 0.75)"
+                    ctx.lineWidth = 0.9 * s
+                    ctx.beginPath()
+                    ctx.moveTo(hcX, hcY - 2.0 * s)
+                    ctx.lineTo(hx, hy - 1.6 * s)
+                    ctx.stroke()
+
+                    // Colonial Carriage body & canopy
+                    ctx.fillStyle = "#3b2316"
+                    ctx.beginPath()
+                    ctx.ellipse(hcX - 3.6 * s, hcY - 4.6 * s, 7.2 * s, 4.2 * s)
+                    ctx.fill()
+                    ctx.fillStyle = "#9e3b2b"
+                    ctx.beginPath()
+                    ctx.ellipse(hcX - 2.8 * s, hcY - 5.4 * s, 5.6 * s, 3.0 * s)
+                    ctx.fill()
+                    ctx.fillStyle = "#d9a75a"
+                    ctx.beginPath()
+                    ctx.arc(hcX - 2.0 * s, hcY - 0.8 * s, 1.3 * s, 0, Math.PI * 2)
+                    ctx.arc(hcX + 2.0 * s, hcY - 1.2 * s, 1.3 * s, 0, Math.PI * 2)
+                    ctx.fill()
+                    if (lightsActive) {
+                        ctx.fillStyle = "rgba(255, 232, 150, 0.92)"
+                        ctx.beginPath()
+                        ctx.arc(hcX + stepX * 2.5, hcY + stepY * 2.5 - 3.0 * s, 1.5 * s, 0, Math.PI * 2)
+                        ctx.fill()
+                    }
+
+                    // 4B. Static Miniature Cars on the George P. Coleman Memorial Bridge
+                    var staticCars = [
+                        { frac: 0.34, col: "#d64035" },
+                        { frac: 0.72, col: "#2a9d8f" }
+                    ]
+                    for (var sci = 0; sci < staticCars.length; sci++) {
+                        var sc = staticCars[sci]
+                        var carX = (0.270 + sc.frac * (0.476 - 0.270)) * width
+                        var carY = (0.318 + sc.frac * (0.462 - 0.318)) * height
+                        ctx.fillStyle = "rgba(12, 20, 30, 0.36)"
+                        ctx.beginPath()
+                        ctx.ellipse(carX - 2.6 * s, carY - 1.0 * s, 5.2 * s, 2.2 * s)
+                        ctx.fill()
+                        ctx.fillStyle = sc.col
+                        ctx.beginPath()
+                        ctx.ellipse(carX - 2.4 * s, carY - 2.4 * s, 4.8 * s, 2.5 * s)
+                        ctx.fill()
+                        ctx.fillStyle = "#f2f6fa"
+                        ctx.beginPath()
+                        ctx.ellipse(carX - 1.4 * s, carY - 3.0 * s, 2.8 * s, 1.6 * s)
+                        ctx.fill()
+                        if (lightsActive) {
+                            ctx.fillStyle = "rgba(255, 245, 185, 0.9)"
+                            ctx.beginPath()
+                            ctx.arc(carX + 2.5 * s, carY + 1.4 * s, 1.6 * s, 0, Math.PI * 2)
+                            ctx.fill()
+                        }
+                    }
                 }
-
-                // 4C. Sprite #3: Pedestrian strolling along the Yorktown Riverwalk Shoreline Path
-                var ped1Prog = pingPong(p * 0.042 + 0.3)
-                var ped1X = 0.328 + ped1Prog * (0.468 - 0.328)
-                var ped1Y = 0.735 + ped1Prog * (0.625 - 0.735)
-                drawTinyPerson(ped1X, ped1Y, "#264653", "#1d3557", p * 3.2)
-
-                // 4D. Sprite #4: Pedestrian strolling along the Victory Monument & Siege Redoubts Bluff Path
-                var ped2Prog = pingPong(p * 0.036 + 1.1)
-                var ped2X = 0.652 + ped2Prog * (0.748 - 0.652)
-                var ped2Y = 0.362 + ped2Prog * (0.468 - 0.362)
-                drawTinyPerson(ped2X, ped2Y, "#b5382a", "#2b2d42", p * 2.9 + 1.4)
-
-                // 4E. Sprite #5: Sailor / Crew Member moving on the 18th-Century Tall Ship Deck
-                var sailorProg = pingPong(p * 0.048 + 0.6)
-                var sailorX = 0.214 + sailorProg * (0.246 - 0.214)
-                var sailorY = 0.520 + sailorProg * (0.496 - 0.520)
-                drawTinyPerson(sailorX, sailorY, "#1d3557", "#f1faee", p * 3.0 + 0.7)
             }
         }
 
         // Interactive Landmark Hotspots (uses dynamic Wikipedia GeoSearch landmarks or Historic Yorktown defaults)
         Repeater {
-            model: hybridScene.showLandmarkLabels
+            model: (hybridScene.showLandmarkLabels && (hybridScene.dioramaTheme === "yorktown" || hybridScene.dioramaTheme === "custom_city"))
                 ? ((hybridScene.dynamicLandmarks && hybridScene.dynamicLandmarks.length > 0)
                     ? hybridScene.dynamicLandmarks
                     : hybridScene.defaultYorktownLandmarks)
@@ -571,7 +508,7 @@ Item {
         }
     }
 
-    // Compact Interactive Zoom & Rotate Control Pill in Bottom-Left
+    // Compact Interactive Zoom & Horizontal Centering Control Pill in Bottom-Left (No Rotation)
     Rectangle {
         anchors.left: parent.left
         anchors.bottom: parent.bottom
@@ -593,9 +530,9 @@ Item {
                 model: [
                     { label: "➖", tip: "Zoom Out", act: "zoom_out" },
                     { label: "➕", tip: "Zoom In", act: "zoom_in" },
-                    { label: "↺", tip: "Rotate Left", act: "rot_left" },
-                    { label: "↻", tip: "Rotate Right", act: "rot_right" },
-                    { label: "⟲", tip: "Reset View", act: "reset" }
+                    { label: "◀", tip: "Move Isometric Left", act: "pan_left" },
+                    { label: "🎯", tip: "Center Isometric", act: "center" },
+                    { label: "▶", tip: "Move Isometric Right", act: "pan_right" }
                 ]
                 delegate: Rectangle {
                     width: 22
@@ -618,18 +555,22 @@ Item {
                         onClicked: {
                             if (modelData.act === "zoom_in") {
                                 hybridScene.cameraZoom = Math.min(2.25, hybridScene.cameraZoom * 1.15)
+                                hybridScene.zoomEdited(hybridScene.cameraZoom)
                             } else if (modelData.act === "zoom_out") {
                                 hybridScene.cameraZoom = Math.max(0.70, hybridScene.cameraZoom / 1.15)
-                            } else if (modelData.act === "rot_left") {
-                                hybridScene.cameraYawDeg = Math.max(-32, hybridScene.cameraYawDeg - 6)
-                            } else if (modelData.act === "rot_right") {
-                                hybridScene.cameraYawDeg = Math.min(32, hybridScene.cameraYawDeg + 6)
-                            } else if (modelData.act === "reset") {
+                                hybridScene.zoomEdited(hybridScene.cameraZoom)
+                            } else if (modelData.act === "pan_left") {
+                                hybridScene.cameraPanX = Math.max(-260, hybridScene.cameraPanX - 24)
+                                hybridScene.panXEdited(Math.round(hybridScene.cameraPanX))
+                            } else if (modelData.act === "pan_right") {
+                                hybridScene.cameraPanX = Math.min(260, hybridScene.cameraPanX + 24)
+                                hybridScene.panXEdited(Math.round(hybridScene.cameraPanX))
+                            } else if (modelData.act === "center") {
                                 hybridScene.cameraZoom = 1.0
-                                hybridScene.cameraYawDeg = 0.0
-                                hybridScene.cameraPitchDeg = 0.0
                                 hybridScene.cameraPanX = 0.0
                                 hybridScene.cameraPanY = 0.0
+                                hybridScene.zoomEdited(1.0)
+                                hybridScene.panXEdited(0)
                             }
                         }
                     }

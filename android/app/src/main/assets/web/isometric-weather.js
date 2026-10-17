@@ -9,14 +9,14 @@
  *   - Open-Meteo Forecast & Air Quality live telemetry (Temp, Feels Like,
  *     Humidity, 16-compass Wind, US EPA AQI, UV Index, 12h Sparkline, 3-Day Forecast)
  *   - Astronomical Lunar Synodic Phase & Solar Golden Hour calculation
- *   - Generative Location Engine:
- *       1. Open-Meteo Geocoding search for any global city
- *       2. Wikipedia GeoSearch API for real-time local landmark pins
- *       3. OpenStreetMap Overpass API for live 3D building footprint extrusion
- *       4. On-demand AI Isometric Diorama synthesis (Pollinations Flux / Gemini)
- *   - Dual Rendering Engine:
- *       * Hybrid High-Detail Isometric Cutout + Animated Water, Frost & Night Lights
- *       * Interactive Procedural 3D Isometric Engine (orbit, pitch, zoom)
+ *   - Built-In Pre-Generated 3D Isometric Diorama Themes:
+ *       1. "yorktown": Historic Yorktown, VA (1781 Colonial Waterfront & Coleman Bridge)
+ *       2. "coastal":  Generic Coastal Harbor & Lighthouse Town (Non-City-Specific)
+ *       3. "modern":   Generic Modern Downtown Metropolis & Bridge (Non-City-Specific)
+ *       4. "alpine":   Generic Alpine Mountain & Lake Village (Non-City-Specific)
+ *       5. "custom_city": Custom Generated High-Res City Diorama Cutout (Any Global City)
+ *   - Isometric Zoom & Horizontal Centering (move left/right/center while HUD overlay stays fixed)
+ *   - Static Miniature Diorama Sprites (Horse & Carriage, Cars, Sailboats)
  */
 
 export class IsometricWeatherEngine {
@@ -34,8 +34,9 @@ export class IsometricWeatherEngine {
             regionSubtitle: options.regionSubtitle || "Historic Colonial Waterfront & 1781 Battlefield",
             latitude: options.latitude ?? 37.2388,
             longitude: options.longitude ?? -76.5097,
-            renderMode: options.renderMode || "hybrid", // "hybrid" | "procedural3d" | "ai_generative"
-            timeMode: options.timeMode || "realtime",   // "realtime" | "day" | "sunset" | "night"
+            renderMode: options.renderMode || "hybrid",       // "hybrid" | "procedural3d" | "ai_generative"
+            dioramaTheme: options.dioramaTheme || "yorktown", // "yorktown" | "coastal" | "modern" | "alpine" | "custom_city"
+            timeMode: options.timeMode || "realtime",         // "realtime" | "day" | "sunset" | "night"
             weatherOverride: options.weatherOverride || "realtime",
             tempUnit: options.tempUnit || "BOTH",
 
@@ -63,12 +64,9 @@ export class IsometricWeatherEngine {
             osmBuildings: [],
             aiDioramaUrl: "",
 
-            // Camera state for both Hybrid & Procedural 3D modes
-            cameraYaw: 0.785398,
-            cameraPitch: 0.54,
-            cameraYawDeg: 0.0,
-            cameraPitchDeg: 0.0,
-            cameraZoom: 1.0,
+            // Isometric Zoom & Horizontal Offset (rotation intentionally disabled)
+            cameraZoom: options.cameraZoom ?? 1.0,
+            cameraPanX: options.cameraPanX ?? 0.0,
             particleIntensity: options.particleIntensity ?? 1.0,
             animTime: 0
         };
@@ -79,12 +77,26 @@ export class IsometricWeatherEngine {
             night: new Image(),
             aiCustom: new Image()
         };
-        this.images.day.src = "images/yorktown_island.png";
-        this.images.sunset.src = "images/yorktown_island_sunset.png";
-        this.images.night.src = "images/yorktown_island_night.png";
+        this.setDioramaTheme(this.state.dioramaTheme);
 
         this.onHudUpdate = options.onHudUpdate || (() => {});
         this._bindInteraction();
+    }
+
+    /**
+     * Switches between the built-in pre-generated diorama cutout themes or custom city cutout.
+     * @param {"yorktown"|"coastal"|"modern"|"alpine"|"custom_city"} theme
+     */
+    setDioramaTheme(theme) {
+        this.state.dioramaTheme = theme || "yorktown";
+        let prefix = "yorktown_island";
+        if (theme === "coastal") prefix = "coastal_island";
+        else if (theme === "modern") prefix = "modern_island";
+        else if (theme === "alpine") prefix = "alpine_island";
+
+        this.images.day.src = `images/${prefix}.png`;
+        this.images.sunset.src = `images/${prefix}_sunset.png`;
+        this.images.night.src = `images/${prefix}_night.png`;
     }
 
     /**
@@ -116,7 +128,7 @@ export class IsometricWeatherEngine {
      * Fetches Open-Meteo Forecast, Air Quality, Wikipedia Landmarks, and OSM 3D buildings.
      */
     async refreshAll() {
-        const { latitude, longitude, locationName } = this.state;
+        const { latitude, longitude } = this.state;
         try {
             const wxUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}`
                 + `&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m,wind_direction_10m`
@@ -171,12 +183,12 @@ export class IsometricWeatherEngine {
     }
 
     /**
-     * Queries Wikipedia GeoSearch and OpenStreetMap Overpass API to make any city generative.
+     * Queries Wikipedia GeoSearch and synthesizes a high-res isometric diorama URL for any city.
      */
     async refreshGenerativeLocation() {
         const { latitude, longitude, locationName } = this.state;
         const isYorktown = Math.abs(latitude - 37.2388) < 0.08 && Math.abs(longitude - (-76.5097)) < 0.08;
-        if (isYorktown) {
+        if (isYorktown && this.state.dioramaTheme === "yorktown") {
             this.state.landmarks = [];
             this.state.osmBuildings = [];
             return;
@@ -203,9 +215,11 @@ export class IsometricWeatherEngine {
         }
 
         const landmarkNames = this.state.landmarks.map(l => l.title).join(", ") || `${locationName} waterfront and historic architecture`;
-        const prompt = `3D isometric miniature city diorama of ${locationName}, featuring ${landmarkNames}, tilt-shift architectural model, clean cut-out island base, high detail digital illustration`;
+        const prompt = `3D isometric miniature city diorama of ${locationName}, featuring ${landmarkNames}, tilt-shift architectural model, clean cut-out floating island base, high detail digital illustration`;
         this.state.aiDioramaUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1376&height=768&nologo=true&seed=42`;
-        this.images.aiCustom.src = this.state.aiDioramaUrl;
+        if (this.state.renderMode === "ai_generative" || this.state.dioramaTheme === "custom_city") {
+            this.images.aiCustom.src = this.state.aiDioramaUrl;
+        }
     }
 
     /**
@@ -235,52 +249,43 @@ export class IsometricWeatherEngine {
     }
 
     /**
-     * Adjusts camera zoom or rotation programmatically (for on-screen buttons).
-     * @param {"zoom_in"|"zoom_out"|"rot_left"|"rot_right"|"reset"} action
+     * Adjusts isometric zoom or horizontal centering/offset programmatically (rotation removed).
+     * @param {"zoom_in"|"zoom_out"|"pan_left"|"pan_right"|"center"|"reset"} action
      */
     adjustCamera(action) {
         if (action === "zoom_in") {
-            this.state.cameraZoom = Math.min(2.25, this.state.cameraZoom * 1.15);
+            this.state.cameraZoom = Math.min(2.40, this.state.cameraZoom * 1.15);
         } else if (action === "zoom_out") {
-            this.state.cameraZoom = Math.max(0.70, this.state.cameraZoom / 1.15);
-        } else if (action === "rot_left") {
-            this.state.cameraYaw -= 0.16;
-            this.state.cameraYawDeg = Math.max(-32, this.state.cameraYawDeg - 6);
-        } else if (action === "rot_right") {
-            this.state.cameraYaw += 0.16;
-            this.state.cameraYawDeg = Math.min(32, this.state.cameraYawDeg + 6);
+            this.state.cameraZoom = Math.max(0.65, this.state.cameraZoom / 1.15);
+        } else if (action === "pan_left") {
+            this.state.cameraPanX = Math.max(-220, this.state.cameraPanX - 24);
+        } else if (action === "pan_right") {
+            this.state.cameraPanX = Math.min(220, this.state.cameraPanX + 24);
+        } else if (action === "center") {
+            this.state.cameraPanX = 0;
         } else if (action === "reset") {
-            this.state.cameraYaw = 0.785398;
-            this.state.cameraPitch = 0.54;
-            this.state.cameraYawDeg = 0.0;
-            this.state.cameraPitchDeg = 0.0;
             this.state.cameraZoom = 1.0;
+            this.state.cameraPanX = 0;
         }
     }
 
     /**
-     * Binds pointer drag, pinch-to-zoom, wheel, and double-click events for interactive 3D camera orbit & zoom in all modes.
+     * Binds horizontal drag (to center/move the isometric left or right), pinch-to-zoom, wheel zoom, and double-click reset.
      */
     _bindInteraction() {
-        let dragging = false, lastX = 0, lastY = 0;
+        let dragging = false, lastX = 0;
         let lastPinchDist = 0;
 
         this.canvas.addEventListener("pointerdown", e => {
             dragging = true;
             lastX = e.clientX;
-            lastY = e.clientY;
         });
         window.addEventListener("pointerup", () => { dragging = false; });
         window.addEventListener("pointermove", e => {
             if (!dragging) return;
             const dx = e.clientX - lastX;
-            const dy = e.clientY - lastY;
-            this.state.cameraYaw += dx * 0.007;
-            this.state.cameraPitch = Math.max(0.28, Math.min(1.05, this.state.cameraPitch + dy * 0.005));
-            this.state.cameraYawDeg = Math.max(-32, Math.min(32, this.state.cameraYawDeg + dx * 0.16));
-            this.state.cameraPitchDeg = Math.max(-18, Math.min(18, this.state.cameraPitchDeg - dy * 0.12));
+            this.state.cameraPanX = Math.max(-220, Math.min(220, this.state.cameraPanX + dx * 0.65));
             lastX = e.clientX;
-            lastY = e.clientY;
         });
         this.canvas.addEventListener("touchstart", e => {
             if (e.touches.length === 2) {
@@ -295,14 +300,14 @@ export class IsometricWeatherEngine {
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const dist = Math.hypot(dx, dy);
                 const factor = dist / lastPinchDist;
-                this.state.cameraZoom = Math.max(0.70, Math.min(2.25, this.state.cameraZoom * factor));
+                this.state.cameraZoom = Math.max(0.65, Math.min(2.40, this.state.cameraZoom * factor));
                 lastPinchDist = dist;
             }
         }, { passive: true });
         this.canvas.addEventListener("wheel", e => {
             e.preventDefault();
             const factor = e.deltaY < 0 ? 1.10 : 0.91;
-            this.state.cameraZoom = Math.max(0.70, Math.min(2.25, this.state.cameraZoom * factor));
+            this.state.cameraZoom = Math.max(0.65, Math.min(2.40, this.state.cameraZoom * factor));
         }, { passive: false });
         this.canvas.addEventListener("dblclick", () => {
             this.adjustCamera("reset");
@@ -322,7 +327,7 @@ export class IsometricWeatherEngine {
     }
 
     /**
-     * Renders the sky backdrop, isometric diorama, water ripples, 5 miniature sprites, and weather particles.
+     * Renders the sky backdrop, isometric diorama (with zoom + horizontal offset), water ripples, static sprites, and weather particles.
      */
     render() {
         const ctx = this.ctx;
@@ -350,38 +355,32 @@ export class IsometricWeatherEngine {
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, w, h);
 
-        // 2. Main Diorama Cutout or AI Generative Image with interactive Zoom & Rotation
-        const img = (this.state.renderMode === "ai_generative" && this.images.aiCustom.complete && this.images.aiCustom.naturalWidth > 0)
+        // 2. Main Diorama Cutout with Zoom & Horizontal Offset (no rotation)
+        const useCustom = (this.state.renderMode === "ai_generative" || this.state.dioramaTheme === "custom_city")
+            && this.images.aiCustom.complete && this.images.aiCustom.naturalWidth > 0;
+        const img = useCustom
             ? this.images.aiCustom
             : (tState === "night" ? this.images.night : (tState === "sunset" ? this.images.sunset : this.images.day));
 
         const baseScale = Math.min(w / 1376, h / 768);
         const dw = 1376 * baseScale;
         const dh = 768 * baseScale;
-        const dx = (w - dw) * 0.5 - w * 0.04;
+        const dx = (w - dw) * 0.5 - w * 0.04 + (this.state.cameraPanX * baseScale * 2.0);
         const dy = (h - dh) * 0.5;
 
         ctx.save();
         const cx = dx + dw * 0.5;
         const cy = dy + dh * 0.5;
         ctx.translate(cx, cy);
-        ctx.scale(this.state.cameraZoom, this.state.cameraZoom * (1.0 - this.state.cameraPitchDeg * 0.004));
-        ctx.rotate((this.state.cameraYawDeg * 0.35) * Math.PI / 180.0);
+        ctx.scale(this.state.cameraZoom, this.state.cameraZoom);
         ctx.translate(-cx, -cy);
 
         if (img && img.complete && img.naturalWidth > 0) {
             ctx.drawImage(img, dx, dy, dw, dh);
         }
 
-        // 2B. Water wave sparkles & 5 tiny proportional moving sprites on the diorama
+        // 2B. Water wave sparkles & static scenic miniature sprites (animated walking people removed)
         const s = dw / 1376.0;
-        const pingPong = (val) => {
-            let m = val % 2.0;
-            if (m < 0) m += 2.0;
-            return m <= 1.0 ? m : (2.0 - m);
-        };
-
-        // Water sparkles on York River
         const waterPts = [
             { x: 0.14, y: 0.47 }, { x: 0.18, y: 0.52 }, { x: 0.24, y: 0.56 },
             { x: 0.28, y: 0.46 }, { x: 0.33, y: 0.42 }, { x: 0.38, y: 0.34 },
@@ -402,87 +401,53 @@ export class IsometricWeatherEngine {
             ctx.stroke();
         }
 
-        // Helper for tiny pedestrian sprite
-        const drawTinyPerson = (nx, ny, coatCol, hatCol, phase) => {
-            const px = dx + nx * dw;
-            const py = dy + ny * dh;
-            const bob = Math.abs(Math.sin(phase)) * 1.1 * s;
-            ctx.fillStyle = "rgba(10, 18, 28, 0.38)";
+        if (this.state.dioramaTheme === "yorktown" && !useCustom) {
+            // Static Sprite 1: Colonial Horse & Carriage stationed on Historic Main Street
+            const hcX = dx + 0.442 * dw;
+            const hcY = dy + 0.648 * dh;
+            const hx = hcX + 4.1 * s;
+            const hy = hcY - 3.0 * s;
+
+            ctx.strokeStyle = "rgba(70, 48, 32, 0.75)";
+            ctx.lineWidth = 0.9 * s;
             ctx.beginPath();
-            ctx.ellipse(px, py, 1.8 * s, 0.8 * s, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = coatCol;
+            ctx.moveTo(hcX, hcY - 2.0 * s);
+            ctx.lineTo(hx, hy - 1.6 * s);
+            ctx.stroke();
+
+            ctx.fillStyle = "#6e4226";
             ctx.beginPath();
-            ctx.ellipse(px, py - (2.3 * s + bob), 1.5 * s, 1.9 * s, 0, 0, Math.PI * 2);
+            ctx.ellipse(hx, hy - 1.5 * s, 2.1 * s, 1.3 * s, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = "#f4d3b8";
+
+            ctx.fillStyle = "#3b2316";
             ctx.beginPath();
-            ctx.arc(px, py - (4.6 * s + bob), 1.2 * s, 0, Math.PI * 2);
+            ctx.ellipse(hcX, hcY - 2.5 * s, 3.5 * s, 2.1 * s, 0, 0, Math.PI * 2);
             ctx.fill();
-            if (hatCol) {
-                ctx.fillStyle = hatCol;
-                ctx.beginPath();
-                ctx.arc(px, py - (5.3 * s + bob), 1.3 * s, Math.PI, 0);
-                ctx.fill();
-            }
-        };
+            ctx.fillStyle = "#9e3b2b";
+            ctx.beginPath();
+            ctx.ellipse(hcX, hcY - 3.8 * s, 2.8 * s, 1.5 * s, 0, 0, Math.PI * 2);
+            ctx.fill();
 
-        // Sprite 1: Horse & Carriage along Historic Main Street
-        const hcRaw = (t * 0.075) % 2.0;
-        const hcProg = pingPong(hcRaw);
-        const hcDir = hcRaw < 1.0 ? 1.0 : -1.0;
-        const hcX = dx + (0.352 + hcProg * (0.535 - 0.352)) * dw;
-        const hcY = dy + (0.712 + hcProg * (0.582 - 0.712)) * dh;
-        const stepX = 0.79 * hcDir * s;
-        const stepY = -0.58 * hcDir * s;
-        const hx = hcX + stepX * 5.2;
-        const hy = hcY + stepY * 5.2 - Math.abs(Math.sin(t * 4.5)) * 0.8 * s;
+            // Static Sprite 2 & 3: Miniature Cars on the George P. Coleman Memorial Bridge
+            const carX = dx + 0.365 * dw;
+            const carY = dy + 0.384 * dh;
+            ctx.fillStyle = "#d64035";
+            ctx.beginPath();
+            ctx.ellipse(carX, carY - 1.2 * s, 2.4 * s, 1.3 * s, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#f2f6fa";
+            ctx.beginPath();
+            ctx.ellipse(carX, carY - 2.1 * s, 1.4 * s, 0.8 * s, 0, 0, Math.PI * 2);
+            ctx.fill();
 
-        ctx.strokeStyle = "rgba(70, 48, 32, 0.75)";
-        ctx.lineWidth = 0.9 * s;
-        ctx.beginPath();
-        ctx.moveTo(hcX, hcY - 2.0 * s);
-        ctx.lineTo(hx, hy - 1.6 * s);
-        ctx.stroke();
-
-        ctx.fillStyle = "#6e4226";
-        ctx.beginPath();
-        ctx.ellipse(hx, hy - 1.5 * s, 2.1 * s, 1.3 * s, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = "#3b2316";
-        ctx.beginPath();
-        ctx.ellipse(hcX, hcY - 2.5 * s, 3.5 * s, 2.1 * s, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#9e3b2b";
-        ctx.beginPath();
-        ctx.ellipse(hcX, hcY - 3.8 * s, 2.8 * s, 1.5 * s, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Sprite 2: Miniature Car crossing the George P. Coleman Memorial Bridge
-        const carFrac = (t * 0.11) % 1.0;
-        const carX = dx + (0.270 + carFrac * (0.476 - 0.270)) * dw;
-        const carY = dy + (0.318 + carFrac * (0.462 - 0.318)) * dh;
-        ctx.fillStyle = "#d64035";
-        ctx.beginPath();
-        ctx.ellipse(carX, carY - 1.2 * s, 2.4 * s, 1.3 * s, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#f2f6fa";
-        ctx.beginPath();
-        ctx.ellipse(carX, carY - 2.1 * s, 1.4 * s, 0.8 * s, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Sprite 3: Pedestrian on Riverwalk Shoreline Path
-        const p1 = pingPong(t * 0.055 + 0.3);
-        drawTinyPerson(0.328 + p1 * (0.468 - 0.328), 0.735 + p1 * (0.625 - 0.735), "#264653", "#1d3557", t * 4.0);
-
-        // Sprite 4: Pedestrian on Victory Monument Bluff Path
-        const p2 = pingPong(t * 0.048 + 1.1);
-        drawTinyPerson(0.652 + p2 * (0.748 - 0.652), 0.362 + p2 * (0.468 - 0.362), "#b5382a", "#2b2d42", t * 3.6 + 1.4);
-
-        // Sprite 5: Sailor on 18th-Century Tall Ship Deck
-        const p3 = pingPong(t * 0.062 + 0.6);
-        drawTinyPerson(0.214 + p3 * (0.246 - 0.214), 0.520 + p3 * (0.496 - 0.520), "#1d3557", "#f1faee", t * 3.8 + 0.7);
+            const car2X = dx + 0.422 * dw;
+            const car2Y = dy + 0.425 * dh;
+            ctx.fillStyle = "#2b6cb0";
+            ctx.beginPath();
+            ctx.ellipse(car2X, car2Y - 1.2 * s, 2.3 * s, 1.2 * s, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         ctx.restore();
 

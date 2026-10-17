@@ -2,7 +2,7 @@
 
 A **Global 3D Isometric Real-Time & Generative Weather Widget** built for **KDE Plasma 6 (Bazzite / Linux Desktop)**, **Web / PWA**, and **Android Homescreen & Lockscreen (OnePlus 13 / Android 12+)**.
 
-Inspired by tilt-shift isometric architectural dioramas, the widget provides a **Generative Location Engine** that adapts to **any city on Earth** (and ships out-of-the-box with a high-detail diorama of **Historic Yorktown, VA** featuring the **George P. Coleman Memorial Bridge**, **18th-Century Tall Ship on the York River**, **Colonial Main Street / Custom House / Nelson House**, **Yorktown Victory Monument**, and **1781 Revolutionary War Siege Redoubts**).
+Inspired by tilt-shift isometric architectural dioramas, the widget combines **built-in Pre-Generated Generic 3D Isometric Dioramas**, **Historic Yorktown, VA**, and an **integrated Config Menu High-Res City Diorama Cutout Generator** that synthesizes custom Day, Sunset, and Starry Night cutouts for **any city on Earth** right from the settings menu.
 
 ---
 
@@ -16,34 +16,33 @@ Inspired by tilt-shift isometric architectural dioramas, the widget provides a *
 
 ## Key Features
 
-### 1. Three 3D Isometric Rendering Engines
-- **Hybrid 3D Isometric Diorama (`hybrid`)**: High-detail tilt-shift isometric island cutout (`1376×768` RGBA with neutral drop shadow) paired with real-time 20–30 FPS QML/HTML5 Canvas shaders for water wave sparkles, snow frost accumulation, glowing windows, streetlamps, bridge navigation lights, and monument beacons.
-- **Interactive Procedural 3D Engine (`procedural3d`)**: Depth-sorted painter's-algorithm 3D isometric engine supporting mouse drag orbit, pitch tilt, scroll-wheel zoom, and double-click camera reset.
-- **AI Generative Location Diorama (`ai_generative`)**: Automatically synthesizes a custom 3D isometric city diorama for any searched city using discovered local landmarks.
+### 1. Built-In Pre-Generated Generic Dioramas + In-Menu Custom City Cutout Generator
+Directly inside the **Configuration Menu** on both **KDE Plasma 6** and **Android**, you can choose from **4 Pre-Generated High-Resolution 3D Isometric Diorama Cutout Sets** (`1376×768` RGBA with Day, Sunset & Night variants) or generate a custom cutout for any city on Earth:
+1. **`yorktown` — Historic Yorktown, VA (Default)**: Features the **George P. Coleman Memorial Bridge**, **18th-Century Tall Ship on the York River**, **Colonial Main Street / Custom House / Nelson House**, **Yorktown Victory Monument**, and **1781 Revolutionary War Siege Redoubts**.
+2. **`coastal` — Pre-Generated Generic: Coastal Harbor & Lighthouse Town (Non-City-Specific)**: A scenic red-and-white striped lighthouse on a rocky headland, stone pier, sailboats, fishing boats, and harbor town.
+3. **`modern` — Pre-Generated Generic: Modern Downtown Metropolis & Bridge (Non-City-Specific)**: Glass skyscrapers, red suspension bridge with miniature cars, waterfront park, and harbor ferry.
+4. **`alpine` — Pre-Generated Generic: Alpine Mountain & Lake Village (Non-City-Specific)**: Snow-dusted alpine peaks, pine forest, wooden chalets, stone arch bridge, and emerald mountain lake.
+5. **`custom_city` — Built-In Config Menu "Generate Custom High-Res Diorama Cutout for Any City"**:
+   - Located directly inside the **KDE Configuration Window** (`ConfigAppearance.qml` & `ConfigLocation.qml`) and the **Android Configuration App** (`MainActivity.kt`)—no external CLI command or manual file copying required!
+   - Enter any city or architectural prompt and click **`✨ Generate High-Res Cutout`**. The widget automatically queries Wikipedia GeoSearch for local landmarks, synthesizes a 3D isometric floating-island diorama, performs edge flood-fill background removal, and generates matching Day, Golden Hour Sunset, and Starry Night textures on-device.
 
-### 2. Generative Location Architecture (Works for Any City Globally)
-Search **any city on Earth** in the widget settings (or Web HUD) and the widget automatically generates a location-specific scene via four zero-key pipelines (`package/contents/ui/js/LocationGenerator.js`):
-1. **Open-Meteo Global Geocoding API**: Search any town, city, or postal code worldwide.
-2. **Wikipedia GeoSearch Landmark Discovery**: Queries `en.wikipedia.org/w/api.php?action=query&list=geosearch` around your coordinates to populate real-time interactive landmark pins and descriptions on the isometric island.
-3. **OpenStreetMap Overpass 3D Building Extrusion**: Queries real building footprints (`way["building"](around:350, lat, lon)`) and height/level tags (`building:levels`) to extrude real local buildings in **Interactive Procedural 3D Mode**.
-4. **AI Isometric Diorama Generator (`scripts/generate_location_diorama.py` & `ai_generative` mode)**: Synthesizes custom transparent-background Day, Sunset, and Night 3D isometric dioramas for any city using discovered Wikipedia landmarks (via Google Gemini Image API or zero-key Flux synthesis).
+### 2. Isometric Zoom & Horizontal Centering (Overlay Stays Fixed)
+- **Zoom & Horizontal Offset (`➖` `➕` `◀` `🎯` `▶`)**:
+  - **Rotation is intentionally disabled** so the isometric island always stays at its crisp architectural projection angle.
+  - **Move Isometric Left / Center / Right (`◀` `🎯` `▶` or Horizontal Drag / Slider)**: Shift the entire 3D isometric diorama left or right as a whole (`-220 px` to `+220 px`) to frame or center it wherever you like **while the Weather HUD Overlay stays stationary in its configured position**.
+  - **Zoom In / Out (`➖` `➕` / Scroll Wheel / Pinch)**: Smoothly scale the isometric diorama from `65%` to `240%`.
 
-### 3. Living Miniature Diorama Sprites & Interactive Isometric Camera (Desktop & Android)
-- **Proportional Miniature Living Sprites (5 Active Sprites)**:
-  - **Horse & Carriage on Historic Main Street** (or a miniature town car in modern cities) trotting between the Custom House, Nelson House, and Swan Tavern.
-  - **Miniature Car on the George P. Coleman Memorial Bridge** crossing the double-swing steel truss bridge with glowing headlights at dusk/night.
-  - **2 Miniature Pedestrians** strolling along the Yorktown Riverwalk shoreline path and the Victory Monument / Siege Redoubts bluff path.
-  - **Tall Ship Crew / Sailor Sprite** moving along the wooden deck of the 18th-century schooner on the York River.
-- **Universal Interactive Zoom & Rotation**:
-  - **KDE Desktop & Web**: Scroll wheel or pinch to zoom (`0.70x` to `2.25x`), drag to rotate/tilt the isometric diorama in **both** Hybrid and Procedural 3D modes, double-click to reset, or use the bottom-left camera toolbar (`➖` `➕` `↺` `↻` `⟲`).
-  - **Android Homescreen Widget & App**: Tap `➖` `➕` `↺` `↻` `⟲` directly on the bottom-left corner of the Homescreen widget (or pinch/drag in the config app) to zoom and rotate your placed widget.
+### 3. Extrapolated, High-Readability Android Widget HUD (Zero Island Overlap)
+- On Android Homescreens (`widget_isometric_weather.xml` & `IsometricWeatherWidgetProvider.kt`), the weather overlay is rendered using **native high-DPI Android `RemoteViews` typography** rather than downsampled bitmap text:
+  - **Top-Sky Split Banner (`top-sky`, Recommended Default)**: Docks a wide, extrapolated translucent glass header across the upper sky (`17sp+` bold temperature, condition, location, humidity, wind, AQI, UV, and Moon phase) while shifting the 3D isometric island slightly downward so **0% of the 3D town is covered**.
+  - **Top-Right / Top-Left Corner Card (`top-right`, `top-left`)**: Classic corner card layout with configurable **Extrapolated Text Size (`100%`, `115% Recommended`, `130% Extra-Large`)**.
 
-### 4. Atmospheric, Astronomical & Environmental Telemetry
-- **Calm, Natural-Speed Weather Particles**: Tuned rain and snow physics so precipitation falls at a gentle, realistic cadence (even at 25% subtle intensity, only 4–6 calm drops fall across the scene).
-- **US EPA Air Quality Index (AQI) & WHO UV Index Pills**: Color-coded live badges in the expandable HUD drawer (`AstronomyAndAqi.js`).
-- **Astronomical Lunar Synodic Phase**: Real-time moon phase calculation (`New Moon` through `Waning Crescent`) rendered both as a HUD badge and as a dynamically lit crescent/full moon disc in the night sky (`WeatherEffectsOverlay.qml`).
-- **12-Hour Temperature & Precipitation Probability Sparkline**: Smooth Bezier temperature curve + hourly rain probability bars inside the HUD card (`WeatherHudCard.qml`).
-- **3D Volumetric Cloud Ground Shadows, Post-Rain Rainbow & High-Wind Gusts**: Multi-puff isometric clouds cast soft ground shadows across the island, high winds (>12 mph) trigger angled air-current streaks, and clearing rain reveals a translucent rainbow arc.
+### 4. Spacious, Scroll-Safe Android Configuration Menu
+- The Android Configuration App (`MainActivity.kt`) uses a **single full-screen vertical `ScrollView`** with `FOCUS_BEFORE_DESCENDANTS` and replaces hair-trigger `Spinner` dropdowns with **scroll-safe modal `AlertDialog` setting cards** that only open on a deliberate tap—eliminating accidental dropdown pops or keyboard focus thefts while scrolling.
+
+### 5. Static Scenic Miniature Sprites & Calm Weather Physics
+- **Static Scenic Miniature Sprites**: Stationed colonial Horse & Carriage on Historic Main Street, miniature cars on the Coleman Bridge / suspension bridges, and harbor sailboats (animated walking people removed for a clean, distraction-free architectural model aesthetic).
+- **Calm, Natural-Speed Weather Particles**: Gentle rain and snow physics (`25%`, `50%`, `100%` intensity) paired with US EPA AQI, WHO UV Index, Lunar Synodic Phase, 12-Hour Temperature/Precipitation Sparkline, 3D Volumetric Cloud Ground Shadows, and Post-Rain Rainbow arcs.
 
 > 📖 **Architecture & Feature Walkthrough**: See [WALKTHROUGH.md](WALKTHROUGH.md) for a detailed architectural tour and file-by-file breakdown.
 
@@ -51,38 +50,35 @@ Search **any city on Earth** in the widget settings (or Web HUD) and the widget 
 
 ## Multi-Platform Architecture
 
-To support **KDE Plasma 6 Desktop (Bazzite / Linux)**, **Web/PWA**, and **Android Homescreen/Lockscreen (OnePlus 13)** from a shared design and JavaScript core:
-
 ```text
 ├── package/                                # Native KDE Plasma 6 Plasmoid (QML + ES6 JS)
 │   ├── metadata.json                       # Plasma 6 KPackage manifest (com.antigravity.yorktownweather)
 │   └── contents/
-│       ├── config/                         # KConfig XT schema & settings pages
-│       ├── images/                         # Transparent Day / Sunset / Night isometric cutouts
+│       ├── config/                         # KConfig XT schema (dioramaTheme, dioramaZoom, dioramaOffsetX, etc.)
+│       ├── images/                         # Pre-generated transparent Day/Sunset/Night cutouts (yorktown, coastal, modern, alpine)
 │       └── ui/
 │           ├── main.qml                    # Root PlasmoidItem & Open-Meteo / AQI / Generative orchestrator
-│           ├── YorktownHybridScene.qml     # High-detail diorama + sprites + zoom/rotate + water/light shader
-│           ├── YorktownProcedural3D.qml    # Rotatable/zoomable 3D isometric engine + sprites + OSM buildings
+│           ├── YorktownHybridScene.qml     # High-detail diorama + static sprites + zoom/horizontal-pan + water/light shader
+│           ├── YorktownProcedural3D.qml    # Zoomable/centerable 3D isometric engine + static sprites + OSM buildings
 │           ├── WeatherEffectsOverlay.qml   # 3D clouds, ground shadows, moon phase, rainbow, gentle rain/snow
-│           ├── WeatherHudCard.qml          # Top-right HUD card + AQI/UV/Moon + 12h sparkline + 3-day forecast
+│           ├── WeatherHudCard.qml          # Stationary HUD card + AQI/UV/Moon + 12h sparkline + 3-day forecast
+│           ├── config/
+│           │   ├── ConfigAppearance.qml    # Pre-generated diorama selector, in-menu cutout generator, zoom & horizontal offset
+│           │   └── ConfigLocation.qml      # City search, presets, units & one-click city cutout generator
 │           └── js/
 │               ├── AstronomyAndAqi.js      # Lunar synodic phase, solar golden hour, US EPA AQI & UV math
 │               └── LocationGenerator.js    # Wikipedia GeoSearch, OSM Overpass 3D, & AI diorama generator
 ├── web/                                    # Portable HTML5 Canvas / PWA Widget (Desktop, Browser, WebView)
-│   ├── index.html                          # Standalone responsive widget, HUD & camera controls
+│   ├── index.html                          # Standalone responsive widget, HUD, theme selector & zoom/center controls
 │   ├── isometric-weather.js                # Portable ES6 IsometricWeatherEngine module
-│   └── manifest.json                       # PWA manifest
+│   └── images/                             # Pre-generated transparent Day/Sunset/Night cutouts
 ├── android/                                # Android Homescreen & Lockscreen AppWidget (OnePlus 13 / Android 12+)
 │   └── app/src/main/
 │       ├── java/com/antigravity/yorktownweather/
-│       │   ├── IsometricWeatherWidgetProvider.kt          # 4-frame live ViewFlipper widget & camera controls
-│       │   └── MainActivity.kt                            # Live 3D preview & full widget configuration app
-│       ├── res/layout/widget_isometric_weather.xml        # Auto-animating ViewFlipper + on-widget camera bar
+│       │   ├── IsometricWeatherWidgetProvider.kt          # 4-frame live ViewFlipper + native extrapolated HUD + zoom/pan
+│       │   └── MainActivity.kt                            # Scroll-safe full-screen config app + on-device cutout generator
+│       ├── res/layout/widget_isometric_weather.xml        # ViewFlipper + Top-Sky/Corner HUD + ➖ ➕ ◀ 🎯 ▶ ⚙️ bar
 │       └── res/xml/isometric_weather_widget_info.xml      # 4x3 default grid, horizontal|vertical resizable
-├── scripts/
-│   ├── generate_location_diorama.py        # CLI tool to generate transparent Day/Sunset/Night dioramas for any city
-│   ├── install_android_usb.sh              # One-step ADB USB installer & widget broadcaster
-│   └── publish_github_release.sh           # Automated GitHub Release publisher
 ├── WALKTHROUGH.md                          # Detailed architectural walkthrough & implementation reference
 ├── install.sh                              # One-step KDE Plasma 6 installer & .plasmoid packager
 └── preview.py                              # Desktop preview launcher & offscreen screenshot verifier
@@ -111,38 +107,40 @@ cd global-3d-isometric-weather
 ./install.sh
 ```
 
-#### 3. Add to Your KDE Desktop or Panel
-1. **Right-click** on your KDE desktop wallpaper and select **Enter Edit Mode** (or press `Meta+D`, then hold left-click).
-2. Click **Add or Manage Widgets...** in the top Edit Mode toolbar.
-3. Search for **`Global 3D Isometric Weather`** and drag it onto your desktop.
-4. **Right-click the widget → Configure Global 3D Isometric Weather...** to customize:
-   - **Location & Units**: Search any city worldwide or pick presets (`Yorktown, VA`, `Williamsburg, VA`, `San Francisco, CA`, etc.), choose `°F (°C)`, `°F`, or `°C`, and wind units (`MPH`, `KM/H`, `KN`, `M/S`).
-   - **3D Rendering & Weather**: Switch between **Hybrid Isometric Art**, **Interactive Procedural 3D**, and **AI Generative Diorama**, toggle **Transparent Desktop Cutout Mode**, adjust **Weather Particle Density** (`25%`–`150%`), or preview any time of day and weather state.
-
-#### 4. Test in a Standalone Window
-```bash
-plasmawindowed com.antigravity.yorktownweather
-# Or use the Python preview utility:
-./preview.py
-```
+#### 3. Configure Diorama Theme, Custom City Cutouts, Zoom & Horizontal Centering
+1. **Right-click the widget → Configure Global 3D Isometric Weather...**
+2. In **3D Rendering & Weather**:
+   - **3D Diorama Scene**: Choose **Historic Yorktown, VA**, one of the **3 Pre-Generated Generic Dioramas** (`Coastal Harbor & Lighthouse Town`, `Modern Downtown Metropolis`, `Alpine Mountain & Lake Village`), or **Custom Generated High-Res City Diorama Cutout**.
+   - **Generate Custom High-Res Diorama Cutout for Any City**: Enter any city name and click **`✨ Generate High-Res Cutout`** right inside the config menu!
+   - **Isometric Zoom & Horizontal Position**: Use the sliders or buttons (`◀ Left`, `🎯 Center (0 px)`, `▶ Right`) to position the 3D island while keeping the HUD overlay stationary.
 
 ---
 
-### Option B: Generate Custom High-Res Diorama Cutouts for Any City (CLI)
+### Option B: Android Homescreen & Lockscreen Widget (OnePlus 13 / OxygenOS 15 & Android 8.0+)
 
-Want crisp, transparent-background multi-time-of-day cutouts for another city (e.g., `"Kyoto, Japan"`, `"Charleston, SC"`, or `"San Francisco, CA"`)? Run:
+The Android app & widget are packaged as a signed `.apk` (`global-3d-isometric-weather-v0.0.1.apk`):
+- **4×3 Resizable Homescreen & Lockscreen AppWidget (`IsometricWeatherWidgetProvider.kt`)**:
+  - Features the **Extrapolated Top-Sky Split HUD Banner** (large, crisp native text in the upper sky with 0% overlap on the 3D island) or **Corner HUD Card** with adjustable text scaling (`100%`, `115%`, `130%`).
+  - Uses an auto-animating 4-frame `<ViewFlipper>` so gentle rain/snow and water ripples animate live on your Homescreen.
+  - Bottom-left on-widget toolbar (`➖` `➕` `◀` `🎯` `▶` `⚙️`) lets you zoom in/out and move the isometric island left, center, or right directly on your Homescreen while the HUD stays fixed.
+- **Spacious, Scroll-Safe Configuration App (`MainActivity.kt`)**:
+  - Includes the **Pre-Generated Generic Diorama Picker** (`Yorktown`, `Coastal Harbor`, `Modern City`, `Alpine Village`) and the **On-Device Custom High-Res City Cutout Generator** (`🎨 Generate & Apply High-Res 3D Cutout Now`).
 
+#### 1. Install Over USB Cable (`adb`) or Direct `.apk` Download
 ```bash
-# Uses GEMINI_API_KEY if set, or zero-key Flux synthesis automatically:
-./scripts/generate_location_diorama.py --city "Charleston, SC" --install-as-default
+./scripts/install_android_usb.sh
 ```
-This discovers the city's top Wikipedia landmarks, synthesizes a 3D isometric diorama, removes the background with a soft neutral drop shadow, and generates matching `_day.png`, `_sunset.png`, and `_night.png` textures.
+Or download `global-3d-isometric-weather-v0.0.1.apk` from [GitHub Releases](../../releases) directly on your phone.
+
+#### 2. Build `.apk` from Source
+```bash
+gradle -p android assembleRelease
+# Output APK: android/app/build/outputs/apk/release/app-release.apk
+```
 
 ---
 
 ### Option C: Portable Web / PWA Widget
-
-Run the cross-platform HTML5 Canvas / ES6 version in any browser, Electron/Tauri shell, or mobile PWA:
 
 ```bash
 python3 -m http.server 8080 --directory web
@@ -151,59 +149,20 @@ python3 -m http.server 8080 --directory web
 
 ---
 
-### Option D: Android Homescreen & Lockscreen Widget (OnePlus 13 / OxygenOS 15 & Android 8.0+)
-
-The Android app & widget are packaged as a signed `.apk` (`global-3d-isometric-weather-v0.0.1.apk`) containing both:
-- **4×3 Resizable Homescreen & Lockscreen AppWidget (`IsometricWeatherWidgetProvider.kt`)**:
-  - Defaults to a **4×3 grid size** and supports full horizontal & vertical resizing (`resizeMode="horizontal|vertical"`, `onAppWidgetOptionsChanged`).
-  - Uses an auto-animating 4-frame `<ViewFlipper>` (`widget_isometric_weather.xml`) so falling rain/snow, York River water ripples, and the 5 miniature sprites (Horse & Carriage, Bridge Car, Pedestrians, Sailor) **animate live right on your Homescreen**.
-  - Includes an on-widget bottom-left toolbar (`➖` `➕` `↺` `↻` `⟲` `⚙️`) to zoom and rotate the isometric render directly from the Homescreen.
-- **Interactive 3D Isometric Weather App & Configurator (`MainActivity.kt`)**: Full interactive 3D Isometric WebView + city search bar, presets, camera controls, weather intensity selector, and unit settings.
-
-#### 1. Install Directly on Your Phone from GitHub Releases
-Download `global-3d-isometric-weather-v0.0.1.apk` from the [GitHub Releases](../../releases) page on your phone and tap to install.
-
-#### 2. Install Over USB Cable from Your Computer (`adb`)
-1. On your OnePlus 13, enable **Developer options** (*Settings → About device → Version → Tap Build number 7 times*) and turn on **USB debugging** (*Settings → Additional settings → Developer options → USB debugging*).
-2. Plug your phone into your computer via USB and tap **Allow** on the *Allow USB debugging?* prompt.
-3. Run the included one-step USB installer:
-   ```bash
-   ./scripts/install_android_usb.sh
-   ```
-4. Long-press your OnePlus 13 Homescreen → **Widgets** → **Global 3D Isometric Weather** and drag the **4×3** widget onto your Homescreen or Lockscreen. Long-press the placed widget anytime to drag its resize handles!
-
-#### 3. Build `.apk` from Source
-```bash
-gradle -p android assembleRelease
-# Output APK: android/app/build/outputs/apk/release/app-release.apk
-```
-
----
-
 ## Developer Troubleshooting: Clearing QML & Android Widget Caches
 
-When iterating on QML shaders, JavaScript modules, or Android `AppWidgetProviderInfo` XML layouts, desktop shells and mobile launchers aggressively cache compiled assets in memory. Use the steps below to avoid stale UI or frozen widget layouts during development:
-
 ### 1. KDE Plasma 6 (`plasmashell` QML Cache)
-KDE Plasma 6 keeps existing QML/JS files mapped in the running `plasmashell` process and stores precompiled `.qmlc` / `.jsc` bytecode in `~/.cache/plasmashell/qmlcache/`. Running `kpackagetool6 --upgrade` updates files on disk but **will not reload QML in an already-placed desktop widget** until `plasmashell` is restarted:
 ```bash
-# Clear compiled QML bytecode cache and restart Plasma Shell cleanly:
 rm -rf ~/.cache/plasmashell/qmlcache/*
 ./install.sh
 systemctl --user restart plasma-plasmashell.service
 ```
 
 ### 2. Android Launcher & AppWidget Cache (OnePlus OxygenOS 15 / Android 12+)
-Android's `AppWidgetService` and the OxygenOS launcher cache `isometric_weather_widget_info.xml` (such as minimum grid cell sizes and resize modes) when a widget is first bound. If you change `targetCellWidth`, `targetCellHeight`, or `<ViewFlipper>` IDs in XML:
 ```bash
-# Reinstall APK and broadcast an immediate AppWidget update:
 adb install -r dist/global-3d-isometric-weather-v0.0.1.apk
 adb shell am broadcast -a com.antigravity.yorktownweather.ACTION_REFRESH_WIDGET \
   -n com.antigravity.yorktownweather/.IsometricWeatherWidgetProvider
-
-# If the launcher still caches old grid resize bounds, remove the widget from the Homescreen
-# and re-add it from the Widgets drawer (or clear app data via):
-adb shell pm clear com.antigravity.yorktownweather
 ```
 
 ---

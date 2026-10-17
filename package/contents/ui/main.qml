@@ -46,6 +46,10 @@ PlasmoidItem {
     readonly property string cfgWindUnit: Plasmoid.configuration.windSpeedUnit || "mph"
     readonly property int cfgRefreshMins: Plasmoid.configuration.refreshIntervalMinutes || 15
     readonly property string cfgRenderMode: Plasmoid.configuration.renderMode || "hybrid"
+    readonly property string cfgDioramaTheme: Plasmoid.configuration.dioramaTheme || "yorktown"
+    readonly property string cfgCustomDioramaUrl: Plasmoid.configuration.customDioramaUrl || ""
+    readonly property double cfgDioramaZoom: Plasmoid.configuration.dioramaZoom !== undefined ? Plasmoid.configuration.dioramaZoom : 1.0
+    readonly property int cfgDioramaOffsetX: Plasmoid.configuration.dioramaOffsetX !== undefined ? Plasmoid.configuration.dioramaOffsetX : 0
     readonly property string cfgTimeMode: Plasmoid.configuration.timeOfDayMode || "realtime"
     readonly property string cfgWeatherOverride: Plasmoid.configuration.weatherOverride || "realtime"
     readonly property string cfgHudPosition: Plasmoid.configuration.hudPosition || "top-right"
@@ -449,7 +453,7 @@ PlasmoidItem {
             renderFrontLayerOnly: false
         }
 
-        // 3A. Hybrid / AI Generative Mode: High-Detail 3D Isometric Diorama + Animated Water, Frost & Night Illumination
+        // 3A. Hybrid / Pre-Generated / Custom City Cutout Mode: High-Detail 3D Isometric Diorama + Animated Water, Frost & Night Illumination
         YorktownHybridScene {
             anchors.fill: parent
             visible: root.cfgRenderMode !== "procedural3d"
@@ -457,11 +461,20 @@ PlasmoidItem {
             timeState: root.effectiveTimeState
             showLandmarkLabels: root.cfgShowLandmarks
             dynamicLandmarks: root.dynamicLandmarks
-            useAiDiorama: root.cfgRenderMode === "ai_generative"
-            aiDioramaUrl: root.aiDioramaUrl
+            dioramaTheme: root.cfgDioramaTheme
+            useAiDiorama: root.cfgRenderMode === "ai_generative" || root.cfgDioramaTheme === "custom_city"
+            aiDioramaUrl: root.cfgCustomDioramaUrl.length > 0 ? root.cfgCustomDioramaUrl : root.aiDioramaUrl
+            cameraZoom: root.cfgDioramaZoom
+            cameraPanX: root.cfgDioramaOffsetX
+            onZoomEdited: function(newZoom) {
+                Plasmoid.configuration.dioramaZoom = Math.round(newZoom * 100) / 100
+            }
+            onPanXEdited: function(newPanX) {
+                Plasmoid.configuration.dioramaOffsetX = Math.round(newPanX)
+            }
         }
 
-        // 3B. Procedural 3D Mode: Interactive Rotatable/Zoomable 3D Isometric Model (Yorktown or Generative OSM City)
+        // 3B. Procedural 3D Mode: Interactive Zoomable & Horizontally Centerable 3D Isometric Model (Yorktown or Generative OSM City)
         YorktownProcedural3D {
             anchors.fill: parent
             visible: root.cfgRenderMode === "procedural3d"
@@ -471,6 +484,14 @@ PlasmoidItem {
             windSpeedMph: root.liveWindMph
             regionalArchetype: root.currentArchetype
             osmBuildings: root.dynamicOsmBuildings
+            cameraZoom: root.cfgDioramaZoom
+            cameraPanX: root.cfgDioramaOffsetX
+            onZoomEdited: function(newZoom) {
+                Plasmoid.configuration.dioramaZoom = Math.round(newZoom * 100) / 100
+            }
+            onPanXEdited: function(newPanX) {
+                Plasmoid.configuration.dioramaOffsetX = Math.round(newPanX)
+            }
         }
 
         // 4. Front-Layer 3D Volumetric Clouds, Ground Cloud Shadows, Rain Streaks, Water Ripples, Snowflakes, Wind Streaks & Fog

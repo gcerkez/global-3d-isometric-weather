@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:padding="2dp">
 
-    <!-- Continuously animating multi-frame ViewFlipper for live rain, water ripples & miniature sprites -->
+    <!-- 1. Continuously animating 4-frame ViewFlipper for 3D Isometric Island, Water Sparkles & Gentle Weather FX -->
     <ViewFlipper
         android:id="@+id/widget_flipper"
         android:layout_width="match_parent"
@@ -42,7 +42,155 @@
             android:contentDescription="3D Isometric Weather Frame 4" />
     </ViewFlipper>
 
-    <!-- Interactive On-Widget Zoom, Rotate & Settings Control Bar (Bottom-Left) -->
+    <!-- 2A. Extrapolated Top-Sky Split HUD Banner (Default on Android: Large, Crisp Text in Upper Sky Without Covering the 3D Island) -->
+    <LinearLayout
+        android:id="@+id/widget_hud_top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="#CC1B2D3E"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="7dp"
+        android:paddingBottom="7dp">
+
+        <!-- Left Column: Big Weather Icon + Large Temperature + Condition & Location -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1.05"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/hud_bar_temp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="☀️ 68°F (20°C)"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/hud_bar_condition_loc"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CLEAR • 📍 YORKTOWN, VA"
+                android:textColor="#D9ECFF"
+                android:textSize="11.5sp"
+                android:textStyle="bold"
+                android:singleLine="true"
+                android:ellipsize="end" />
+        </LinearLayout>
+
+        <!-- Right Column: Humidity, Wind & AQI / UV / Moon Telemetry -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.95"
+            android:gravity="end"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/hud_bar_wind_hum"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="💧 64% • 💨 8 MPH NNE"
+                android:textColor="#EEF6FC"
+                android:textSize="11.5sp"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/hud_bar_badges"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="AQI 24 GOOD • UV 3.2 • 🌔"
+                android:textColor="#86EFAC"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:singleLine="true"
+                android:ellipsize="end" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 2B. Extrapolated Corner HUD Card (Top-Right or Top-Left Reference Card Option, Stationary While Isometric Moves) -->
+    <LinearLayout
+        android:id="@+id/widget_hud_corner"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:orientation="vertical"
+        android:background="#CC1F3244"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/hud_corner_condition"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="☀️ CLEAR WEATHER"
+            android:textColor="#FFD166"
+            android:textSize="11.5sp"
+            android:textStyle="bold"
+            android:singleLine="true" />
+
+        <TextView
+            android:id="@+id/hud_corner_temp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="68°F (20°C)"
+            android:textColor="#FFFFFF"
+            android:textSize="17.5sp"
+            android:textStyle="bold"
+            android:singleLine="true" />
+
+        <TextView
+            android:id="@+id/hud_corner_meta"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="💧 64% • 💨 8 MPH NNE"
+            android:textColor="#EEF6FC"
+            android:textSize="11.5sp"
+            android:singleLine="true" />
+
+        <TextView
+            android:id="@+id/hud_corner_loc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="📍 YORKTOWN, VA • FEELS 67°F"
+            android:textColor="#D9ECFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:singleLine="true" />
+
+        <TextView
+            android:id="@+id/hud_corner_badges"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="AQI 24 • UV 3.2 • 🌔"
+            android:textColor="#86EFAC"
+            android:textSize="10.5sp"
+            android:textStyle="bold"
+            android:singleLine="true" />
+    </LinearLayout>
+
+    <!-- 3. Interactive On-Widget Zoom, Horizontal Centering (Left / Center / Right) & Settings Control Bar (Bottom-Left) -->
     <LinearLayout
         android:id="@+id/widget_camera_bar"
         android:layout_width="wrap_content"
@@ -51,7 +199,7 @@
         android:layout_marginStart="10dp"
         android:layout_marginBottom="8dp"
         android:orientation="horizontal"
-        android:background="#B8142230"
+        android:background="#CC142230"
         android:paddingStart="6dp"
         android:paddingEnd="6dp"
         android:paddingTop="2dp"
@@ -59,56 +207,74 @@
 
         <TextView
             android:id="@+id/btn_zoom_out"
-            android:layout_width="26dp"
-            android:layout_height="24dp"
+            android:layout_width="28dp"
+            android:layout_height="26dp"
             android:gravity="center"
             android:text="➖"
-            android:textColor="#E6F2FF"
-            android:textSize="11sp" />
-
-        <TextView
-            android:id="@+id/btn_zoom_in"
-            android:layout_width="26dp"
-            android:layout_height="24dp"
-            android:gravity="center"
-            android:text="➕"
-            android:textColor="#E6F2FF"
-            android:textSize="11sp" />
-
-        <TextView
-            android:id="@+id/btn_rot_left"
-            android:layout_width="26dp"
-            android:layout_height="24dp"
-            android:gravity="center"
-            android:text="↺"
             android:textColor="#E6F2FF"
             android:textSize="12sp" />
 
         <TextView
-            android:id="@+id/btn_rot_right"
-            android:layout_width="26dp"
-            android:layout_height="24dp"
+            android:id="@+id/btn_zoom_in"
+            android:layout_width="28dp"
+            android:layout_height="26dp"
             android:gravity="center"
-            android:text="↻"
+            android:text="➕"
+            android:textColor="#E6F2FF"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/btn_pan_left"
+            android:layout_width="28dp"
+            android:layout_height="26dp"
+            android:gravity="center"
+            android:text="◀"
             android:textColor="#E6F2FF"
             android:textSize="12sp" />
 
         <TextView
             android:id="@+id/btn_cam_reset"
-            android:layout_width="26dp"
-            android:layout_height="24dp"
+            android:layout_width="28dp"
+            android:layout_height="26dp"
             android:gravity="center"
-            android:text="⟲"
+            android:text="🎯"
             android:textColor="#FFD166"
             android:textSize="12sp" />
 
         <TextView
-            android:id="@+id/btn_open_config"
+            android:id="@+id/btn_pan_right"
             android:layout_width="28dp"
-            android:layout_height="24dp"
+            android:layout_height="26dp"
+            android:gravity="center"
+            android:text="▶"
+            android:textColor="#E6F2FF"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/btn_open_config"
+            android:layout_width="30dp"
+            android:layout_height="26dp"
             android:gravity="center"
             android:text="⚙️"
             android:textColor="#FFFFFF"
-            android:textSize="11sp" />
+            android:textSize="12sp" />
     </LinearLayout>
+
+    <!-- 4. Subtle Bottom-Right Theme & Location Badge -->
+    <TextView
+        android:id="@+id/widget_bottom_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="8dp"
+        android:background="#B81C2C3C"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="3dp"
+        android:paddingBottom="3dp"
+        android:text="Yorktown, VA • 3D Isometric"
+        android:textColor="#EEF6FC"
+        android:textSize="10.5sp"
+        android:singleLine="true" />
 </FrameLayout>

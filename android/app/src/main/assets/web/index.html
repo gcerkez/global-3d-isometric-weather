@@ -60,7 +60,7 @@
       border: 1px solid rgba(255, 255, 255, 0.22);
     }
     .hud-controls { display: flex; gap: 5px; margin-top: 10px; flex-wrap: wrap; }
-    .hud-controls button, .hud-controls input {
+    .hud-controls button, .hud-controls input, .hud-controls select {
       background: rgba(255, 255, 255, 0.14);
       color: #fff;
       border: 1px solid rgba(255, 255, 255, 0.25);
@@ -69,6 +69,7 @@
       font-size: 10px;
       cursor: pointer;
     }
+    .hud-controls select option { background: #142230; color: #fff; }
     .hud-controls input { flex: 1; min-width: 110px; cursor: text; }
     .location-badge {
       position: absolute;
@@ -126,7 +127,13 @@
       <div class="hud-controls">
         <input id="citySearch" type="text" placeholder="Search any city..." />
         <button id="btnSearch">Go</button>
-        <button id="btnMode">🎨 Mode</button>
+        <select id="themeSelect" title="3D Diorama Theme">
+          <option value="yorktown">🏛️ Yorktown, VA</option>
+          <option value="coastal">⚓ Generic: Coastal Harbor</option>
+          <option value="modern">🌆 Generic: Modern City</option>
+          <option value="alpine">🏔️ Generic: Alpine Village</option>
+          <option value="custom_city">✨ Custom City Cutout</option>
+        </select>
         <button id="btnTime">☀️ Time</button>
       </div>
     </div>
@@ -134,9 +141,9 @@
     <div class="camera-pill">
       <button id="camZoomOut" title="Zoom Out">➖</button>
       <button id="camZoomIn" title="Zoom In">➕</button>
-      <button id="camRotLeft" title="Rotate Left">↺</button>
-      <button id="camRotRight" title="Rotate Right">↻</button>
-      <button id="camReset" title="Reset View">⟲</button>
+      <button id="camPanLeft" title="Move Isometric Left">◀</button>
+      <button id="camCenter" title="Center Isometric">🎯</button>
+      <button id="camPanRight" title="Move Isometric Right">▶</button>
     </div>
 
     <div class="location-badge" id="locBadge">Yorktown, VA • 3D Isometric</div>
@@ -157,7 +164,7 @@
         document.getElementById("hudUv").textContent = `UV ${st.uvIndex.toFixed(1)}`;
         const moon = engine.computeMoonPhase();
         document.getElementById("hudMoon").textContent = `${moon.emoji} ${moon.name}`;
-        document.getElementById("locBadge").textContent = `${st.locationName} • ${st.renderMode === "ai_generative" ? "AI Generative 3D" : "3D Isometric"}`;
+        document.getElementById("locBadge").textContent = `${st.locationName} • ${st.dioramaTheme === "custom_city" ? "Custom 3D Cutout" : "3D Isometric"}`;
       }
     });
     window.isoEngine = engine;
@@ -167,17 +174,20 @@
 
     document.getElementById("camZoomIn").addEventListener("click", () => engine.adjustCamera("zoom_in"));
     document.getElementById("camZoomOut").addEventListener("click", () => engine.adjustCamera("zoom_out"));
-    document.getElementById("camRotLeft").addEventListener("click", () => engine.adjustCamera("rot_left"));
-    document.getElementById("camRotRight").addEventListener("click", () => engine.adjustCamera("rot_right"));
-    document.getElementById("camReset").addEventListener("click", () => engine.adjustCamera("reset"));
+    document.getElementById("camPanLeft").addEventListener("click", () => engine.adjustCamera("pan_left"));
+    document.getElementById("camCenter").addEventListener("click", () => engine.adjustCamera("center"));
+    document.getElementById("camPanRight").addEventListener("click", () => engine.adjustCamera("pan_right"));
 
     document.getElementById("btnTime").addEventListener("click", () => {
       const modes = ["realtime", "day", "sunset", "night"];
       engine.state.timeMode = modes[(modes.indexOf(engine.state.timeMode) + 1) % modes.length];
     });
 
-    document.getElementById("btnMode").addEventListener("click", () => {
-      engine.state.renderMode = engine.state.renderMode === "hybrid" ? "ai_generative" : "hybrid";
+    document.getElementById("themeSelect").addEventListener("change", (e) => {
+      engine.setDioramaTheme(e.target.value);
+      if (e.target.value === "custom_city") {
+        engine.refreshGenerativeLocation();
+      }
       engine.onHudUpdate(engine.state);
     });
 
@@ -191,7 +201,6 @@
         engine.state.locationName = `${r.name}${r.admin1 ? ", " + r.admin1 : ""}`;
         engine.state.latitude = r.latitude;
         engine.state.longitude = r.longitude;
-        engine.state.renderMode = "ai_generative";
         await engine.refreshAll();
       }
     });

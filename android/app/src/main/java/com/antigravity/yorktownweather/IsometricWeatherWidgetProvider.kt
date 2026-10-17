@@ -8,16 +8,16 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.*
 import android.os.Bundle
+import android.util.TypedValue
+import android.view.View
 import android.widget.RemoteViews
 import kotlinx.coroutines.*
 import org.json.JSONObject
+import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
-import kotlin.math.abs
-import kotlin.math.cos
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -29,10 +29,14 @@ import kotlin.math.sin
  *
  * Features:
  *   - 4x3 default grid size, fully resizable horizontally & vertically (`onAppWidgetOptionsChanged`)
- *   - Continuous live animation on the Homescreen via 4-frame `<ViewFlipper>` (gentle rain/snow,
- *     York River water sparkles, and 5 tiny proportional moving sprites: Horse & Carriage on Main St,
- *     Miniature Car on Coleman Bridge, 2 Pedestrians on paths, and 1 Sailor on the Tall Ship)
- *   - Direct on-widget interactive Zoom (`➕`/`➖`), Rotation (`↺`/`↻`), Reset (`⟲`), and Settings (`⚙️`) buttons
+ *   - Extrapolated, high-DPI native `RemoteViews` HUD Overlay (Top-Sky Split Banner or Corner Card)
+ *     that renders large, crisp typography in the open sky above the 3D island without covering the render
+ *   - Built-in Pre-Generated Generic Dioramas (`coastal`, `modern`, `alpine`), Historic `yorktown`,
+ *     and on-device `custom_city` high-res cutout support
+ *   - Continuous live animation on the Homescreen via 4-frame `<ViewFlipper>` (gentle rain/snow
+ *     and water sparkles) with static miniature diorama sprites (animated walking people removed)
+ *   - Direct on-widget interactive Zoom (`➖`/`➕`), Horizontal Centering (`◀`/`🎯`/`▶`), and Settings (`⚙️`) buttons
+ *     (rotation intentionally removed so the isometric island stays at its optimal architectural angle)
  */
 class IsometricWeatherWidgetProvider : AppWidgetProvider() {
 
@@ -42,8 +46,8 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         const val ACTION_REFRESH_WIDGET = "com.antigravity.yorktownweather.ACTION_REFRESH_WIDGET"
         const val ACTION_ZOOM_IN = "com.antigravity.yorktownweather.ACTION_ZOOM_IN"
         const val ACTION_ZOOM_OUT = "com.antigravity.yorktownweather.ACTION_ZOOM_OUT"
-        const val ACTION_ROT_LEFT = "com.antigravity.yorktownweather.ACTION_ROT_LEFT"
-        const val ACTION_ROT_RIGHT = "com.antigravity.yorktownweather.ACTION_ROT_RIGHT"
+        const val ACTION_PAN_LEFT = "com.antigravity.yorktownweather.ACTION_PAN_LEFT"
+        const val ACTION_PAN_RIGHT = "com.antigravity.yorktownweather.ACTION_PAN_RIGHT"
         const val ACTION_CAM_RESET = "com.antigravity.yorktownweather.ACTION_CAM_RESET"
     }
 
@@ -54,28 +58,28 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                 ACTION_REFRESH_WIDGET,
                 ACTION_ZOOM_IN,
                 ACTION_ZOOM_OUT,
-                ACTION_ROT_LEFT,
-                ACTION_ROT_RIGHT,
+                ACTION_PAN_LEFT,
+                ACTION_PAN_RIGHT,
                 ACTION_CAM_RESET
             )
         ) {
             val prefs = context.getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
             var zoom = prefs.getFloat("widgetZoom", 1.0f)
-            var rot = prefs.getFloat("widgetRotationDeg", 0.0f)
+            var offsetX = prefs.getFloat("widgetOffsetX", 0.0f)
             when (act) {
-                ACTION_ZOOM_IN -> zoom = (zoom * 1.15f).coerceIn(0.70f, 2.20f)
-                ACTION_ZOOM_OUT -> zoom = (zoom / 1.15f).coerceIn(0.70f, 2.20f)
-                ACTION_ROT_LEFT -> rot = (rot - 6.0f).coerceIn(-28.0f, 28.0f)
-                ACTION_ROT_RIGHT -> rot = (rot + 6.0f).coerceIn(-28.0f, 28.0f)
+                ACTION_ZOOM_IN -> zoom = (zoom * 1.15f).coerceIn(0.65f, 2.40f)
+                ACTION_ZOOM_OUT -> zoom = (zoom / 1.15f).coerceIn(0.65f, 2.40f)
+                ACTION_PAN_LEFT -> offsetX = (offsetX - 28.0f).coerceIn(-180.0f, 180.0f)
+                ACTION_PAN_RIGHT -> offsetX = (offsetX + 28.0f).coerceIn(-180.0f, 180.0f)
                 ACTION_CAM_RESET -> {
                     zoom = 1.0f
-                    rot = 0.0f
+                    offsetX = 0.0f
                 }
             }
             if (act != ACTION_REFRESH_WIDGET) {
                 prefs.edit()
                     .putFloat("widgetZoom", zoom)
-                    .putFloat("widgetRotationDeg", rot)
+                    .putFloat("widgetOffsetX", offsetX)
                     .apply()
             }
             val mgr = AppWidgetManager.getInstance(context)
@@ -110,6 +114,9 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                     lat = prefs.getFloat("latitude", 37.2388f).toDouble(),
                     lon = prefs.getFloat("longitude", -76.5097f).toDouble(),
                     renderMode = prefs.getString("renderMode", "hybrid") ?: "hybrid",
+                    dioramaTheme = prefs.getString("dioramaTheme", "yorktown") ?: "yorktown",
+                    hudPosition = prefs.getString("hudPosition", "top-sky") ?: "top-sky",
+                    hudScale = prefs.getFloat("hudScale", 1.15f),
                     transparentBg = prefs.getBoolean("transparentBackground", false),
                     showExtendedHud = prefs.getBoolean("showExtendedHud", true),
                     timeMode = prefs.getString("timeOfDayMode", "realtime") ?: "realtime",
@@ -117,7 +124,7 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                     tempUnit = prefs.getString("temperatureUnit", "BOTH") ?: "BOTH",
                     windUnit = prefs.getString("windSpeedUnit", "mph") ?: "mph",
                     widgetZoom = prefs.getFloat("widgetZoom", 1.0f),
-                    widgetRotationDeg = prefs.getFloat("widgetRotationDeg", 0.0f),
+                    widgetOffsetX = prefs.getFloat("widgetOffsetX", 0.0f),
                     particleDensity = prefs.getFloat("particleDensity", 0.50f)
                 )
 
@@ -154,17 +161,96 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                     )
                 }
 
+                val effectiveCat = if (cfg.weatherOverride != "realtime") cfg.weatherOverride else wmoToCategory(telemetry.weatherCode)
+                val effectiveTime = if (cfg.timeMode != "realtime") cfg.timeMode else (if (telemetry.isDay) "day" else "night")
+                val wxEmoji = categoryToEmoji(effectiveCat, effectiveTime == "night")
+                val headline = categoryToHeadline(effectiveCat)
+
+                val fVal = telemetry.tempF.roundToInt()
+                val cVal = ((telemetry.tempF - 32.0) * 5.0 / 9.0).roundToInt()
+                val tempFormatted = when (cfg.tempUnit) {
+                    "F" -> "${fVal}°F"
+                    "C" -> "${cVal}°C"
+                    else -> "${fVal}°F (${cVal}°C)"
+                }
+                val feelsFormatted = when (cfg.tempUnit) {
+                    "C" -> "${((telemetry.feelsLikeF - 32.0) * 5.0 / 9.0).roundToInt()}°C"
+                    else -> "${telemetry.feelsLikeF.roundToInt()}°F"
+                }
+
+                val dirs = arrayOf("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")
+                val compass = dirs[((telemetry.windDeg % 360 + 360) % 360 / 22.5).roundToInt() % 16]
+                val windFormatted = when (cfg.windUnit) {
+                    "kmh" -> "${(telemetry.windMph * 1.60934).roundToInt()} KM/H $compass"
+                    "kn" -> "${(telemetry.windMph * 0.868976).roundToInt()} KN $compass"
+                    "ms" -> "${(telemetry.windMph * 0.44704).roundToInt()} M/S $compass"
+                    else -> "${telemetry.windMph.roundToInt()} MPH $compass"
+                }
+
+                val themeLabel = when (cfg.dioramaTheme) {
+                    "coastal" -> "Coastal Harbor 3D"
+                    "modern" -> "Modern City 3D"
+                    "alpine" -> "Alpine Village 3D"
+                    "custom_city" -> "Custom City 3D Cutout"
+                    else -> "Historic Yorktown 3D"
+                }
+
                 for (widgetId in appWidgetIds) {
                     val views = RemoteViews(context.packageName, R.layout.widget_isometric_weather)
                     for (i in frameIds.indices) {
                         views.setImageViewBitmap(frameIds[i], frames[i])
                     }
+
+                    // Populate & scale Extrapolated Native RemoteViews HUD
+                    val scale = cfg.hudScale.coerceIn(0.90f, 1.45f)
+                    if (cfg.hudPosition == "top-sky") {
+                        views.setViewVisibility(R.id.widget_hud_top_bar, View.VISIBLE)
+                        views.setViewVisibility(R.id.widget_hud_corner, View.GONE)
+
+                        views.setTextViewText(R.id.hud_bar_temp, "$wxEmoji $tempFormatted")
+                        views.setTextViewText(R.id.hud_bar_condition_loc, "$headline • 📍 ${cfg.locationName.uppercase()}")
+                        views.setTextViewText(R.id.hud_bar_wind_hum, "💧 ${telemetry.humidity}% • 💨 $windFormatted")
+                        views.setTextViewText(
+                            R.id.hud_bar_badges,
+                            if (cfg.showExtendedHud) "AQI ${telemetry.usAqi} GOOD • UV ${String.format("%.1f", telemetry.uvIndex)} • 🌔 • FEELS $feelsFormatted"
+                            else "FEELS LIKE $feelsFormatted"
+                        )
+
+                        views.setTextViewTextSize(R.id.hud_bar_temp, TypedValue.COMPLEX_UNIT_SP, 16.5f * scale)
+                        views.setTextViewTextSize(R.id.hud_bar_condition_loc, TypedValue.COMPLEX_UNIT_SP, 11.2f * scale)
+                        views.setTextViewTextSize(R.id.hud_bar_wind_hum, TypedValue.COMPLEX_UNIT_SP, 11.2f * scale)
+                        views.setTextViewTextSize(R.id.hud_bar_badges, TypedValue.COMPLEX_UNIT_SP, 10.5f * scale)
+                    } else {
+                        views.setViewVisibility(R.id.widget_hud_top_bar, View.GONE)
+                        views.setViewVisibility(R.id.widget_hud_corner, View.VISIBLE)
+
+                        views.setTextViewText(R.id.hud_corner_condition, "$wxEmoji $headline")
+                        views.setTextViewText(R.id.hud_corner_temp, tempFormatted)
+                        views.setTextViewText(R.id.hud_corner_meta, "💧 ${telemetry.humidity}% • 💨 $windFormatted")
+                        views.setTextViewText(R.id.hud_corner_loc, "📍 ${cfg.locationName.uppercase()} • FEELS $feelsFormatted")
+                        views.setTextViewText(
+                            R.id.hud_corner_badges,
+                            "AQI ${telemetry.usAqi} GOOD • UV ${String.format("%.1f", telemetry.uvIndex)} • 🌔"
+                        )
+                        views.setViewVisibility(R.id.hud_corner_badges, if (cfg.showExtendedHud) View.VISIBLE else View.GONE)
+
+                        views.setTextViewTextSize(R.id.hud_corner_condition, TypedValue.COMPLEX_UNIT_SP, 11.2f * scale)
+                        views.setTextViewTextSize(R.id.hud_corner_temp, TypedValue.COMPLEX_UNIT_SP, 17.0f * scale)
+                        views.setTextViewTextSize(R.id.hud_corner_meta, TypedValue.COMPLEX_UNIT_SP, 11.2f * scale)
+                        views.setTextViewTextSize(R.id.hud_corner_loc, TypedValue.COMPLEX_UNIT_SP, 10.8f * scale)
+                        views.setTextViewTextSize(R.id.hud_corner_badges, TypedValue.COMPLEX_UNIT_SP, 10.2f * scale)
+                    }
+
+                    views.setTextViewText(R.id.widget_bottom_badge, "${cfg.locationName} • $themeLabel")
+
                     views.setOnClickPendingIntent(R.id.widget_flipper, pendingOpenApp)
+                    views.setOnClickPendingIntent(R.id.widget_hud_top_bar, pendingOpenApp)
+                    views.setOnClickPendingIntent(R.id.widget_hud_corner, pendingOpenApp)
                     views.setOnClickPendingIntent(R.id.btn_open_config, pendingOpenApp)
                     views.setOnClickPendingIntent(R.id.btn_zoom_in, makeActionPendingIntent(ACTION_ZOOM_IN, 101))
                     views.setOnClickPendingIntent(R.id.btn_zoom_out, makeActionPendingIntent(ACTION_ZOOM_OUT, 102))
-                    views.setOnClickPendingIntent(R.id.btn_rot_left, makeActionPendingIntent(ACTION_ROT_LEFT, 103))
-                    views.setOnClickPendingIntent(R.id.btn_rot_right, makeActionPendingIntent(ACTION_ROT_RIGHT, 104))
+                    views.setOnClickPendingIntent(R.id.btn_pan_left, makeActionPendingIntent(ACTION_PAN_LEFT, 103))
+                    views.setOnClickPendingIntent(R.id.btn_pan_right, makeActionPendingIntent(ACTION_PAN_RIGHT, 104))
                     views.setOnClickPendingIntent(R.id.btn_cam_reset, makeActionPendingIntent(ACTION_CAM_RESET, 105))
 
                     appWidgetManager.updateAppWidget(widgetId, views)
@@ -175,33 +261,44 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         }
     }
 
+    /**
+     * Loads the appropriate 3D isometric cutout bitmap:
+     *   - Built-in Pre-Generated Generic themes (`coastal`, `modern`, `alpine`)
+     *   - Historic `yorktown`
+     *   - On-device generated `custom_city` cutout stored in `context.filesDir`
+     */
     private fun loadDioramaBitmap(context: Context, cfg: WidgetConfig, wx: WeatherTelemetry): Bitmap? {
         val effectiveTime = if (cfg.timeMode != "realtime") cfg.timeMode else (if (wx.isDay) "day" else "night")
         val isNight = effectiveTime == "night"
         val isSunset = effectiveTime == "sunset"
 
-        if (cfg.renderMode == "ai_generative" && !cfg.locationName.lowercase().contains("yorktown")) {
-            runCatching {
-                val prompt = URLEncoder.encode(
-                    "Cute 3D isometric miniature city diorama of ${cfg.locationName} waterfront and landmarks, tilt-shift architectural model",
-                    "UTF-8"
-                )
-                val aiUrl = URL("https://image.pollinations.ai/prompt/$prompt?width=960&height=540&nologo=true&seed=42")
-                val conn = (aiUrl.openConnection() as HttpURLConnection).apply {
-                    connectTimeout = 6500
-                    readTimeout = 6500
-                }
-                conn.inputStream.use { stream ->
-                    val aiBmp = BitmapFactory.decodeStream(stream)
-                    if (aiBmp != null) return aiBmp
+        // 1. Check for on-device Custom Generated High-Res City Cutout first
+        if (cfg.dioramaTheme == "custom_city" || cfg.renderMode == "ai_generative") {
+            val suffix = when {
+                isNight -> "night"
+                isSunset -> "sunset"
+                else -> "day"
+            }
+            val customFile = File(context.filesDir, "custom_city_$suffix.png")
+            if (customFile.exists() && customFile.length() > 1024) {
+                runCatching {
+                    val bmp = BitmapFactory.decodeFile(customFile.absolutePath)
+                    if (bmp != null) return bmp
                 }
             }
         }
 
+        // 2. Load from built-in Pre-Generated Diorama Cutout sets in assets
+        val prefix = when (cfg.dioramaTheme) {
+            "coastal" -> "coastal_island"
+            "modern" -> "modern_island"
+            "alpine" -> "alpine_island"
+            else -> "yorktown_island"
+        }
         val assetName = when {
-            isNight -> "web/images/yorktown_island_night.png"
-            isSunset -> "web/images/yorktown_island_sunset.png"
-            else -> "web/images/yorktown_island.png"
+            isNight -> "web/images/${prefix}_night.png"
+            isSunset -> "web/images/${prefix}_sunset.png"
+            else -> "web/images/$prefix.png"
         }
         return runCatching {
             context.assets.open(assetName).use { stream ->
@@ -276,13 +373,18 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         return WeatherTelemetry(tempF, feelsF, hum, wind, windDeg, code, isDay, aqi, uvIndex, hourlyTemps)
     }
 
+    /**
+     * Renders a single frame of the 3D isometric scene.
+     * The HUD overlay is rendered natively via RemoteViews in `widget_isometric_weather.xml`,
+     * while the 3D island is positioned slightly lower (`islandOffsetY`) and shifted horizontally
+     * by `cfg.widgetOffsetX` so the HUD never obscures the 3D rendering and stays fixed when panning.
+     */
     private fun renderIsometricWidgetFrame(
         cfg: WidgetConfig,
         wx: WeatherTelemetry,
         islandBmp: Bitmap?,
         phase: Float
     ): Bitmap {
-        // 688x384 per frame keeps 4-frame ViewFlipper crisp and fast while staying well within Binder limits
         val width = 688
         val height = 384
         val s = width / 1376f
@@ -323,29 +425,36 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         // 2. Moon Crescent Disc in Night Sky
         if (isNight) {
             paint.color = Color.parseColor("#fff2b2")
-            canvas.drawCircle(185f * s, 120f * s, 32f * s, paint)
+            canvas.drawCircle(165f * s, 175f * s, 28f * s, paint)
             if (!cfg.transparentBg) {
                 paint.color = Color.parseColor("#112236")
-                canvas.drawCircle(172f * s, 114f * s, 28f * s, paint)
+                canvas.drawCircle(153f * s, 169f * s, 24f * s, paint)
             }
         }
 
-        // 3. Draw 3D Isometric Diorama + Animated Water Ripples + 5 Miniature Sprites (with Zoom & Rotation)
+        // 3. Draw 3D Isometric Diorama + Animated Water Sparkles + Static Miniature Sprites
+        // Shift island slightly down when using Top-Sky HUD so 0% of the 3D town is covered by the enlarged HUD!
+        val islandOffsetY = if (cfg.hudPosition == "top-sky") 28f else 8f
+        val islandOffsetX = cfg.widgetOffsetX
+
         canvas.save()
-        val pivotX = width * 0.45f
-        val pivotY = height * 0.54f
+        val pivotX = width * 0.5f + islandOffsetX
+        val pivotY = height * 0.56f + islandOffsetY
         canvas.translate(pivotX, pivotY)
         canvas.scale(cfg.widgetZoom, cfg.widgetZoom)
-        canvas.rotate(cfg.widgetRotationDeg * 0.35f)
         canvas.translate(-pivotX, -pivotY)
 
-        val offsetX = -21f
         if (islandBmp != null) {
-            val destRect = RectF(offsetX, 0f, width + offsetX, height.toFloat())
+            val destRect = RectF(
+                islandOffsetX,
+                islandOffsetY,
+                width + islandOffsetX,
+                height + islandOffsetY
+            )
             canvas.drawBitmap(islandBmp, null, destRect, paint)
         }
 
-        // 3B. Animated York River Water Sparkles
+        // 3B. Animated Water Sparkles
         val waterPts = arrayOf(
             0.14f to 0.47f, 0.18f to 0.52f, 0.24f to 0.56f,
             0.28f to 0.46f, 0.33f to 0.42f, 0.38f to 0.34f, 0.44f to 0.28f
@@ -356,83 +465,39 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
             val (wpx, wpy) = waterPts[wi]
             val alpha = (110 + (65 * sin((phase * 2.0 * Math.PI) + wi * 1.3)).toInt()).coerceIn(40, 210)
             paint.color = if (isSunset) Color.argb(alpha, 255, 210, 145) else Color.argb(alpha, 230, 248, 255)
-            val wx = offsetX + (wpx + 0.005f * sin((phase * 2.0 * Math.PI + wi).toFloat())) * width
-            val wy = wpy * height
-            canvas.drawLine(wx - 9f * s, wy - 3.5f * s, wx + 9f * s, wy + 3.5f * s, paint)
+            val wxPt = islandOffsetX + (wpx + 0.005f * sin((phase * 2.0 * Math.PI + wi).toFloat())) * width
+            val wyPt = islandOffsetY + wpy * height
+            canvas.drawLine(wxPt - 9f * s, wyPt - 3.5f * s, wxPt + 9f * s, wyPt + 3.5f * s, paint)
         }
         paint.style = Paint.Style.FILL
 
-        // Helper for ping-pong motion across frames
-        fun pingPong(v: Float): Float {
-            var m = v % 2.0f
-            if (m < 0f) m += 2.0f
-            return if (m <= 1.0f) m else (2.0f - m)
+        // 3C. Static Scenic Miniature Sprites (Animated walking people removed)
+        if (cfg.dioramaTheme == "yorktown") {
+            // Static Sprite 1: Colonial Horse & Carriage stationed on Historic Main Street
+            val hcX = islandOffsetX + 0.442f * width
+            val hcY = islandOffsetY + 0.648f * height
+            val hx = hcX + 4.2f * s
+            val hy = hcY - 3.1f * s
+            paint.color = Color.parseColor("#6e4226")
+            canvas.drawOval(RectF(hx - 2.2f * s, hy - 2.6f * s, hx + 2.2f * s, hy), paint)
+            paint.color = Color.parseColor("#3b2316")
+            canvas.drawOval(RectF(hcX - 3.6f * s, hcY - 4.4f * s, hcX + 3.6f * s, hcY - 0.4f * s), paint)
+            paint.color = Color.parseColor("#9e3b2b")
+            canvas.drawOval(RectF(hcX - 2.8f * s, hcY - 5.2f * s, hcX + 2.8f * s, hcY - 2.0f * s), paint)
+
+            // Static Sprite 2 & 3: Miniature Cars on Coleman Memorial Bridge
+            val carX = islandOffsetX + 0.365f * width
+            val carY = islandOffsetY + 0.384f * height
+            paint.color = Color.parseColor("#d64035")
+            canvas.drawOval(RectF(carX - 2.5f * s, carY - 2.4f * s, carX + 2.5f * s, carY), paint)
+            paint.color = Color.parseColor("#f2f6fa")
+            canvas.drawOval(RectF(carX - 1.4f * s, carY - 3.0f * s, carX + 1.4f * s, carY - 1.2f * s), paint)
+
+            val car2X = islandOffsetX + 0.422f * width
+            val car2Y = islandOffsetY + 0.425f * height
+            paint.color = Color.parseColor("#2b6cb0")
+            canvas.drawOval(RectF(car2X - 2.4f * s, car2Y - 2.2f * s, car2X + 2.4f * s, car2Y), paint)
         }
-
-        // Helper to draw tiny proportional person sprite
-        fun drawTinyPerson(nx: Float, ny: Float, coatColor: Int, hatColor: Int) {
-            val px = offsetX + nx * width
-            val py = ny * height
-            val bob = abs(sin(phase * Math.PI * 2.0)).toFloat() * 1.1f * s
-            paint.color = Color.argb(95, 10, 18, 28)
-            canvas.drawOval(RectF(px - 2.0f * s, py - 0.8f * s, px + 2.0f * s, py + 0.8f * s), paint)
-            paint.color = coatColor
-            canvas.drawOval(RectF(px - 1.6f * s, py - (4.5f * s + bob), px + 1.6f * s, py - (0.6f * s + bob)), paint)
-            paint.color = Color.parseColor("#f4d3b8")
-            canvas.drawCircle(px, py - (5.4f * s + bob), 1.3f * s, paint)
-            paint.color = hatColor
-            canvas.drawCircle(px, py - (6.2f * s + bob), 1.1f * s, paint)
-        }
-
-        // 3C. 5 Tiny Proportional Moving Sprites on Paths, Bridge & Tall Ship
-        // Sprite 1: Horse & Carriage along Historic Main Street
-        val hcProg = pingPong(0.25f + phase * 0.45f)
-        val hcX = offsetX + (0.352f + hcProg * (0.535f - 0.352f)) * width
-        val hcY = (0.712f + hcProg * (0.582f - 0.712f)) * height
-        val hx = hcX + 4.2f * s
-        val hy = hcY - 3.1f * s
-        paint.color = Color.parseColor("#6e4226")
-        canvas.drawOval(RectF(hx - 2.2f * s, hy - 2.6f * s, hx + 2.2f * s, hy), paint)
-        paint.color = Color.parseColor("#3b2316")
-        canvas.drawOval(RectF(hcX - 3.6f * s, hcY - 4.4f * s, hcX + 3.6f * s, hcY - 0.4f * s), paint)
-        paint.color = Color.parseColor("#9e3b2b")
-        canvas.drawOval(RectF(hcX - 2.8f * s, hcY - 5.2f * s, hcX + 2.8f * s, hcY - 2.0f * s), paint)
-
-        // Sprite 2: Miniature Car crossing Coleman Memorial Bridge
-        val carFrac = (0.15f + phase * 0.55f) % 1.0f
-        val carX = offsetX + (0.270f + carFrac * (0.476f - 0.270f)) * width
-        val carY = (0.318f + carFrac * (0.462f - 0.318f)) * height
-        paint.color = Color.parseColor("#d64035")
-        canvas.drawOval(RectF(carX - 2.5f * s, carY - 2.4f * s, carX + 2.5f * s, carY), paint)
-        paint.color = Color.parseColor("#f2f6fa")
-        canvas.drawOval(RectF(carX - 1.4f * s, carY - 3.0f * s, carX + 1.4f * s, carY - 1.2f * s), paint)
-
-        // Sprite 3: Pedestrian on Riverwalk Path
-        val p1 = pingPong(0.20f + phase * 0.40f)
-        drawTinyPerson(
-            0.328f + p1 * (0.468f - 0.328f),
-            0.735f + p1 * (0.625f - 0.735f),
-            Color.parseColor("#264653"),
-            Color.parseColor("#1d3557")
-        )
-
-        // Sprite 4: Pedestrian on Victory Monument Bluff Path
-        val p2 = pingPong(0.55f + phase * 0.38f)
-        drawTinyPerson(
-            0.652f + p2 * (0.748f - 0.652f),
-            0.362f + p2 * (0.468f - 0.362f),
-            Color.parseColor("#b5382a"),
-            Color.parseColor("#2b2d42")
-        )
-
-        // Sprite 5: Sailor on 18th-Century Tall Ship Deck
-        val p3 = pingPong(0.35f + phase * 0.45f)
-        drawTinyPerson(
-            0.214f + p3 * (0.246f - 0.214f),
-            0.520f + p3 * (0.496f - 0.520f),
-            Color.parseColor("#1d3557"),
-            Color.parseColor("#f1faee")
-        )
 
         canvas.restore()
 
@@ -459,131 +524,6 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
             }
         }
 
-        // 5. Draw Top-Right Translucent HUD Overlay Card
-        val hudBottom = (if (cfg.showExtendedHud) 370f else 210f) * s
-        val hudRect = RectF(width - 465f * s, 28f * s, width - 28f * s, hudBottom)
-        paint.color = Color.argb(216, 48, 69, 88)
-        canvas.drawRoundRect(hudRect, 24f * s, 24f * s, paint)
-
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 2f * s
-        paint.color = Color.argb(90, 255, 255, 255)
-        canvas.drawRoundRect(hudRect, 24f * s, 24f * s, paint)
-        paint.style = Paint.Style.FILL
-
-        // Weather Icon inside HUD
-        val iconCx = hudRect.left + 68f * s
-        val iconCy = hudRect.top + 86f * s
-        paint.color = if (!isNight) Color.parseColor("#f9b826") else Color.parseColor("#ffe28a")
-        canvas.drawCircle(iconCx, iconCy, 28f * s, paint)
-        if (!isNight) {
-            paint.strokeWidth = 5f * s
-            paint.strokeCap = Paint.Cap.ROUND
-            for (r in 0 until 8) {
-                val ang = r * Math.PI / 4.0
-                val x0 = iconCx + cos(ang).toFloat() * 36f * s
-                val y0 = iconCy + sin(ang).toFloat() * 36f * s
-                val x1 = iconCx + cos(ang).toFloat() * 48f * s
-                val y1 = iconCy + sin(ang).toFloat() * 48f * s
-                canvas.drawLine(x0, y0, x1, y1, paint)
-            }
-        }
-
-        // Format Temperature & Wind according to configured units
-        val fVal = wx.tempF.roundToInt()
-        val cVal = ((wx.tempF - 32.0) * 5.0 / 9.0).roundToInt()
-        val tempFormatted = when (cfg.tempUnit) {
-            "F" -> "${fVal}°F"
-            "C" -> "${cVal}°C"
-            else -> "${fVal}°F (${cVal}°C)"
-        }
-
-        val dirs = arrayOf("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")
-        val compass = dirs[((wx.windDeg % 360 + 360) % 360 / 22.5).roundToInt() % 16]
-        val windFormatted = when (cfg.windUnit) {
-            "kmh" -> "${(wx.windMph * 1.60934).roundToInt()} KM/H $compass WIND"
-            "kn" -> "${(wx.windMph * 0.868976).roundToInt()} KN $compass WIND"
-            "ms" -> "${(wx.windMph * 0.44704).roundToInt()} M/S $compass WIND"
-            else -> "${wx.windMph.roundToInt()} MPH $compass WIND"
-        }
-
-        paint.color = Color.WHITE
-        paint.textSize = 22f * s
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText(categoryToHeadline(effectiveCat), hudRect.left + 132f * s, hudRect.top + 52f * s, paint)
-        paint.textSize = 27f * s
-        canvas.drawText(tempFormatted, hudRect.left + 132f * s, hudRect.top + 90f * s, paint)
-
-        paint.textSize = 20f * s
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        paint.color = Color.parseColor("#eef6fc")
-        canvas.drawText("${wx.humidity}% HUMIDITY", hudRect.left + 132f * s, hudRect.top + 122f * s, paint)
-        canvas.drawText(windFormatted, hudRect.left + 132f * s, hudRect.top + 150f * s, paint)
-
-        if (cfg.showExtendedHud) {
-            paint.color = Color.argb(60, 255, 255, 255)
-            canvas.drawLine(hudRect.left + 22f * s, hudRect.top + 170f * s, hudRect.right - 22f * s, hudRect.top + 170f * s, paint)
-
-            // Location + Feels Like
-            paint.color = Color.parseColor("#d9ecff")
-            paint.textSize = 17.5f * s
-            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            canvas.drawText("📍 ${cfg.locationName.uppercase()} • FEELS ${wx.feelsLikeF.roundToInt()}°F", hudRect.left + 22f * s, hudRect.top + 198f * s, paint)
-
-            // AQI + UV + Moon Phase Pills
-            val aqiPill = RectF(hudRect.left + 22f * s, hudRect.top + 212f * s, hudRect.left + 158f * s, hudRect.top + 244f * s)
-            paint.color = Color.argb(165, 18, 30, 42)
-            canvas.drawRoundRect(aqiPill, 8f * s, 8f * s, paint)
-            paint.color = Color.parseColor("#4ade80")
-            paint.textSize = 15.5f * s
-            canvas.drawText("AQI ${wx.usAqi} GOOD", aqiPill.left + 12f * s, aqiPill.top + 22f * s, paint)
-
-            val uvPill = RectF(hudRect.left + 168f * s, hudRect.top + 212f * s, hudRect.left + 265f * s, hudRect.top + 244f * s)
-            paint.color = Color.argb(165, 18, 30, 42)
-            canvas.drawRoundRect(uvPill, 8f * s, 8f * s, paint)
-            paint.color = Color.parseColor("#facc15")
-            canvas.drawText("UV ${String.format("%.1f", wx.uvIndex)}", uvPill.left + 12f * s, uvPill.top + 22f * s, paint)
-
-            val moonPill = RectF(hudRect.left + 275f * s, hudRect.top + 212f * s, hudRect.right - 22f * s, hudRect.top + 244f * s)
-            paint.color = Color.argb(165, 18, 30, 42)
-            canvas.drawRoundRect(moonPill, 8f * s, 8f * s, paint)
-            paint.color = Color.parseColor("#e6f2ff")
-            canvas.drawText("🌔 Waxing Gibbous", moonPill.left + 10f * s, moonPill.top + 22f * s, paint)
-
-            // 12-Hour Temperature Sparkline Box
-            val sparkRect = RectF(hudRect.left + 22f * s, hudRect.top + 256f * s, hudRect.right - 22f * s, hudRect.top + 324f * s)
-            paint.color = Color.argb(125, 22, 36, 52)
-            canvas.drawRoundRect(sparkRect, 10f * s, 10f * s, paint)
-
-            val temps = wx.hourlyTemps
-            if (temps.size >= 2) {
-                val minT = temps.minOrNull() ?: 50
-                val maxT = max((temps.maxOrNull() ?: 70), minT + 2)
-                val path = Path()
-                val stepX = (sparkRect.width() - 24f * s) / (temps.size - 1)
-                for (i in temps.indices) {
-                    val px = sparkRect.left + 12f * s + i * stepX
-                    val norm = (temps[i] - minT).toFloat() / (maxT - minT).toFloat()
-                    val py = sparkRect.bottom - 12f * s - norm * (sparkRect.height() - 28f * s)
-                    if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
-                }
-                paint.style = Paint.Style.STROKE
-                paint.strokeWidth = 3.5f * s
-                paint.color = Color.parseColor("#f9b826")
-                canvas.drawPath(path, paint)
-                paint.style = Paint.Style.FILL
-            }
-        }
-
-        // Bottom-right Location Badge
-        val badgeRect = RectF(width - 365f * s, height - 56f * s, width - 26f * s, height - 18f * s)
-        paint.color = Color.argb(195, 34, 48, 62)
-        canvas.drawRoundRect(badgeRect, 10f * s, 10f * s, paint)
-        paint.color = Color.parseColor("#eef6fc")
-        paint.textSize = 17.5f * s
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        canvas.drawText("${cfg.locationName} • Tap to Configure", badgeRect.left + 16f * s, badgeRect.top + 25f * s, paint)
-
         return bmp
     }
 
@@ -599,14 +539,25 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
     }
 
     private fun categoryToHeadline(cat: String): String = when (cat) {
-        "clear" -> "CLEAR WEATHER"
+        "clear" -> "CLEAR"
         "partly_cloudy" -> "PARTLY CLOUDY"
-        "overcast" -> "OVERCAST SKY"
+        "overcast" -> "OVERCAST"
         "fog" -> "COASTAL FOG"
         "rain" -> "RAIN SHOWER"
         "snow" -> "SNOWFALL"
         "thunderstorm" -> "THUNDERSTORM"
-        else -> "CLEAR WEATHER"
+        else -> "CLEAR"
+    }
+
+    private fun categoryToEmoji(cat: String, isNight: Boolean): String = when (cat) {
+        "clear" -> if (isNight) "🌙" else "☀️"
+        "partly_cloudy" -> if (isNight) "☁️" else "⛅"
+        "overcast" -> "☁️"
+        "fog" -> "🌫️"
+        "rain" -> "🌧️"
+        "snow" -> "❄️"
+        "thunderstorm" -> "⛈️"
+        else -> if (isNight) "🌙" else "☀️"
     }
 
     data class WidgetConfig(
@@ -614,6 +565,9 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         val lat: Double,
         val lon: Double,
         val renderMode: String,
+        val dioramaTheme: String,
+        val hudPosition: String,
+        val hudScale: Float,
         val transparentBg: Boolean,
         val showExtendedHud: Boolean,
         val timeMode: String,
@@ -621,7 +575,7 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         val tempUnit: String,
         val windUnit: String,
         val widgetZoom: Float,
-        val widgetRotationDeg: Float,
+        val widgetOffsetX: Float,
         val particleDensity: Float
     )
 
