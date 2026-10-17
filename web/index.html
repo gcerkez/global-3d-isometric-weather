@@ -128,6 +128,7 @@
         document.getElementById("locBadge").textContent = `${st.locationName} • ${st.renderMode === "ai_generative" ? "AI Generative 3D" : "3D Isometric"}`;
       }
     });
+    window.isoEngine = engine;
 
     engine.start();
     engine.refreshAll();
