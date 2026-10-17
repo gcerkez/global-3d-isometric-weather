@@ -254,8 +254,70 @@ class MainActivity : Activity() {
             }
         )
 
-        // --- SECTION 4: Units ---
-        configContainer.addView(makeSectionHeader("4. Temperature & Wind Units"))
+        configContainer.addView(
+            makeSpinnerRow(
+                label = "Weather Effect Intensity & Speed:",
+                entries = listOf(
+                    "Subtle / Gentle (25% — Calm, Light Drops)" to "0.25",
+                    "Balanced / Natural (50% — Recommended)" to "0.50",
+                    "Standard (100%)" to "1.00"
+                ),
+                currentVal = String.format("%.2f", prefs.getFloat("particleDensity", 0.50f))
+            ) { newVal ->
+                val f = newVal.toFloatOrNull() ?: 0.50f
+                prefs.edit().putFloat("particleDensity", f).apply()
+                applyAndRefreshWidgets("Weather effect intensity set to ${(f * 100).toInt()}%")
+            }
+        )
+
+        // --- SECTION 3B: Interactive Isometric Zoom & Rotation Controls ---
+        configContainer.addView(makeSectionHeader("4. Isometric Camera Zoom & Rotation"))
+
+        val camControlRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 8, 0, 16)
+        }
+        val camButtons = listOf(
+            "➖ Zoom Out" to "zoom_out",
+            "➕ Zoom In" to "zoom_in",
+            "↺ Rotate L" to "rot_left",
+            "↻ Rotate R" to "rot_right",
+            "⟲ Reset" to "reset"
+        )
+        for ((lbl, act) in camButtons) {
+            val btn = makeStyledButton(lbl) {
+                var zoom = prefs.getFloat("widgetZoom", 1.0f)
+                var rot = prefs.getFloat("widgetRotationDeg", 0.0f)
+                when (act) {
+                    "zoom_in" -> zoom = (zoom * 1.15f).coerceIn(0.70f, 2.20f)
+                    "zoom_out" -> zoom = (zoom / 1.15f).coerceIn(0.70f, 2.20f)
+                    "rot_left" -> rot = (rot - 6.0f).coerceIn(-28.0f, 28.0f)
+                    "rot_right" -> rot = (rot + 6.0f).coerceIn(-28.0f, 28.0f)
+                    "reset" -> {
+                        zoom = 1.0f
+                        rot = 0.0f
+                    }
+                }
+                prefs.edit()
+                    .putFloat("widgetZoom", zoom)
+                    .putFloat("widgetRotationDeg", rot)
+                    .apply()
+                webView.evaluateJavascript("if (window.isoEngine) window.isoEngine.adjustCamera('$act');", null)
+                applyAndRefreshWidgets("Camera Zoom: ${(zoom * 100).toInt()}%, Rotation: ${rot.toInt()}°")
+            }.apply {
+                val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f)
+                lp.setMargins(0, 0, 8, 0)
+                layoutParams = lp
+                setPadding(10, 14, 10, 14)
+                textSize = 11f
+            }
+            camControlRow.addView(btn)
+        }
+        configContainer.addView(camControlRow)
+
+        // --- SECTION 5: Units ---
+        configContainer.addView(makeSectionHeader("5. Temperature & Wind Units"))
 
         configContainer.addView(
             makeSpinnerRow(
@@ -436,6 +498,9 @@ class MainActivity : Activity() {
         val rMode = prefs.getString("renderMode", "hybrid") ?: "hybrid"
         val tMode = prefs.getString("timeOfDayMode", "realtime") ?: "realtime"
         val wMode = prefs.getString("weatherOverride", "realtime") ?: "realtime"
+        val pDensity = prefs.getFloat("particleDensity", 0.50f)
+        val wZoom = prefs.getFloat("widgetZoom", 1.0f)
+        val wRot = prefs.getFloat("widgetRotationDeg", 0.0f)
 
         val js = """
             if (window.isoEngine) {
@@ -445,6 +510,9 @@ class MainActivity : Activity() {
                 window.isoEngine.state.renderMode = '$rMode';
                 window.isoEngine.state.timeMode = '$tMode';
                 window.isoEngine.state.weatherOverride = '$wMode';
+                window.isoEngine.state.particleIntensity = $pDensity;
+                window.isoEngine.state.cameraZoom = $wZoom;
+                window.isoEngine.state.cameraYawDeg = $wRot;
                 window.isoEngine.refreshAll();
             }
         """.trimIndent()

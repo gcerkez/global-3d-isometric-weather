@@ -1,13 +1,114 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="4dp">
+    android:padding="2dp">
 
-    <ImageView
-        android:id="@+id/widget_canvas_image"
+    <!-- Continuously animating multi-frame ViewFlipper for live rain, water ripples & miniature sprites -->
+    <ViewFlipper
+        android:id="@+id/widget_flipper"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="fitCenter"
-        android:contentDescription="3D Isometric Weather Diorama" />
+        android:autoStart="true"
+        android:flipInterval="520">
+
+        <ImageView
+            android:id="@+id/widget_frame_0"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitCenter"
+            android:contentDescription="3D Isometric Weather Frame 1" />
+
+        <ImageView
+            android:id="@+id/widget_frame_1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitCenter"
+            android:contentDescription="3D Isometric Weather Frame 2" />
+
+        <ImageView
+            android:id="@+id/widget_frame_2"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitCenter"
+            android:contentDescription="3D Isometric Weather Frame 3" />
+
+        <ImageView
+            android:id="@+id/widget_frame_3"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitCenter"
+            android:contentDescription="3D Isometric Weather Frame 4" />
+    </ViewFlipper>
+
+    <!-- Interactive On-Widget Zoom, Rotate & Settings Control Bar (Bottom-Left) -->
+    <LinearLayout
+        android:id="@+id/widget_camera_bar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="10dp"
+        android:layout_marginBottom="8dp"
+        android:orientation="horizontal"
+        android:background="#B8142230"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp">
+
+        <TextView
+            android:id="@+id/btn_zoom_out"
+            android:layout_width="26dp"
+            android:layout_height="24dp"
+            android:gravity="center"
+            android:text="➖"
+            android:textColor="#E6F2FF"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/btn_zoom_in"
+            android:layout_width="26dp"
+            android:layout_height="24dp"
+            android:gravity="center"
+            android:text="➕"
+            android:textColor="#E6F2FF"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/btn_rot_left"
+            android:layout_width="26dp"
+            android:layout_height="24dp"
+            android:gravity="center"
+            android:text="↺"
+            android:textColor="#E6F2FF"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/btn_rot_right"
+            android:layout_width="26dp"
+            android:layout_height="24dp"
+            android:gravity="center"
+            android:text="↻"
+            android:textColor="#E6F2FF"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/btn_cam_reset"
+            android:layout_width="26dp"
+            android:layout_height="24dp"
+            android:gravity="center"
+            android:text="⟲"
+            android:textColor="#FFD166"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/btn_open_config"
+            android:layout_width="28dp"
+            android:layout_height="24dp"
+            android:gravity="center"
+            android:text="⚙️"
+            android:textColor="#FFFFFF"
+            android:textSize="11sp" />
+    </LinearLayout>
 </FrameLayout>

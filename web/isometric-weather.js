@@ -63,10 +63,13 @@ export class IsometricWeatherEngine {
             osmBuildings: [],
             aiDioramaUrl: "",
 
-            // Camera state for Procedural 3D mode
+            // Camera state for both Hybrid & Procedural 3D modes
             cameraYaw: 0.785398,
             cameraPitch: 0.54,
+            cameraYawDeg: 0.0,
+            cameraPitchDeg: 0.0,
             cameraZoom: 1.0,
+            particleIntensity: options.particleIntensity ?? 1.0,
             animTime: 0
         };
 
@@ -232,10 +235,36 @@ export class IsometricWeatherEngine {
     }
 
     /**
-     * Binds pointer drag/wheel events for interactive 3D camera orbit & zoom.
+     * Adjusts camera zoom or rotation programmatically (for on-screen buttons).
+     * @param {"zoom_in"|"zoom_out"|"rot_left"|"rot_right"|"reset"} action
+     */
+    adjustCamera(action) {
+        if (action === "zoom_in") {
+            this.state.cameraZoom = Math.min(2.25, this.state.cameraZoom * 1.15);
+        } else if (action === "zoom_out") {
+            this.state.cameraZoom = Math.max(0.70, this.state.cameraZoom / 1.15);
+        } else if (action === "rot_left") {
+            this.state.cameraYaw -= 0.16;
+            this.state.cameraYawDeg = Math.max(-32, this.state.cameraYawDeg - 6);
+        } else if (action === "rot_right") {
+            this.state.cameraYaw += 0.16;
+            this.state.cameraYawDeg = Math.min(32, this.state.cameraYawDeg + 6);
+        } else if (action === "reset") {
+            this.state.cameraYaw = 0.785398;
+            this.state.cameraPitch = 0.54;
+            this.state.cameraYawDeg = 0.0;
+            this.state.cameraPitchDeg = 0.0;
+            this.state.cameraZoom = 1.0;
+        }
+    }
+
+    /**
+     * Binds pointer drag, pinch-to-zoom, wheel, and double-click events for interactive 3D camera orbit & zoom in all modes.
      */
     _bindInteraction() {
         let dragging = false, lastX = 0, lastY = 0;
+        let lastPinchDist = 0;
+
         this.canvas.addEventListener("pointerdown", e => {
             dragging = true;
             lastX = e.clientX;
@@ -243,20 +272,41 @@ export class IsometricWeatherEngine {
         });
         window.addEventListener("pointerup", () => { dragging = false; });
         window.addEventListener("pointermove", e => {
-            if (!dragging || this.state.renderMode !== "procedural3d") return;
+            if (!dragging) return;
             const dx = e.clientX - lastX;
             const dy = e.clientY - lastY;
             this.state.cameraYaw += dx * 0.007;
             this.state.cameraPitch = Math.max(0.28, Math.min(1.05, this.state.cameraPitch + dy * 0.005));
+            this.state.cameraYawDeg = Math.max(-32, Math.min(32, this.state.cameraYawDeg + dx * 0.16));
+            this.state.cameraPitchDeg = Math.max(-18, Math.min(18, this.state.cameraPitchDeg - dy * 0.12));
             lastX = e.clientX;
             lastY = e.clientY;
         });
+        this.canvas.addEventListener("touchstart", e => {
+            if (e.touches.length === 2) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                lastPinchDist = Math.hypot(dx, dy);
+            }
+        }, { passive: true });
+        this.canvas.addEventListener("touchmove", e => {
+            if (e.touches.length === 2 && lastPinchDist > 10) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const dist = Math.hypot(dx, dy);
+                const factor = dist / lastPinchDist;
+                this.state.cameraZoom = Math.max(0.70, Math.min(2.25, this.state.cameraZoom * factor));
+                lastPinchDist = dist;
+            }
+        }, { passive: true });
         this.canvas.addEventListener("wheel", e => {
-            if (this.state.renderMode !== "procedural3d") return;
             e.preventDefault();
-            const factor = e.deltaY < 0 ? 1.08 : 0.92;
-            this.state.cameraZoom = Math.max(0.65, Math.min(1.65, this.state.cameraZoom * factor));
+            const factor = e.deltaY < 0 ? 1.10 : 0.91;
+            this.state.cameraZoom = Math.max(0.70, Math.min(2.25, this.state.cameraZoom * factor));
         }, { passive: false });
+        this.canvas.addEventListener("dblclick", () => {
+            this.adjustCamera("reset");
+        });
     }
 
     /**
@@ -264,7 +314,7 @@ export class IsometricWeatherEngine {
      */
     start() {
         const tick = () => {
-            this.state.animTime += 0.033;
+            this.state.animTime += 0.016;
             this.render();
             requestAnimationFrame(tick);
         };
@@ -272,7 +322,7 @@ export class IsometricWeatherEngine {
     }
 
     /**
-     * Renders the sky backdrop, isometric diorama (or procedural 3D city), and weather particles.
+     * Renders the sky backdrop, isometric diorama, water ripples, 5 miniature sprites, and weather particles.
      */
     render() {
         const ctx = this.ctx;
@@ -300,41 +350,166 @@ export class IsometricWeatherEngine {
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, w, h);
 
-        // 2. Main Diorama Cutout or AI Generative Image
+        // 2. Main Diorama Cutout or AI Generative Image with interactive Zoom & Rotation
         const img = (this.state.renderMode === "ai_generative" && this.images.aiCustom.complete && this.images.aiCustom.naturalWidth > 0)
             ? this.images.aiCustom
             : (tState === "night" ? this.images.night : (tState === "sunset" ? this.images.sunset : this.images.day));
 
+        const baseScale = Math.min(w / 1376, h / 768);
+        const dw = 1376 * baseScale;
+        const dh = 768 * baseScale;
+        const dx = (w - dw) * 0.5 - w * 0.04;
+        const dy = (h - dh) * 0.5;
+
+        ctx.save();
+        const cx = dx + dw * 0.5;
+        const cy = dy + dh * 0.5;
+        ctx.translate(cx, cy);
+        ctx.scale(this.state.cameraZoom, this.state.cameraZoom * (1.0 - this.state.cameraPitchDeg * 0.004));
+        ctx.rotate((this.state.cameraYawDeg * 0.35) * Math.PI / 180.0);
+        ctx.translate(-cx, -cy);
+
         if (img && img.complete && img.naturalWidth > 0) {
-            const scale = Math.min(w / 1376, h / 768);
-            const dw = 1376 * scale;
-            const dh = 768 * scale;
-            const dx = (w - dw) * 0.5 - w * 0.04;
-            const dy = (h - dh) * 0.5;
             ctx.drawImage(img, dx, dy, dw, dh);
         }
 
-        // 3. Weather Particles (Rain / Snow / Clouds)
-        if (cat === "rain" || cat === "thunderstorm") {
-            ctx.strokeStyle = "rgba(205, 232, 255, 0.58)";
-            ctx.lineWidth = 1.4;
+        // 2B. Water wave sparkles & 5 tiny proportional moving sprites on the diorama
+        const s = dw / 1376.0;
+        const pingPong = (val) => {
+            let m = val % 2.0;
+            if (m < 0) m += 2.0;
+            return m <= 1.0 ? m : (2.0 - m);
+        };
+
+        // Water sparkles on York River
+        const waterPts = [
+            { x: 0.14, y: 0.47 }, { x: 0.18, y: 0.52 }, { x: 0.24, y: 0.56 },
+            { x: 0.28, y: 0.46 }, { x: 0.33, y: 0.42 }, { x: 0.38, y: 0.34 },
+            { x: 0.44, y: 0.28 }, { x: 0.49, y: 0.32 }
+        ];
+        for (let wi = 0; wi < waterPts.length; wi++) {
+            const wp = waterPts[wi];
+            const waveAlpha = 0.20 + 0.18 * Math.sin(t * 2.2 + wi * 1.3);
+            const wx = dx + (wp.x + Math.sin(t * 0.9 + wi) * 0.006) * dw;
+            const wy = dy + wp.y * dh;
+            ctx.strokeStyle = tState === "sunset"
+                ? `rgba(255, 210, 145, ${waveAlpha.toFixed(3)})`
+                : `rgba(225, 245, 255, ${waveAlpha.toFixed(3)})`;
+            ctx.lineWidth = 1.6 * s;
             ctx.beginPath();
-            for (let i = 0; i < 65; i++) {
-                const prog = ((t * 0.85 + i * 0.173) % 1.0);
-                const rx = (((i * 0.618) % 1.1) - prog * 0.18) * w;
+            ctx.moveTo(wx - 10 * s, wy - 4 * s);
+            ctx.lineTo(wx + 10 * s, wy + 4 * s);
+            ctx.stroke();
+        }
+
+        // Helper for tiny pedestrian sprite
+        const drawTinyPerson = (nx, ny, coatCol, hatCol, phase) => {
+            const px = dx + nx * dw;
+            const py = dy + ny * dh;
+            const bob = Math.abs(Math.sin(phase)) * 1.1 * s;
+            ctx.fillStyle = "rgba(10, 18, 28, 0.38)";
+            ctx.beginPath();
+            ctx.ellipse(px, py, 1.8 * s, 0.8 * s, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = coatCol;
+            ctx.beginPath();
+            ctx.ellipse(px, py - (2.3 * s + bob), 1.5 * s, 1.9 * s, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#f4d3b8";
+            ctx.beginPath();
+            ctx.arc(px, py - (4.6 * s + bob), 1.2 * s, 0, Math.PI * 2);
+            ctx.fill();
+            if (hatCol) {
+                ctx.fillStyle = hatCol;
+                ctx.beginPath();
+                ctx.arc(px, py - (5.3 * s + bob), 1.3 * s, Math.PI, 0);
+                ctx.fill();
+            }
+        };
+
+        // Sprite 1: Horse & Carriage along Historic Main Street
+        const hcRaw = (t * 0.075) % 2.0;
+        const hcProg = pingPong(hcRaw);
+        const hcDir = hcRaw < 1.0 ? 1.0 : -1.0;
+        const hcX = dx + (0.352 + hcProg * (0.535 - 0.352)) * dw;
+        const hcY = dy + (0.712 + hcProg * (0.582 - 0.712)) * dh;
+        const stepX = 0.79 * hcDir * s;
+        const stepY = -0.58 * hcDir * s;
+        const hx = hcX + stepX * 5.2;
+        const hy = hcY + stepY * 5.2 - Math.abs(Math.sin(t * 4.5)) * 0.8 * s;
+
+        ctx.strokeStyle = "rgba(70, 48, 32, 0.75)";
+        ctx.lineWidth = 0.9 * s;
+        ctx.beginPath();
+        ctx.moveTo(hcX, hcY - 2.0 * s);
+        ctx.lineTo(hx, hy - 1.6 * s);
+        ctx.stroke();
+
+        ctx.fillStyle = "#6e4226";
+        ctx.beginPath();
+        ctx.ellipse(hx, hy - 1.5 * s, 2.1 * s, 1.3 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#3b2316";
+        ctx.beginPath();
+        ctx.ellipse(hcX, hcY - 2.5 * s, 3.5 * s, 2.1 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#9e3b2b";
+        ctx.beginPath();
+        ctx.ellipse(hcX, hcY - 3.8 * s, 2.8 * s, 1.5 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Sprite 2: Miniature Car crossing the George P. Coleman Memorial Bridge
+        const carFrac = (t * 0.11) % 1.0;
+        const carX = dx + (0.270 + carFrac * (0.476 - 0.270)) * dw;
+        const carY = dy + (0.318 + carFrac * (0.462 - 0.318)) * dh;
+        ctx.fillStyle = "#d64035";
+        ctx.beginPath();
+        ctx.ellipse(carX, carY - 1.2 * s, 2.4 * s, 1.3 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#f2f6fa";
+        ctx.beginPath();
+        ctx.ellipse(carX, carY - 2.1 * s, 1.4 * s, 0.8 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Sprite 3: Pedestrian on Riverwalk Shoreline Path
+        const p1 = pingPong(t * 0.055 + 0.3);
+        drawTinyPerson(0.328 + p1 * (0.468 - 0.328), 0.735 + p1 * (0.625 - 0.735), "#264653", "#1d3557", t * 4.0);
+
+        // Sprite 4: Pedestrian on Victory Monument Bluff Path
+        const p2 = pingPong(t * 0.048 + 1.1);
+        drawTinyPerson(0.652 + p2 * (0.748 - 0.652), 0.362 + p2 * (0.468 - 0.362), "#b5382a", "#2b2d42", t * 3.6 + 1.4);
+
+        // Sprite 5: Sailor on 18th-Century Tall Ship Deck
+        const p3 = pingPong(t * 0.062 + 0.6);
+        drawTinyPerson(0.214 + p3 * (0.246 - 0.214), 0.520 + p3 * (0.496 - 0.520), "#1d3557", "#f1faee", t * 3.8 + 0.7);
+
+        ctx.restore();
+
+        // 3. Gentle, Natural-Speed Weather Particles (Rain / Snow)
+        const pScale = Math.max(0.15, this.state.particleIntensity ?? 1.0);
+        if (cat === "rain" || cat === "thunderstorm") {
+            const dropCount = Math.max(4, Math.round((cat === "thunderstorm" ? 32 : 20) * pScale));
+            ctx.strokeStyle = "rgba(205, 232, 255, 0.46)";
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            for (let i = 0; i < dropCount; i++) {
+                const prog = ((t * 0.24 + i * 0.173) % 1.0);
+                const rx = (((i * 0.618) % 1.1) - prog * 0.14) * w;
                 const ry = prog * h;
                 ctx.moveTo(rx, ry);
-                ctx.lineTo(rx - 7, ry + 22);
+                ctx.lineTo(rx - 4, ry + 14);
             }
             ctx.stroke();
         } else if (cat === "snow") {
-            ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-            for (let i = 0; i < 55; i++) {
-                const prog = ((t * 0.25 + i * 0.137) % 1.0);
-                const sx = (((i * 0.618) % 1.0) + Math.sin(t + i) * 0.02) * w;
+            const flakeCount = Math.max(5, Math.round(26 * pScale));
+            ctx.fillStyle = "rgba(255, 255, 255, 0.82)";
+            for (let i = 0; i < flakeCount; i++) {
+                const prog = ((t * 0.10 + i * 0.137) % 1.0);
+                const sx = (((i * 0.618) % 1.0) + Math.sin(t * 0.8 + i) * 0.02) * w;
                 const sy = prog * h;
                 ctx.beginPath();
-                ctx.arc(sx, sy, 2.5, 0, Math.PI * 2);
+                ctx.arc(sx, sy, 2.2, 0, Math.PI * 2);
                 ctx.fill();
             }
         }

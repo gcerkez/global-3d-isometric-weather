@@ -28,17 +28,17 @@ Item {
     property real lightningFlash: 0.0
 
     Timer {
-        interval: 33
+        interval: 40
         running: fxRoot.visible
         repeat: true
         onTriggered: {
-            var windFactor = Math.max(0.4, Math.min(3.5, fxRoot.windSpeedMph / 8.0))
-            fxRoot.animTime += 0.033 * windFactor
+            var windFactor = Math.max(0.55, Math.min(1.25, 0.70 + fxRoot.windSpeedMph * 0.02))
+            fxRoot.animTime += 0.011 * windFactor
             if (fxRoot.weatherCategory === "thunderstorm") {
-                if (Math.random() < 0.018) {
-                    fxRoot.lightningFlash = 0.85
+                if (Math.random() < 0.008) {
+                    fxRoot.lightningFlash = 0.75
                 } else {
-                    fxRoot.lightningFlash = Math.max(0.0, fxRoot.lightningFlash - 0.12)
+                    fxRoot.lightningFlash = Math.max(0.0, fxRoot.lightningFlash - 0.10)
                 }
             } else {
                 fxRoot.lightningFlash = 0.0
@@ -248,62 +248,63 @@ Item {
                 }
             }
 
-            // High-wind streamlined air streaks when wind >= 14 mph
-            if (fxRoot.windSpeedMph >= 14.0) {
-                ctx.strokeStyle = "rgba(255, 255, 255, 0.22)"
-                ctx.lineWidth = 1.4 * s
+            // High-wind streamlined air streaks when wind >= 18 mph
+            if (fxRoot.windSpeedMph >= 18.0) {
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.18)"
+                ctx.lineWidth = 1.2 * s
                 ctx.lineCap = "round"
-                for (var wg = 0; wg < 8; wg++) {
-                    var wxProg = (t * 0.55 + wg * 0.17) % 1.0
+                for (var wg = 0; wg < 4; wg++) {
+                    var wxProg = (t * 0.32 + wg * 0.25) % 1.0
                     var wgx = wxProg * width
-                    var wgy = (0.20 + (wg * 0.09) % 0.55) * height + Math.sin(wxProg * 6.0) * 6 * s
+                    var wgy = (0.22 + (wg * 0.12) % 0.50) * height + Math.sin(wxProg * 5.0) * 5 * s
                     ctx.beginPath()
                     ctx.moveTo(wgx, wgy)
-                    ctx.lineTo(wgx - 48 * s, wgy - 4 * s)
+                    ctx.lineTo(wgx - 38 * s, wgy - 3 * s)
                     ctx.stroke()
                 }
             }
 
-            // Rain & Thunderstorm precipitation streaks + water/street splash rings
+            // Rain & Thunderstorm precipitation streaks + water/street splash rings (calm & proportional)
             if (cat === "rain" || cat === "thunderstorm") {
-                var dropCount = Math.round((cat === "thunderstorm" ? 130 : 85) * fxRoot.particleDensity)
-                ctx.strokeStyle = night ? "rgba(165, 210, 255, 0.52)" : "rgba(215, 238, 255, 0.62)"
-                ctx.lineWidth = Math.max(1.2, 1.8 * s)
+                var dropCount = Math.max(3, Math.round((cat === "thunderstorm" ? 36 : 22) * fxRoot.particleDensity))
+                ctx.strokeStyle = night ? "rgba(165, 210, 255, 0.46)" : "rgba(215, 238, 255, 0.54)"
+                ctx.lineWidth = Math.max(1.0, 1.4 * s)
                 ctx.lineCap = "round"
 
-                var windSlant = Math.min(18.0, 5.0 + fxRoot.windSpeedMph * 0.45) * s
-                var dropLen = 22.0 * s
+                var windSlant = Math.min(11.0, 3.0 + fxRoot.windSpeedMph * 0.25) * s
+                var dropLen = 16.0 * s
 
                 for (var r = 0; r < dropCount; r++) {
-                    var rx = ((r * 0.6180339 + t * 0.42 * ((r % 3) * 0.15 + 0.85)) % 1.0) * width
-                    var ry = ((r * 0.381966 + t * 1.65 * ((r % 4) * 0.1 + 0.9)) % 1.0) * height
+                    var rx = ((r * 0.6180339 - t * 0.14 * ((r % 3) * 0.12 + 0.88) + 100.0) % 1.0) * width
+                    var ry = ((r * 0.381966 + t * 0.58 * ((r % 4) * 0.08 + 0.92)) % 1.0) * height
                     ctx.beginPath()
                     ctx.moveTo(rx, ry)
                     ctx.lineTo(rx - windSlant, ry + dropLen)
                     ctx.stroke()
                 }
 
-                ctx.strokeStyle = "rgba(220, 242, 255, 0.45)"
-                ctx.lineWidth = 1.2 * s
-                for (var rp = 0; rp < 18; rp++) {
-                    var prog = (t * 1.4 + rp * 0.19) % 1.0
-                    var rpx = (0.14 + ((rp * 0.29) % 0.50)) * width
-                    var rpy = (0.42 + ((rp * 0.17) % 0.34)) * height
+                var splashCount = Math.max(2, Math.round(6 * fxRoot.particleDensity))
+                ctx.strokeStyle = "rgba(220, 242, 255, 0.38)"
+                ctx.lineWidth = 1.0 * s
+                for (var rp = 0; rp < splashCount; rp++) {
+                    var prog = (t * 0.55 + rp * 0.21) % 1.0
+                    var rpx = (0.16 + ((rp * 0.29) % 0.46)) * width
+                    var rpy = (0.44 + ((rp * 0.17) % 0.30)) * height
                     ctx.beginPath()
-                    ctx.ellipse(rpx - prog * 10 * s, rpy - prog * 5 * s, prog * 20 * s, prog * 9 * s)
+                    ctx.ellipse(rpx - prog * 7 * s, rpy - prog * 3.5 * s, prog * 14 * s, prog * 6.5 * s)
                     ctx.stroke()
                 }
             }
 
-            // Snowfall particles
+            // Snowfall particles (calm drifting flakes)
             if (cat === "snow") {
-                var snowCount = Math.round(95 * fxRoot.particleDensity)
+                var snowCount = Math.max(4, Math.round(28 * fxRoot.particleDensity))
                 for (var sn = 0; sn < snowCount; sn++) {
-                    var snProg = (sn * 0.273 + t * 0.28 * ((sn % 3) * 0.2 + 0.7)) % 1.0
-                    var snX = ((sn * 0.618 + Math.sin(t * 1.2 + sn) * 0.03 + t * 0.08) % 1.0) * width
+                    var snProg = (sn * 0.273 + t * 0.19 * ((sn % 3) * 0.15 + 0.8)) % 1.0
+                    var snX = ((sn * 0.618 + Math.sin(t * 0.9 + sn) * 0.025 + t * 0.05) % 1.0) * width
                     var snY = snProg * height
-                    var flakeR = (2.0 + (sn % 3) * 1.3) * s
-                    ctx.fillStyle = "rgba(255, 255, 255, 0.85)"
+                    var flakeR = (1.8 + (sn % 3) * 1.0) * s
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.82)"
                     ctx.beginPath()
                     ctx.arc(snX, snY, flakeR, 0, Math.PI * 2)
                     ctx.fill()

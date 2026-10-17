@@ -81,6 +81,30 @@
       font-size: 11px;
       color: #eef6fc;
     }
+    .camera-pill {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      display: flex;
+      gap: 4px;
+      background: rgba(20, 34, 48, 0.76);
+      border: 1px solid rgba(110, 168, 215, 0.45);
+      border-radius: 16px;
+      padding: 3px 8px;
+      user-select: none;
+    }
+    .camera-pill button {
+      background: transparent;
+      border: none;
+      color: #e6f2ff;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .camera-pill button:hover {
+      background: rgba(59, 105, 144, 0.75);
+    }
   </style>
 </head>
 <body>
@@ -105,6 +129,14 @@
         <button id="btnMode">🎨 Mode</button>
         <button id="btnTime">☀️ Time</button>
       </div>
+    </div>
+
+    <div class="camera-pill">
+      <button id="camZoomOut" title="Zoom Out">➖</button>
+      <button id="camZoomIn" title="Zoom In">➕</button>
+      <button id="camRotLeft" title="Rotate Left">↺</button>
+      <button id="camRotRight" title="Rotate Right">↻</button>
+      <button id="camReset" title="Reset View">⟲</button>
     </div>
 
     <div class="location-badge" id="locBadge">Yorktown, VA • 3D Isometric</div>
@@ -132,6 +164,12 @@
 
     engine.start();
     engine.refreshAll();
+
+    document.getElementById("camZoomIn").addEventListener("click", () => engine.adjustCamera("zoom_in"));
+    document.getElementById("camZoomOut").addEventListener("click", () => engine.adjustCamera("zoom_out"));
+    document.getElementById("camRotLeft").addEventListener("click", () => engine.adjustCamera("rot_left"));
+    document.getElementById("camRotRight").addEventListener("click", () => engine.adjustCamera("rot_right"));
+    document.getElementById("camReset").addEventListener("click", () => engine.adjustCamera("reset"));
 
     document.getElementById("btnTime").addEventListener("click", () => {
       const modes = ["realtime", "day", "sunset", "night"];

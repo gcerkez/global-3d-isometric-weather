@@ -420,6 +420,105 @@ Item {
                 })(treeCoords[ti], ti)
             }
 
+            // 2G. 4-5 Tiny Proportional Moving Sprites in 3D Space (Horse & Carriage / Town Car, 2 Path Pedestrians, 1 Ship Sailor; plus Bridge Car above)
+            function pingPong3D(val) {
+                var m = val % 2.0
+                if (m < 0) m += 2.0
+                return m <= 1.0 ? m : (2.0 - m)
+            }
+
+            // Sprite 1: Horse & Carriage (in Colonial Yorktown) or Town Car (in modern cities) along Main Street
+            var hcRaw = (t * 0.12) % 2.0
+            var hcProg = pingPong3D(hcRaw)
+            var hcDir = (hcRaw < 1.0) ? 1.0 : -1.0
+            var hcY = -4.5 + hcProg * 9.0
+            var hcX = 2.35
+            var hcPos = project(hcX, hcY, 2.75)
+            drawQueue.push({
+                depth: 1 * 100.0 + hcPos.depth + 0.4,
+                render: function() {
+                    var cBody = project(hcX, hcY, 2.80)
+                    var hPos  = project(hcX, hcY + hcDir * 0.72, 2.78)
+                    var sz = Math.max(1.8, baseScale * 0.11)
+                    if (arch.id === "yorktown_1781" || arch.id === "european_old_town") {
+                        // Horse dot + harness + carriage
+                        ctx.strokeStyle = "rgba(70,45,25,0.8)"
+                        ctx.lineWidth = Math.max(0.8, sz * 0.45)
+                        ctx.beginPath()
+                        ctx.moveTo(cBody.x, cBody.y)
+                        ctx.lineTo(hPos.x, hPos.y)
+                        ctx.stroke()
+
+                        ctx.fillStyle = "#6e4226"
+                        ctx.beginPath()
+                        ctx.arc(hPos.x, hPos.y, sz * 0.85, 0, Math.PI * 2)
+                        ctx.fill()
+
+                        ctx.fillStyle = "#9e3b2b"
+                        ctx.beginPath()
+                        ctx.arc(cBody.x, cBody.y, sz * 1.25, 0, Math.PI * 2)
+                        ctx.fill()
+                    } else {
+                        // Modern miniature car on avenue
+                        ctx.fillStyle = isNight ? "#ffd166" : "#2a9d8f"
+                        ctx.beginPath()
+                        ctx.arc(cBody.x, cBody.y, sz * 1.15, 0, Math.PI * 2)
+                        ctx.fill()
+                    }
+                }
+            })
+
+            // Sprite 2 & 3: Tiny Pedestrians strolling along the Riverwalk & Victory Monument Bluff Path
+            var peds3D = [
+                { x: 0.25, y0: -4.2, y1: 4.2, z: 2.52, speed: 0.09, offset: 0.2, col: "#264653" },
+                { x: 6.15, y0: -4.5, y1: 1.5, z: 5.06, speed: 0.08, offset: 1.1, col: "#b5382a" }
+            ]
+            for (var pi = 0; pi < peds3D.length; pi++) {
+                (function(pd) {
+                    var py = pd.y0 + pingPong3D(t * pd.speed + pd.offset) * (pd.y1 - pd.y0)
+                    var pProj = project(pd.x, py, pd.z)
+                    drawQueue.push({
+                        depth: 1 * 100.0 + pProj.depth + 0.35,
+                        render: function() {
+                            var bob = Math.abs(Math.sin(t * 4.2 + pd.offset)) * 0.05
+                            var foot = project(pd.x, py, pd.z + bob)
+                            var head = project(pd.x, py, pd.z + 0.26 + bob)
+                            var r = Math.max(1.4, baseScale * 0.08)
+                            ctx.fillStyle = pd.col
+                            ctx.beginPath()
+                            ctx.arc(foot.x, foot.y, r * 1.05, 0, Math.PI * 2)
+                            ctx.fill()
+                            ctx.fillStyle = "#f4d3b8"
+                            ctx.beginPath()
+                            ctx.arc(head.x, head.y, r * 0.72, 0, Math.PI * 2)
+                            ctx.fill()
+                        }
+                    })
+                })(peds3D[pi])
+            }
+
+            // Sprite 4: Tiny Sailor moving along the Tall Ship Deck
+            if (arch.hasTallShip !== false) {
+                var shipCenterY = 3.0 + Math.sin(t * 0.8) * 0.35
+                var shipDeckZ = 2.85 + Math.sin(t * 2.1) * 0.08
+                var sailorY = shipCenterY - 0.65 + pingPong3D(t * 0.11 + 0.5) * 1.3
+                var sProj = project(-5.2, sailorY, shipDeckZ)
+                drawQueue.push({
+                    depth: 1 * 100.0 + sProj.depth + 0.65,
+                    render: function() {
+                        var r = Math.max(1.3, baseScale * 0.075)
+                        ctx.fillStyle = "#1d3557"
+                        ctx.beginPath()
+                        ctx.arc(sProj.x, sProj.y, r, 0, Math.PI * 2)
+                        ctx.fill()
+                        ctx.fillStyle = "#f1faee"
+                        ctx.beginPath()
+                        ctx.arc(sProj.x, sProj.y - r * 1.1, r * 0.7, 0, Math.PI * 2)
+                        ctx.fill()
+                    }
+                })
+            }
+
             // Sort painter queue back-to-front by isometric depth
             drawQueue.sort(function(a, b) { return a.depth - b.depth })
             for (var di = 0; di < drawQueue.length; di++) {
@@ -452,7 +551,7 @@ Item {
         }
         onWheel: function(wheel) {
             var delta = wheel.angleDelta.y > 0 ? 1.08 : 0.92
-            proc3dRoot.cameraZoom = Math.max(0.65, Math.min(1.65, proc3dRoot.cameraZoom * delta))
+            proc3dRoot.cameraZoom = Math.max(0.65, Math.min(2.15, proc3dRoot.cameraZoom * delta))
             scene3dCanvas.requestPaint()
         }
         onDoubleClicked: {
@@ -464,27 +563,68 @@ Item {
         }
     }
 
-    // Interactive hint pill in bottom-left when in Procedural 3D mode
+    // Interactive Zoom & Rotate Control Pill in Bottom-Left
     Rectangle {
         anchors.left: parent.left
         anchors.bottom: parent.bottom
-        anchors.margins: 12
-        height: 24
-        width: hintRow.implicitWidth + 16
-        radius: 6
+        anchors.margins: 10
+        height: 26
+        width: hintRow.implicitWidth + 14
+        radius: 13
         color: "#b0162432"
         border.color: "#4d7ea8"
         border.width: 1
+        z: 40
 
         Row {
             id: hintRow
             anchors.centerIn: parent
-            spacing: 6
-            Text {
-                text: "🧊 Interactive 3D Mode: Drag to Rotate • Scroll to Zoom • Double-Click to Reset"
-                color: "#d9ecff"
-                font.pixelSize: 10
-                font.weight: Font.Medium
+            spacing: 4
+
+            Repeater {
+                model: [
+                    { label: "➖", act: "zoom_out" },
+                    { label: "➕", act: "zoom_in" },
+                    { label: "↺", act: "rot_left" },
+                    { label: "↻", act: "rot_right" },
+                    { label: "⟲", act: "reset" }
+                ]
+                delegate: Rectangle {
+                    width: 22
+                    height: 20
+                    radius: 10
+                    color: pBtnMouse.containsMouse ? "#3b6990" : "transparent"
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: modelData.label
+                        color: "#e6f2ff"
+                        font.pixelSize: 10
+                    }
+
+                    MouseArea {
+                        id: pBtnMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (modelData.act === "zoom_in") {
+                                proc3dRoot.cameraZoom = Math.min(2.15, proc3dRoot.cameraZoom * 1.15)
+                            } else if (modelData.act === "zoom_out") {
+                                proc3dRoot.cameraZoom = Math.max(0.65, proc3dRoot.cameraZoom / 1.15)
+                            } else if (modelData.act === "rot_left") {
+                                proc3dRoot.cameraYaw -= 0.18
+                            } else if (modelData.act === "rot_right") {
+                                proc3dRoot.cameraYaw += 0.18
+                            } else if (modelData.act === "reset") {
+                                proc3dRoot.cameraYaw = 0.785398
+                                proc3dRoot.cameraPitch = 0.54
+                                proc3dRoot.cameraZoom = 1.0
+                            }
+                            scene3dCanvas.requestPaint()
+                        }
+                    }
+                }
             }
         }
     }

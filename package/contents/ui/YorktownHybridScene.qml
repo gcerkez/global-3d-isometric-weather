@@ -23,6 +23,13 @@ Item {
     property bool useAiDiorama: false
     property var dynamicLandmarks: []
 
+    // Interactive Zoom & 3D Tilt/Rotation properties for Hybrid Scene
+    property real cameraZoom: 1.0
+    property real cameraYawDeg: 0.0
+    property real cameraPitchDeg: 0.0
+    property real cameraPanX: 0.0
+    property real cameraPanY: 0.0
+
     readonly property var defaultYorktownLandmarks: [
         {
             title: "George P. Coleman Memorial Bridge",
@@ -56,7 +63,7 @@ Item {
         running: hybridScene.visible
         repeat: true
         onTriggered: {
-            hybridScene.animPhase += 0.05
+            hybridScene.animPhase += 0.025
             waterAndLightsCanvas.requestPaint()
         }
     }
@@ -64,13 +71,81 @@ Item {
     onTimeStateChanged: waterAndLightsCanvas.requestPaint()
     onWeatherCategoryChanged: waterAndLightsCanvas.requestPaint()
 
+    // Background MouseArea for drag-to-rotate/pan, scroll-to-zoom, and double-click reset
+    MouseArea {
+        id: sceneDragArea
+        anchors.fill: parent
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        property real lastX: 0
+        property real lastY: 0
+
+        onPressed: function(mouse) {
+            lastX = mouse.x
+            lastY = mouse.y
+        }
+        onPositionChanged: function(mouse) {
+            if (pressed) {
+                var dx = mouse.x - lastX
+                var dy = mouse.y - lastY
+                if (mouse.buttons & Qt.RightButton) {
+                    hybridScene.cameraPanX = Math.max(-180, Math.min(180, hybridScene.cameraPanX + dx))
+                    hybridScene.cameraPanY = Math.max(-120, Math.min(120, hybridScene.cameraPanY + dy))
+                } else {
+                    hybridScene.cameraYawDeg = Math.max(-32, Math.min(32, hybridScene.cameraYawDeg + dx * 0.18))
+                    hybridScene.cameraPitchDeg = Math.max(-18, Math.min(18, hybridScene.cameraPitchDeg - dy * 0.12))
+                }
+                lastX = mouse.x
+                lastY = mouse.y
+            }
+        }
+        onWheel: function(wheel) {
+            var factor = wheel.angleDelta.y > 0 ? 1.10 : 0.91
+            hybridScene.cameraZoom = Math.max(0.70, Math.min(2.25, hybridScene.cameraZoom * factor))
+        }
+        onDoubleClicked: {
+            hybridScene.cameraZoom = 1.0
+            hybridScene.cameraYawDeg = 0.0
+            hybridScene.cameraPitchDeg = 0.0
+            hybridScene.cameraPanX = 0.0
+            hybridScene.cameraPanY = 0.0
+        }
+    }
+
     // Aspect-ratio preserving container matching the 1376x768 diorama coordinates
     Item {
         id: islandViewport
         width: Math.min(parent.width, parent.height * (1376.0 / 768.0))
         height: width * (768.0 / 1376.0)
         anchors.centerIn: parent
-        anchors.horizontalCenterOffset: -Math.round(parent.width * 0.042)
+        anchors.horizontalCenterOffset: -Math.round(parent.width * 0.042) + hybridScene.cameraPanX
+        anchors.verticalCenterOffset: hybridScene.cameraPanY
+
+        transform: [
+            Scale {
+                origin.x: islandViewport.width / 2
+                origin.y: islandViewport.height / 2
+                xScale: hybridScene.cameraZoom
+                yScale: hybridScene.cameraZoom
+            },
+            Rotation {
+                origin.x: islandViewport.width / 2
+                origin.y: islandViewport.height / 2
+                axis { x: 0; y: 1; z: 0 }
+                angle: hybridScene.cameraYawDeg
+            },
+            Rotation {
+                origin.x: islandViewport.width / 2
+                origin.y: islandViewport.height / 2
+                axis { x: 1; y: 0; z: 0 }
+                angle: hybridScene.cameraPitchDeg
+            },
+            Rotation {
+                origin.x: islandViewport.width / 2
+                origin.y: islandViewport.height / 2
+                axis { x: 0; y: 0; z: 1 }
+                angle: hybridScene.cameraYawDeg * 0.28
+            }
+        ]
 
         // Main transparent cutout of Historic Yorktown 3D Isometric Diorama (or AI Generative location diorama)
         Image {
@@ -88,7 +163,7 @@ Item {
             mipmap: true
         }
 
-        // Dynamic Water Shimmer, Snow Frost, Atmospheric Tint & Night/Evening Emissive Illumination Layer
+        // Dynamic Water Shimmer, Snow Frost, Miniature Sprites & Night/Evening Emissive Illumination Layer
         Canvas {
             id: waterAndLightsCanvas
             anchors.fill: parent
@@ -132,6 +207,46 @@ Item {
                 var p = hybridScene.animPhase
                 var tState = hybridScene.timeState
                 var cat = hybridScene.weatherCategory
+
+                // Helper for smooth back-and-forth ping-pong (0..1..0)
+                function pingPong(val) {
+                    var m = val % 2.0
+                    if (m < 0) m += 2.0
+                    return m <= 1.0 ? m : (2.0 - m)
+                }
+
+                // Helper to draw a tiny proportional pedestrian sprite (dot head + miniature coat body + shadow)
+                function drawTinyPerson(nx, ny, coatColor, hatColor, walkPhase) {
+                    var px = nx * width
+                    var py = ny * height
+                    var bob = Math.abs(Math.sin(walkPhase)) * 1.1 * s
+
+                    // Tiny ground shadow
+                    ctx.fillStyle = "rgba(10, 18, 28, 0.38)"
+                    ctx.beginPath()
+                    ctx.ellipse(px - 1.8 * s, py - 0.5 * s, 3.6 * s, 1.6 * s)
+                    ctx.fill()
+
+                    // Coat / torso
+                    ctx.fillStyle = coatColor
+                    ctx.beginPath()
+                    ctx.ellipse(px - 1.5 * s, py - (4.2 * s + bob), 3.0 * s, 3.8 * s)
+                    ctx.fill()
+
+                    // Tiny head
+                    ctx.fillStyle = "#f4d3b8"
+                    ctx.beginPath()
+                    ctx.arc(px, py - (5.2 * s + bob), 1.25 * s, 0, Math.PI * 2)
+                    ctx.fill()
+
+                    // Tiny tricorn / cap hint
+                    if (hatColor) {
+                        ctx.fillStyle = hatColor
+                        ctx.beginPath()
+                        ctx.arc(px, py - (6.0 * s + bob), 1.35 * s, Math.PI, 0)
+                        ctx.fill()
+                    }
+                }
 
                 // 1. Animated York River water wave sparkles / ripples
                 var waterPoints = [
@@ -178,12 +293,12 @@ Item {
                     }
                 }
 
-                // 3. Evening / Night / Thunderstorm Illumination (Colonial Windows, Streetlamps, Coleman Bridge, Tall Ship, Victory Monument)
+                // 3. Evening / Night / Thunderstorm Illumination
                 var lightsActive = (tState === "night" || tState === "sunset" || cat === "thunderstorm")
                 if (lightsActive) {
                     var intensity = (tState === "night") ? 1.0 : (tState === "sunset" ? 0.68 : 0.55)
 
-                    // Victory Monument architectural uplighting on the hill (x=0.695, y=0.22..0.34)
+                    // Victory Monument architectural uplighting on the hill
                     var monX = 0.695 * width
                     var monBaseY = 0.335 * height
                     var monTopY = 0.115 * height
@@ -276,6 +391,107 @@ Item {
                         ctx.fill()
                     }
                 }
+
+                // 4. Tiny Proportional Living Diorama Sprites (5 total: Horse & Carriage, Bridge Car, 2 Path Pedestrians, 1 Ship Sailor)
+                // 4A. Sprite #1: Horse & Carriage (or miniature town car) traveling along Historic Main Street
+                var hcRaw = (p * 0.055) % 2.0
+                var hcProg = pingPong(hcRaw)
+                var hcDir = (hcRaw < 1.0) ? 1.0 : -1.0
+                var hcX = (0.352 + hcProg * (0.535 - 0.352)) * width
+                var hcY = (0.712 + hcProg * (0.582 - 0.712)) * height
+                var stepX = 0.79 * hcDir * s
+                var stepY = -0.58 * hcDir * s
+
+                // Carriage shadow
+                ctx.fillStyle = "rgba(10, 18, 28, 0.42)"
+                ctx.beginPath()
+                ctx.ellipse(hcX - 4.2 * s, hcY - 1.5 * s, 8.4 * s, 3.4 * s)
+                ctx.fill()
+
+                // Horse in front of the carriage (with gentle trotting bob)
+                var horseBob = Math.abs(Math.sin(p * 3.8)) * 0.9 * s
+                var hx = hcX + stepX * 5.2
+                var hy = hcY + stepY * 5.2 - horseBob
+                ctx.fillStyle = "#6e4226"
+                ctx.beginPath()
+                ctx.ellipse(hx - 2.1 * s, hy - 2.8 * s, 4.2 * s, 2.6 * s)
+                ctx.fill()
+                // Horse head/neck
+                ctx.fillStyle = "#59331b"
+                ctx.beginPath()
+                ctx.arc(hx + stepX * 1.8, hy - 2.6 * s, 1.3 * s, 0, Math.PI * 2)
+                ctx.fill()
+
+                // Harness trace connecting horse and carriage
+                ctx.strokeStyle = "rgba(70, 48, 32, 0.75)"
+                ctx.lineWidth = 0.9 * s
+                ctx.beginPath()
+                ctx.moveTo(hcX, hcY - 2.0 * s)
+                ctx.lineTo(hx, hy - 1.6 * s)
+                ctx.stroke()
+
+                // Colonial Carriage body & canopy
+                ctx.fillStyle = "#3b2316"
+                ctx.beginPath()
+                ctx.ellipse(hcX - 3.6 * s, hcY - 4.6 * s, 7.2 * s, 4.2 * s)
+                ctx.fill()
+                ctx.fillStyle = "#9e3b2b"
+                ctx.beginPath()
+                ctx.ellipse(hcX - 2.8 * s, hcY - 5.4 * s, 5.6 * s, 3.0 * s)
+                ctx.fill()
+                // Tiny gold-rimmed carriage wheels
+                ctx.fillStyle = "#d9a75a"
+                ctx.beginPath()
+                ctx.arc(hcX - 2.0 * s, hcY - 0.8 * s, 1.3 * s, 0, Math.PI * 2)
+                ctx.arc(hcX + 2.0 * s, hcY - 1.2 * s, 1.3 * s, 0, Math.PI * 2)
+                ctx.fill()
+                if (lightsActive) {
+                    ctx.fillStyle = "rgba(255, 232, 150, 0.92)"
+                    ctx.beginPath()
+                    ctx.arc(hcX + stepX * 2.5, hcY + stepY * 2.5 - 3.0 * s, 1.5 * s, 0, Math.PI * 2)
+                    ctx.fill()
+                }
+
+                // 4B. Sprite #2: Miniature Car crossing the George P. Coleman Memorial Bridge
+                var carFrac = (p * 0.085) % 1.0
+                var carX = (0.270 + carFrac * (0.476 - 0.270)) * width
+                var carY = (0.318 + carFrac * (0.462 - 0.318)) * height
+                ctx.fillStyle = "rgba(12, 20, 30, 0.36)"
+                ctx.beginPath()
+                ctx.ellipse(carX - 2.6 * s, carY - 1.0 * s, 5.2 * s, 2.2 * s)
+                ctx.fill()
+                ctx.fillStyle = "#d64035"
+                ctx.beginPath()
+                ctx.ellipse(carX - 2.4 * s, carY - 2.4 * s, 4.8 * s, 2.5 * s)
+                ctx.fill()
+                ctx.fillStyle = "#f2f6fa"
+                ctx.beginPath()
+                ctx.ellipse(carX - 1.4 * s, carY - 3.0 * s, 2.8 * s, 1.6 * s)
+                ctx.fill()
+                if (lightsActive) {
+                    ctx.fillStyle = "rgba(255, 245, 185, 0.9)"
+                    ctx.beginPath()
+                    ctx.arc(carX + 2.5 * s, carY + 1.4 * s, 1.6 * s, 0, Math.PI * 2)
+                    ctx.fill()
+                }
+
+                // 4C. Sprite #3: Pedestrian strolling along the Yorktown Riverwalk Shoreline Path
+                var ped1Prog = pingPong(p * 0.042 + 0.3)
+                var ped1X = 0.328 + ped1Prog * (0.468 - 0.328)
+                var ped1Y = 0.735 + ped1Prog * (0.625 - 0.735)
+                drawTinyPerson(ped1X, ped1Y, "#264653", "#1d3557", p * 3.2)
+
+                // 4D. Sprite #4: Pedestrian strolling along the Victory Monument & Siege Redoubts Bluff Path
+                var ped2Prog = pingPong(p * 0.036 + 1.1)
+                var ped2X = 0.652 + ped2Prog * (0.748 - 0.652)
+                var ped2Y = 0.362 + ped2Prog * (0.468 - 0.362)
+                drawTinyPerson(ped2X, ped2Y, "#b5382a", "#2b2d42", p * 2.9 + 1.4)
+
+                // 4E. Sprite #5: Sailor / Crew Member moving on the 18th-Century Tall Ship Deck
+                var sailorProg = pingPong(p * 0.048 + 0.6)
+                var sailorX = 0.214 + sailorProg * (0.246 - 0.214)
+                var sailorY = 0.520 + sailorProg * (0.496 - 0.520)
+                drawTinyPerson(sailorX, sailorY, "#1d3557", "#f1faee", p * 3.0 + 0.7)
             }
         }
 
@@ -350,6 +566,73 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                }
+            }
+        }
+    }
+
+    // Compact Interactive Zoom & Rotate Control Pill in Bottom-Left
+    Rectangle {
+        anchors.left: parent.left
+        anchors.bottom: parent.bottom
+        anchors.margins: 10
+        height: 26
+        width: camBtnRow.implicitWidth + 14
+        radius: 13
+        color: "#a8142230"
+        border.color: "#4a78a0"
+        border.width: 1
+        z: 40
+
+        Row {
+            id: camBtnRow
+            anchors.centerIn: parent
+            spacing: 4
+
+            Repeater {
+                model: [
+                    { label: "➖", tip: "Zoom Out", act: "zoom_out" },
+                    { label: "➕", tip: "Zoom In", act: "zoom_in" },
+                    { label: "↺", tip: "Rotate Left", act: "rot_left" },
+                    { label: "↻", tip: "Rotate Right", act: "rot_right" },
+                    { label: "⟲", tip: "Reset View", act: "reset" }
+                ]
+                delegate: Rectangle {
+                    width: 22
+                    height: 20
+                    radius: 10
+                    color: btnMouse.containsMouse ? "#3b6990" : "transparent"
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: modelData.label
+                        color: "#e6f2ff"
+                        font.pixelSize: 10
+                    }
+
+                    MouseArea {
+                        id: btnMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (modelData.act === "zoom_in") {
+                                hybridScene.cameraZoom = Math.min(2.25, hybridScene.cameraZoom * 1.15)
+                            } else if (modelData.act === "zoom_out") {
+                                hybridScene.cameraZoom = Math.max(0.70, hybridScene.cameraZoom / 1.15)
+                            } else if (modelData.act === "rot_left") {
+                                hybridScene.cameraYawDeg = Math.max(-32, hybridScene.cameraYawDeg - 6)
+                            } else if (modelData.act === "rot_right") {
+                                hybridScene.cameraYawDeg = Math.min(32, hybridScene.cameraYawDeg + 6)
+                            } else if (modelData.act === "reset") {
+                                hybridScene.cameraZoom = 1.0
+                                hybridScene.cameraYawDeg = 0.0
+                                hybridScene.cameraPitchDeg = 0.0
+                                hybridScene.cameraPanX = 0.0
+                                hybridScene.cameraPanY = 0.0
+                            }
+                        }
+                    }
                 }
             }
         }
