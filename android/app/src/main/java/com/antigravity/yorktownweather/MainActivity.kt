@@ -64,8 +64,6 @@ class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var statusLabel: TextView
     private lateinit var activeLocationHeader: TextView
-    private lateinit var cutoutStatusLabel: TextView
-    private lateinit var customCityInput: EditText
     private lateinit var dioramaThemeButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -108,7 +106,7 @@ class MainActivity : Activity() {
         configContainer.addView(activeLocationHeader)
 
         statusLabel = TextView(this).apply {
-            text = "Scroll freely — settings open only when tapped. Changes update your Homescreen & Lockscreen widget."
+            text = "Scroll freely — settings open only when tapped. Your 3D Diorama render is independent of your weather coordinates."
             setTextColor(Color.parseColor("#8ecae6"))
             textSize = 12.5f
             setPadding(0, 0, 0, dp(12))
@@ -217,19 +215,32 @@ class MainActivity : Activity() {
         }
         configContainer.addView(camControlRow)
 
-        // --- SECTION 2: 3D Diorama Scene & Built-In Custom High-Res Cutout Generator ---
-        configContainer.addView(makeSectionHeader("2. 3D Diorama Scene & Custom City Cutout Generator"))
+        // --- SECTION 2: Pre-Generated 3D Isometric Diorama Dropdown (Independent of Weather Lat/Lon) ---
+        configContainer.addView(makeSectionHeader("2. Pre-Generated 3D Isometric Diorama Scene"))
 
         val themeEntries = listOf(
-            "🏛️ Historic Yorktown, VA (1781 Waterfront & Coleman Bridge)" to "yorktown",
-            "⚓ Generic: Coastal Harbor & Lighthouse Town (Non-City-Specific)" to "coastal",
-            "🌆 Generic: Modern Downtown Metropolis & Bridge (Non-City-Specific)" to "modern",
-            "🏔️ Generic: Alpine Mountain & Lake Village (Non-City-Specific)" to "alpine",
-            "✨ Custom Generated High-Res City Diorama Cutout (Any City)" to "custom_city"
+            "🏛️ Historic Yorktown, VA — 1781 Waterfront, Coleman Bridge & Tall Ship (NPS)" to "yorktown",
+            "⛵ Historic Jamestown, VA — 1607 James Fort Palisade, 3 Ships & Turquoise River (NPS)" to "jamestown",
+            "🏛️ Washington, D.C. & Mid-Atlantic — US Capitol, Monument, Lincoln Memorial & Basin" to "washington_dc",
+            "🗽 New York City & Northeast — Statue of Liberty, Brooklyn Bridge & Empire State" to "new_york",
+            "🌉 San Francisco & California Coast — Golden Gate Bridge, Alcatraz & Painted Ladies" to "san_francisco",
+            "🏙️ Chicago & Great Lakes Midwest — Willis Tower, Red Bascule Bridge & Navy Pier" to "chicago_great_lakes",
+            "🏜️ Grand Canyon & Southwest — Red-Rock Buttes, Cliff Dwellings & Colorado River" to "grand_canyon",
+            "🎷 New Orleans & Gulf South — St. Louis Cathedral, French Quarter & Steamboat" to "new_orleans",
+            "🌲 Seattle & Pacific Northwest — Space Needle, Pike Place, Mt. Rainier & Ferry" to "seattle_pnw",
+            "🌴 Miami Beach, Florida Keys & Tropics — Art Deco Ocean Drive & Coral Lagoon" to "miami_caribbean",
+            "⚓ New England & Maritime Atlantic — Lighthouse Point, Schooner & Historic Wharf" to "coastal",
+            "🕰️ London & UK (Europe/London) — Big Ben, Parliament, Tower of London & Thames" to "london_uk",
+            "🏰 Paris & Western Europe (Europe/Paris) — Notre-Dame, Louvre, Arc & Seine Bridge" to "paris_europe",
+            "🏛️ Rome, Athens & Mediterranean — Colosseum, Parthenon, Aqueduct & Harbor" to "rome_mediterranean",
+            "🏺 Cairo, Giza & Middle East — Ancient Citadel, Sacred Temple Pool & Pharos" to "cairo_giza",
+            "⛩️ Tokyo, Kyoto & East Asia (Asia/Tokyo) — 5-Story Pagoda, Imperial Hall & Torii" to "tokyo_east_asia",
+            "🌆 Global Modern Metropolis (Sydney / Singapore / Toronto) — Skyline & Bridge" to "modern",
+            "🏔️ Alpine Mountain & Glacial Lake Village (Rockies / Swiss Alps / Andes)" to "alpine"
         )
         val themeRow = makePickerRow(
-            label = "Active 3D Isometric Diorama:",
-            dialogTitle = "Select 3D Isometric Diorama Scene",
+            label = "Active 3D Isometric Diorama (Independent of Weather Location):",
+            dialogTitle = "Select Pre-Generated 3D Isometric Diorama",
             entries = themeEntries,
             currentVal = prefs.getString("dioramaTheme", "yorktown") ?: "yorktown"
         ) { newVal ->
@@ -239,92 +250,16 @@ class MainActivity : Activity() {
         dioramaThemeButton = themeRow.second
         configContainer.addView(themeRow.first)
 
-        // Built-in "Generate Custom High-Res Diorama Cutouts for Any City" Card inside the Config Menu!
-        val generatorCard = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(14))
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(12).toFloat()
-                setColor(Color.parseColor("#172a3d"))
-                setStroke(dp(1), Color.parseColor("#3d6b94"))
-            }
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            lp.setMargins(0, dp(6), 0, dp(12))
-            layoutParams = lp
-        }
+        // --- SECTION 3: Weather Telemetry Location & Global City Search (Independent of 3D Diorama) ---
+        configContainer.addView(makeSectionHeader("3. Active Weather Location (Independent of 3D Render)"))
 
-        val genTitle = TextView(this).apply {
-            text = "✨ Generate Custom High-Res Diorama Cutout for Any City"
-            setTextColor(Color.parseColor("#ffd166"))
-            textSize = 13.5f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            setPadding(0, 0, 0, dp(4))
-        }
-        generatorCard.addView(genTitle)
-
-        val genDesc = TextView(this).apply {
-            text = "Synthesizes a bespoke 3D isometric floating-island cutout for any city right on your phone, automatically removes the background, and generates Day, Sunset & Starry Night variants."
-            setTextColor(Color.parseColor("#c6ddf0"))
+        val locHint = TextView(this).apply {
+            text = "Pick any city or town for live Open-Meteo weather (e.g. Tabb, VA) while keeping whichever 3D isometric diorama you like best."
+            setTextColor(Color.parseColor("#b8d4ec"))
             textSize = 12f
-            setPadding(0, 0, 0, dp(8))
+            setPadding(0, 0, 0, dp(6))
         }
-        generatorCard.addView(genDesc)
-
-        customCityInput = EditText(this).apply {
-            setText(prefs.getString("locationName", "Yorktown, VA") ?: "Yorktown, VA")
-            hint = "Enter city or architectural theme (e.g. Kyoto, Paris, Charleston, SC)..."
-            setHintTextColor(Color.parseColor("#7c96b0"))
-            setTextColor(Color.WHITE)
-            textSize = 13.5f
-            setSingleLine(true)
-            setPadding(dp(10), dp(8), dp(10), dp(8))
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(8).toFloat()
-                setColor(Color.parseColor("#0d1b2a"))
-                setStroke(dp(1), Color.parseColor("#416788"))
-            }
-        }
-        generatorCard.addView(customCityInput)
-
-        val generateCutoutBtn = makeStyledButton("🎨 Generate & Apply High-Res 3D Cutout Now") {
-            hideKeyboard()
-            val targetCity = customCityInput.text.toString().trim().ifEmpty {
-                prefs.getString("locationName", "Yorktown, VA") ?: "Yorktown, VA"
-            }
-            generateCustomHighResCutoutOnDevice(targetCity)
-        }.apply {
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            lp.setMargins(0, dp(10), 0, dp(6))
-            layoutParams = lp
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(10).toFloat()
-                setColor(Color.parseColor("#2b5c8f"))
-                setStroke(dp(1), Color.parseColor("#7fc4f2"))
-            }
-        }
-        generatorCard.addView(generateCutoutBtn)
-
-        cutoutStatusLabel = TextView(this).apply {
-            val hasCustom = File(filesDir, "custom_city_day.png").exists()
-            text = if (hasCustom) "✓ Custom on-device city cutout is ready in storage."
-            else "Tip: You can also pick one of the 3 built-in Generic non-city dioramas above anytime."
-            setTextColor(Color.parseColor("#86efac"))
-            textSize = 11.5f
-        }
-        generatorCard.addView(cutoutStatusLabel)
-        configContainer.addView(generatorCard)
-
-        // --- SECTION 3: Location & Global City Search ---
-        configContainer.addView(makeSectionHeader("3. Active Weather Location & Presets"))
+        configContainer.addView(locHint)
 
         val searchRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -332,7 +267,7 @@ class MainActivity : Activity() {
             setPadding(0, dp(4), 0, dp(10))
         }
         val cityInput = EditText(this).apply {
-            hint = "Search city weather (e.g. Yorktown, San Francisco)..."
+            hint = "Search city weather (e.g. Tabb, Yorktown, San Francisco)..."
             setHintTextColor(Color.parseColor("#7c96b0"))
             setTextColor(Color.WHITE)
             textSize = 13.5f
@@ -367,16 +302,23 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
         }
         val presets = listOf(
-            PresetCity("Yorktown, VA", 37.2388f, -76.5097f, "yorktown"),
-            PresetCity("Williamsburg, VA", 37.2707f, -76.7075f, "yorktown"),
-            PresetCity("Norfolk, VA", 36.8508f, -76.2859f, "coastal"),
-            PresetCity("San Francisco, CA", 37.7749f, -122.4194f, "modern"),
-            PresetCity("Zermatt, Alps", 46.0207f, 7.7491f, "alpine"),
-            PresetCity("Tokyo, Japan", 35.6762f, 139.6503f, "modern")
+            PresetCity("Yorktown, VA", 37.2388f, -76.5097f),
+            PresetCity("Tabb, VA", 37.1310f, -76.4452f),
+            PresetCity("Jamestown, VA", 37.2085f, -76.7741f),
+            PresetCity("Williamsburg, VA", 37.2707f, -76.7075f),
+            PresetCity("Washington, D.C.", 38.8951f, -77.0364f),
+            PresetCity("New York, NY", 40.7128f, -74.0060f),
+            PresetCity("San Francisco, CA", 37.7749f, -122.4194f),
+            PresetCity("Chicago, IL", 41.8781f, -87.6298f),
+            PresetCity("London, UK", 51.5074f, -0.1278f),
+            PresetCity("Paris, FR", 48.8566f, 2.3522f),
+            PresetCity("Rome, IT", 41.9028f, 12.4964f),
+            PresetCity("Cairo, EG", 30.0444f, 31.2357f),
+            PresetCity("Tokyo, JP", 35.6762f, 139.6503f)
         )
         for (p in presets) {
             val chip = makeStyledButton(p.name) {
-                saveLocation(p.name, p.lat, p.lon, p.suggestedTheme)
+                saveLocation(p.name, p.lat, p.lon)
             }.apply {
                 val lp = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -684,208 +626,6 @@ class MainActivity : Activity() {
         return row to pickerBtn
     }
 
-    /**
-     * Built-in on-device High-Res Diorama Cutout Generator ("Section D" integrated directly into the Config Menu).
-     * 1. Queries Wikipedia GeoSearch for local landmarks of `cityName`.
-     * 2. Downloads a 1376x768 3D isometric floating island render on a sky-blue backdrop.
-     * 3. Runs edge flood-fill background removal on-device to produce a clean transparent RGBA island cutout.
-     * 4. Generates Day, Sunset (Golden Hour), and Night (Illuminated Windows) PNG variants in `filesDir`.
-     */
-    private fun generateCustomHighResCutoutOnDevice(cityName: String) {
-        val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
-        val lat = prefs.getFloat("latitude", 37.2388f)
-        val lon = prefs.getFloat("longitude", -76.5097f)
-
-        cutoutStatusLabel.setTextColor(Color.parseColor("#ffd166"))
-        cutoutStatusLabel.text = "⏳ Step 1/3: Discovering landmarks & synthesizing 3D isometric island for '$cityName'..."
-
-        scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                runCatching {
-                    // 1. Discover landmarks via Wikipedia GeoSearch if coordinates match active city
-                    val landmarks = mutableListOf<String>()
-                    runCatching {
-                        val wikiUrl = "https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=$lat|$lon&gsradius=8000&gslimit=4&format=json"
-                        val conn = (URL(wikiUrl).openConnection() as HttpURLConnection).apply {
-                            connectTimeout = 5000
-                            readTimeout = 5000
-                        }
-                        val json = JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
-                        val arr = json.optJSONObject("query")?.optJSONArray("geosearch")
-                        if (arr != null) {
-                            for (i in 0 until arr.length()) {
-                                landmarks.add(arr.getJSONObject(i).getString("title"))
-                            }
-                        }
-                    }
-
-                    withContext(Dispatchers.Main) {
-                        cutoutStatusLabel.text = "⏳ Step 2/3: Downloading high-res 3D isometric diorama for $cityName..."
-                    }
-
-                    val landmarkClause = if (landmarks.isNotEmpty()) {
-                        "featuring ${landmarks.joinToString(", ")}, "
-                    } else {
-                        "featuring iconic architecture, waterfront, bridges and trees, "
-                    }
-                    val prompt = "Cute 3D isometric miniature city diorama of $cityName, $landmarkClause" +
-                        "floating architectural island model, clean cut-out rounded rectangular base, " +
-                        "isolated on a solid flat light sky blue background, tilt-shift miniature style, sharp 8k digital illustration, no text, no labels"
-                    val encoded = URLEncoder.encode(prompt, "UTF-8")
-                    val imgUrl = URL("https://image.pollinations.ai/prompt/$encoded?width=960&height=540&nologo=true&seed=42")
-                    val conn = (imgUrl.openConnection() as HttpURLConnection).apply {
-                        connectTimeout = 15000
-                        readTimeout = 15000
-                    }
-                    val rawBmp = conn.inputStream.use { BitmapFactory.decodeStream(it) }
-                        ?: error("Could not decode synthesized image")
-
-                    withContext(Dispatchers.Main) {
-                        cutoutStatusLabel.text = "⏳ Step 3/3: Extracting transparent island cutout & building Day / Sunset / Night variants..."
-                    }
-
-                    extractAndSaveDaySunsetNightCutouts(rawBmp)
-                    landmarks
-                }
-            }
-
-            result.onSuccess { landmarks ->
-                prefs.edit()
-                    .putString("dioramaTheme", "custom_city")
-                    .apply()
-                dioramaThemeButton.text = "▼  ✨ Custom Generated High-Res City Diorama Cutout (Any City)"
-                val lmInfo = if (landmarks.isNotEmpty()) " (${landmarks.take(3).joinToString(", ")})" else ""
-                cutoutStatusLabel.setTextColor(Color.parseColor("#86efac"))
-                cutoutStatusLabel.text = "✓ Generated & applied custom Day/Sunset/Night 3D cutouts for $cityName$lmInfo!"
-                applyAndRefreshWidgets("Custom 3D cutout generated for $cityName")
-            }.onFailure { err ->
-                cutoutStatusLabel.setTextColor(Color.parseColor("#fca5a5"))
-                cutoutStatusLabel.text = "Network busy while generating custom cutout (${err.message}). Using built-in high-res diorama."
-            }
-        }
-    }
-
-    /**
-     * Performs edge flood-fill background removal on `rawBmp` and saves:
-     *   - `custom_city_day.png`
-     *   - `custom_city_sunset.png`
-     *   - `custom_city_night.png`
-     * into `context.filesDir`.
-     */
-    private fun extractAndSaveDaySunsetNightCutouts(rawBmp: Bitmap) {
-        val w = rawBmp.width
-        val h = rawBmp.height
-        val pixels = IntArray(w * h)
-        rawBmp.getPixels(pixels, 0, w, 0, 0, w, h)
-
-        // Sample border pixels to estimate studio sky background color
-        var rSum = 0L
-        var gSum = 0L
-        var bSum = 0L
-        var count = 0
-        for (x in 0 until w step 4) {
-            val cTop = pixels[x]
-            rSum += Color.red(cTop)
-            gSum += Color.green(cTop)
-            bSum += Color.blue(cTop)
-            count++
-        }
-        val bgR = (rSum / max(1, count)).toInt()
-        val bgG = (gSum / max(1, count)).toInt()
-        val bgB = (bSum / max(1, count)).toInt()
-
-        fun colorDist(c: Int): Float {
-            val dr = (Color.red(c) - bgR).toFloat()
-            val dg = (Color.green(c) - bgG).toFloat()
-            val db = (Color.blue(c) - bgB).toFloat()
-            return sqrt(dr * dr + dg * dg + db * db)
-        }
-
-        val visited = BooleanArray(w * h)
-        val queue = ArrayDeque<Int>()
-        for (x in 0 until w) {
-            queue.add(x)
-            visited[x] = true
-            val botIdx = (h - 1) * w + x
-            if (colorDist(pixels[botIdx]) < 52f) {
-                queue.add(botIdx)
-                visited[botIdx] = true
-            }
-        }
-        for (y in 0 until h) {
-            val leftIdx = y * w
-            if (!visited[leftIdx] && colorDist(pixels[leftIdx]) < 56f) {
-                queue.add(leftIdx)
-                visited[leftIdx] = true
-            }
-            val rightIdx = y * w + (w - 1)
-            if (!visited[rightIdx] && colorDist(pixels[rightIdx]) < 56f) {
-                queue.add(rightIdx)
-                visited[rightIdx] = true
-            }
-        }
-
-        while (!queue.isEmpty()) {
-            val idx = queue.removeFirst()
-            val x = idx % w
-            val y = idx / w
-            val neighbors = intArrayOf(
-                if (x > 0) idx - 1 else -1,
-                if (x + 1 < w) idx + 1 else -1,
-                if (y > 0) idx - w else -1,
-                if (y + 1 < h) idx + w else -1
-            )
-            for (n in neighbors) {
-                if (n >= 0 && !visited[n] && colorDist(pixels[n]) < 48f) {
-                    visited[n] = true
-                    queue.add(n)
-                }
-            }
-        }
-
-        val dayPixels = IntArray(w * h)
-        val sunsetPixels = IntArray(w * h)
-        val nightPixels = IntArray(w * h)
-
-        for (i in 0 until w * h) {
-            if (visited[i]) {
-                dayPixels[i] = Color.TRANSPARENT
-                sunsetPixels[i] = Color.TRANSPARENT
-                nightPixels[i] = Color.TRANSPARENT
-            } else {
-                val c = pixels[i]
-                val r = Color.red(c)
-                val g = Color.green(c)
-                val b = Color.blue(c)
-                dayPixels[i] = Color.argb(255, r, g, b)
-
-                val sr = min(255, (r * 1.12f + 12f).roundToInt())
-                val sg = min(255, (g * 0.92f).roundToInt())
-                val sb = min(255, (b * 0.80f).roundToInt())
-                sunsetPixels[i] = Color.argb(255, sr, sg, sb)
-
-                val lum = 0.299f * r + 0.587f * g + 0.114f * b
-                if (lum > 185f && r > 175 && g > 145) {
-                    nightPixels[i] = Color.argb(255, min(255, (r * 1.08f).roundToInt()), min(255, (g * 0.94f).roundToInt()), (b * 0.58f).roundToInt())
-                } else {
-                    nightPixels[i] = Color.argb(255, (r * 0.34f).roundToInt(), (g * 0.44f).roundToInt(), min(255, (b * 0.68f + 14f).roundToInt()))
-                }
-            }
-        }
-
-        fun saveBmp(px: IntArray, fileName: String) {
-            val outBmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-            outBmp.setPixels(px, 0, w, 0, 0, w, h)
-            FileOutputStream(File(filesDir, fileName)).use { fos ->
-                outBmp.compress(Bitmap.CompressFormat.PNG, 95, fos)
-            }
-        }
-
-        saveBmp(dayPixels, "custom_city_day.png")
-        saveBmp(sunsetPixels, "custom_city_sunset.png")
-        saveBmp(nightPixels, "custom_city_night.png")
-    }
-
     private fun geocodeAndApplyCity(query: String) {
         statusLabel.text = "Searching Open-Meteo directory for '$query'..."
         scope.launch {
@@ -916,34 +656,26 @@ class MainActivity : Activity() {
             }
             if (result != null) {
                 val (disp, lat, lon) = result
-                customCityInput.setText(disp)
-                saveLocation(disp, lat, lon, null)
+                saveLocation(disp, lat, lon)
             } else {
                 statusLabel.text = "No matching location found for '$query'."
             }
         }
     }
 
-    private fun saveLocation(name: String, lat: Float, lon: Float, suggestedTheme: String?) {
+    /**
+     * Saves the active weather telemetry coordinates (`name`, `lat`, `lon`) independently of
+     * the user's selected 3D Isometric Diorama (`dioramaTheme`).
+     */
+    private fun saveLocation(name: String, lat: Float, lon: Float) {
         val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
-        val editor = prefs.edit()
+        prefs.edit()
             .putString("locationName", name)
             .putFloat("latitude", lat)
             .putFloat("longitude", lon)
-        if (suggestedTheme != null) {
-            editor.putString("dioramaTheme", suggestedTheme)
-            val themeLabel = when (suggestedTheme) {
-                "coastal" -> "⚓ Generic: Coastal Harbor & Lighthouse Town (Non-City-Specific)"
-                "modern" -> "🌆 Generic: Modern Downtown Metropolis & Bridge (Non-City-Specific)"
-                "alpine" -> "🏔️ Generic: Alpine Mountain & Lake Village (Non-City-Specific)"
-                else -> "🏛️ Historic Yorktown, VA (1781 Waterfront & Coleman Bridge)"
-            }
-            dioramaThemeButton.text = "▼  $themeLabel"
-        }
-        editor.apply()
-        customCityInput.setText(name)
+            .apply()
         activeLocationHeader.text = "⚙️ Global 3D Isometric Weather\nActive Location: $name"
-        applyAndRefreshWidgets("Location set to $name")
+        applyAndRefreshWidgets("Weather location set to $name (3D Diorama render unchanged)")
     }
 
     private fun syncSettingsToWebView() {
@@ -995,7 +727,6 @@ class MainActivity : Activity() {
     private data class PresetCity(
         val name: String,
         val lat: Float,
-        val lon: Float,
-        val suggestedTheme: String
+        val lon: Float
     )
 }

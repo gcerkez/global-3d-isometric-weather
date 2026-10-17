@@ -35,16 +35,12 @@
             <default>15</default>
         </entry>
         <entry name="renderMode" type="String">
-            <label>Render Mode (hybrid, procedural3d, ai_generative)</label>
+            <label>Render Mode (hybrid, procedural3d)</label>
             <default>hybrid</default>
         </entry>
         <entry name="dioramaTheme" type="String">
-            <label>3D Diorama Scene Theme (yorktown, coastal, modern, alpine, custom_city)</label>
+            <label>Pre-Generated 3D Diorama Scene Theme (yorktown, jamestown, washington_dc, new_york, san_francisco, chicago_great_lakes, grand_canyon, new_orleans, seattle_pnw, miami_caribbean, coastal, modern, alpine, london_uk, paris_europe, rome_mediterranean, cairo_giza, tokyo_east_asia)</label>
             <default>yorktown</default>
-        </entry>
-        <entry name="customDioramaUrl" type="String">
-            <label>Custom Generated City Diorama URL or Local Path</label>
-            <default></default>
         </entry>
         <entry name="dioramaZoom" type="Double">
             <label>Isometric Diorama Zoom Factor (0.70 to 2.25)</label>

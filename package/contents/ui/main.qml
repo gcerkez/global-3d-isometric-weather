@@ -47,7 +47,6 @@ PlasmoidItem {
     readonly property int cfgRefreshMins: Plasmoid.configuration.refreshIntervalMinutes || 15
     readonly property string cfgRenderMode: Plasmoid.configuration.renderMode || "hybrid"
     readonly property string cfgDioramaTheme: Plasmoid.configuration.dioramaTheme || "yorktown"
-    readonly property string cfgCustomDioramaUrl: Plasmoid.configuration.customDioramaUrl || ""
     readonly property double cfgDioramaZoom: Plasmoid.configuration.dioramaZoom !== undefined ? Plasmoid.configuration.dioramaZoom : 1.0
     readonly property int cfgDioramaOffsetX: Plasmoid.configuration.dioramaOffsetX !== undefined ? Plasmoid.configuration.dioramaOffsetX : 0
     readonly property string cfgTimeMode: Plasmoid.configuration.timeOfDayMode || "realtime"
@@ -453,7 +452,7 @@ PlasmoidItem {
             renderFrontLayerOnly: false
         }
 
-        // 3A. Hybrid / Pre-Generated / Custom City Cutout Mode: High-Detail 3D Isometric Diorama + Animated Water, Frost & Night Illumination
+        // 3A. Pre-Generated 3D Isometric Cutout Mode: High-Detail 3D Isometric Diorama + Animated Water, Frost & Night Illumination
         YorktownHybridScene {
             anchors.fill: parent
             visible: root.cfgRenderMode !== "procedural3d"
@@ -462,8 +461,6 @@ PlasmoidItem {
             showLandmarkLabels: root.cfgShowLandmarks
             dynamicLandmarks: root.dynamicLandmarks
             dioramaTheme: root.cfgDioramaTheme
-            useAiDiorama: root.cfgRenderMode === "ai_generative" || root.cfgDioramaTheme === "custom_city"
-            aiDioramaUrl: root.cfgCustomDioramaUrl.length > 0 ? root.cfgCustomDioramaUrl : root.aiDioramaUrl
             cameraZoom: root.cfgDioramaZoom
             cameraPanX: root.cfgDioramaOffsetX
             onZoomEdited: function(newZoom) {

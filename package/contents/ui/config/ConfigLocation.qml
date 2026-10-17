@@ -3,7 +3,6 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.kcmutils as KCM
-import "../js/LocationGenerator.js" as LocGen
 
 KCM.SimpleKCM {
     id: root
@@ -16,7 +15,6 @@ KCM.SimpleKCM {
     property string cfg_windSpeedUnit
     property int cfg_refreshIntervalMinutes
     property string cfg_dioramaTheme
-    property string cfg_customDioramaUrl
     property string cfg_renderMode
 
     ListModel {
@@ -25,7 +23,6 @@ KCM.SimpleKCM {
 
     property bool searching: false
     property string searchStatusText: ""
-    property string cutoutStatusText: ""
 
     function searchCity(query) {
         if (!query || query.trim().length < 2) {
@@ -59,7 +56,7 @@ KCM.SimpleKCM {
                                     "elevation": r.elevation || 0
                                 })
                             }
-                            searchStatusText = "Found " + resp.results.length + " locations. Click one to apply."
+                            searchStatusText = "Found " + resp.results.length + " locations. Click one to update live weather coordinates (your 3D diorama scene remains unchanged)."
                         } else {
                             searchStatusText = "No matching locations found."
                         }
@@ -74,29 +71,11 @@ KCM.SimpleKCM {
         xhr.send()
     }
 
-    function applyPreset(name, subtitle, lat, lon, themeKey) {
+    function applyWeatherLocation(name, subtitle, lat, lon) {
         cfg_locationName = name
         cfg_regionSubtitle = subtitle
         cfg_latitude = lat
         cfg_longitude = lon
-        if (themeKey) {
-            cfg_dioramaTheme = themeKey
-        }
-    }
-
-    function generateCutoutForCurrentLocation() {
-        var city = root.cfg_locationName || "Yorktown, VA"
-        root.cutoutStatusText = "Discovering landmarks & synthesizing high-res 3D isometric cutout for " + city + "..."
-        LocGen.fetchWikipediaLandmarks(root.cfg_latitude || 37.2388, root.cfg_longitude || -76.5097, function(landmarks) {
-            var titles = []
-            for (var i = 0; i < landmarks.length; i++) titles.push(landmarks[i].title)
-            var url = LocGen.buildGenerativeDioramaUrl(city, titles, "day", "clear")
-            root.cfg_customDioramaUrl = url
-            root.cfg_dioramaTheme = "custom_city"
-            root.cfg_renderMode = "hybrid"
-            root.cutoutStatusText = "✓ Generated custom high-res 3D diorama for " + city
-                + (titles.length > 0 ? (" (" + titles.slice(0, 3).join(", ") + ")") : "") + ". Click Apply to save."
-        })
     }
 
     Kirigami.FormLayout {
@@ -104,7 +83,7 @@ KCM.SimpleKCM {
 
         Kirigami.Separator {
             Kirigami.FormData.isSection: true
-            Kirigami.FormData.label: i18n("Active Location")
+            Kirigami.FormData.label: i18n("Active Weather Telemetry Location (Independent of 3D Diorama Visual)")
         }
 
         QQC2.TextField {
@@ -148,27 +127,6 @@ KCM.SimpleKCM {
             }
         }
 
-        RowLayout {
-            Kirigami.FormData.label: i18n("City Diorama Cutout:")
-            Layout.fillWidth: true
-            spacing: 8
-
-            QQC2.Button {
-                text: i18n("✨ Generate Custom High-Res Diorama Cutout for Active City")
-                icon.name: "view-refresh"
-                onClicked: root.generateCutoutForCurrentLocation()
-            }
-        }
-
-        QQC2.Label {
-            visible: root.cutoutStatusText.length > 0
-            text: root.cutoutStatusText
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-            opacity: 0.85
-            font.italic: true
-        }
-
         Kirigami.Separator {
             Kirigami.FormData.isSection: true
             Kirigami.FormData.label: i18n("Search Any City (Open-Meteo Geocoding)")
@@ -181,7 +139,7 @@ KCM.SimpleKCM {
 
             QQC2.TextField {
                 id: searchInput
-                placeholderText: i18n("e.g., Yorktown, Williamsburg, San Francisco...")
+                placeholderText: i18n("e.g., Tabb, Yorktown, Williamsburg, San Francisco, Tokyo...")
                 Layout.fillWidth: true
                 onAccepted: root.searchCity(text)
             }
@@ -196,6 +154,8 @@ KCM.SimpleKCM {
         QQC2.Label {
             visible: root.searchStatusText.length > 0
             text: root.searchStatusText
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
             opacity: 0.75
             font.italic: true
         }
@@ -212,15 +172,13 @@ KCM.SimpleKCM {
                     text: model.fullName + "  [" + model.lat.toFixed(3) + ", " + model.lon.toFixed(3) + "]"
                     icon.name: "mark-location"
                     onClicked: {
-                        var isYorktown = model.displayName.toLowerCase().indexOf("yorktown") !== -1
-                        root.applyPreset(
+                        root.applyWeatherLocation(
                             model.displayName,
-                            isYorktown ? "Historic Colonial Waterfront & 1781 Battlefield" : "3D Isometric Regional Diorama",
+                            "Live Open-Meteo Telemetry • 3D Isometric Weather",
                             model.lat,
-                            model.lon,
-                            isYorktown ? "yorktown" : ""
+                            model.lon
                         )
-                        root.searchStatusText = "Selected: " + model.displayName
+                        root.searchStatusText = "Selected weather location: " + model.displayName + " (3D Diorama kept as configured in Appearance)"
                     }
                 }
             }
@@ -228,33 +186,45 @@ KCM.SimpleKCM {
 
         Kirigami.Separator {
             Kirigami.FormData.isSection: true
-            Kirigami.FormData.label: i18n("Quick Regional Presets")
+            Kirigami.FormData.label: i18n("Quick Weather Coordinate Presets")
         }
 
         Flow {
-            Kirigami.FormData.label: i18n("Presets:")
+            Kirigami.FormData.label: i18n("Virginia & US:")
             Layout.fillWidth: true
             spacing: 6
 
             QQC2.Button {
-                text: "Yorktown, VA (Default)"
-                onClicked: root.applyPreset("Yorktown, VA", "Historic Colonial Waterfront & 1781 Battlefield", 37.2388, -76.5097, "yorktown")
+                text: "Yorktown, VA"
+                onClicked: root.applyWeatherLocation("Yorktown, VA", "Historic Colonial Waterfront & 1781 Battlefield", 37.2388, -76.5097)
             }
             QQC2.Button {
-                text: "Williamsburg, VA"
-                onClicked: root.applyPreset("Williamsburg, VA", "Historic Colonial Capital", 37.2707, -76.7075, "yorktown")
+                text: "Tabb, VA"
+                onClicked: root.applyWeatherLocation("Tabb, VA", "York County & Virginia Peninsula", 37.1310, -76.4452)
             }
             QQC2.Button {
                 text: "Jamestown, VA"
-                onClicked: root.applyPreset("Jamestown, VA", "Historic 1607 James River Settlement", 37.2085, -76.7741, "coastal")
+                onClicked: root.applyWeatherLocation("Jamestown, VA", "Historic 1607 James River Settlement", 37.2085, -76.7741)
             }
             QQC2.Button {
-                text: "Norfolk, VA"
-                onClicked: root.applyPreset("Norfolk, VA", "Chesapeake Bay Naval Waterfront", 36.8508, -76.2859, "coastal")
+                text: "Williamsburg, VA"
+                onClicked: root.applyWeatherLocation("Williamsburg, VA", "Historic Colonial Capital", 37.2707, -76.7075)
+            }
+            QQC2.Button {
+                text: "Washington, D.C."
+                onClicked: root.applyWeatherLocation("Washington, D.C.", "National Mall & Tidal Basin", 38.8951, -77.0364)
+            }
+            QQC2.Button {
+                text: "New York, NY"
+                onClicked: root.applyWeatherLocation("New York, NY", "Manhattan & Hudson Harbor", 40.7128, -74.0060)
             }
             QQC2.Button {
                 text: "San Francisco, CA"
-                onClicked: root.applyPreset("San Francisco, CA", "Bay Area & Golden Gate Waterfront", 37.7749, -122.4194, "modern")
+                onClicked: root.applyWeatherLocation("San Francisco, CA", "Bay Area & Golden Gate Waterfront", 37.7749, -122.4194)
+            }
+            QQC2.Button {
+                text: "Chicago, IL"
+                onClicked: root.applyWeatherLocation("Chicago, IL", "Lake Michigan & Loop Waterfront", 41.8781, -87.6298)
             }
         }
 

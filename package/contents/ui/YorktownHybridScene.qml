@@ -19,9 +19,7 @@ Item {
     property string timeState: "day" // day, sunset, night
     property bool showLandmarkLabels: true
     property real animPhase: 0.0
-    property string dioramaTheme: "yorktown" // "yorktown" | "coastal" | "modern" | "alpine" | "custom_city"
-    property string aiDioramaUrl: ""
-    property bool useAiDiorama: false
+    property string dioramaTheme: "yorktown"
     property var dynamicLandmarks: []
 
     // Interactive Zoom & Horizontal Centering/Offset (moves isometric left/right while HUD stays fixed)
@@ -31,6 +29,13 @@ Item {
 
     signal zoomEdited(real newZoom)
     signal panXEdited(int newPanX)
+
+    readonly property var validDioramaThemes: [
+        "yorktown", "jamestown", "washington_dc", "new_york", "san_francisco",
+        "chicago_great_lakes", "grand_canyon", "new_orleans", "seattle_pnw",
+        "miami_caribbean", "coastal", "modern", "alpine",
+        "london_uk", "paris_europe", "rome_mediterranean", "cairo_giza", "tokyo_east_asia"
+    ]
 
     readonly property var defaultYorktownLandmarks: [
         {
@@ -57,6 +62,24 @@ Item {
             title: "Historic Main Street & Custom House",
             desc: "18th-century Colonial brick buildings including the Custom House (1721), Nelson House & Swan Tavern.",
             nx: 0.495, ny: 0.635
+        }
+    ]
+
+    readonly property var jamestownLandmarks: [
+        {
+            title: "1607 James Fort Triangular Palisade",
+            desc: "Historic wooden log palisade fort with three corner bulwarks and watchtowers built by the Virginia Company in 1607.",
+            nx: 0.485, ny: 0.395
+        },
+        {
+            title: "Susan Constant, Godspeed & Discovery",
+            desc: "17th-century English square-rigged ships moored along the James River shoreline.",
+            nx: 0.640, ny: 0.560
+        },
+        {
+            title: "1608 Colonial Brick Church Tower",
+            desc: "Historic church and half-timbered thatch-roof houses inside James Fort.",
+            nx: 0.525, ny: 0.295
         }
     ]
 
@@ -111,9 +134,9 @@ Item {
         }
     }
 
-    // Resolve image prefix for pre-generated themes ("yorktown", "coastal", "modern", "alpine")
+    // Resolve image prefix for all 18 pre-generated regional & landmark themes
     readonly property string resolvedThemePrefix: {
-        if (hybridScene.dioramaTheme === "coastal" || hybridScene.dioramaTheme === "modern" || hybridScene.dioramaTheme === "alpine") {
+        if (hybridScene.validDioramaThemes.indexOf(hybridScene.dioramaTheme) !== -1) {
             return hybridScene.dioramaTheme
         }
         return "yorktown"
@@ -137,17 +160,15 @@ Item {
             }
         ]
 
-        // Main transparent cutout of the selected 3D Isometric Diorama (Yorktown, Pre-Generated Generic, or Custom City AI Cutout)
+        // Main transparent cutout of the selected Pre-Generated 3D Isometric Diorama
         Image {
             id: dioramaImage
             anchors.fill: parent
-            source: ((hybridScene.useAiDiorama || hybridScene.dioramaTheme === "custom_city") && hybridScene.aiDioramaUrl.length > 0)
-                ? hybridScene.aiDioramaUrl
-                : (hybridScene.timeState === "night"
-                    ? ("../images/" + hybridScene.resolvedThemePrefix + "_island_night.png")
-                    : (hybridScene.timeState === "sunset"
-                        ? ("../images/" + hybridScene.resolvedThemePrefix + "_island_sunset.png")
-                        : ("../images/" + hybridScene.resolvedThemePrefix + "_island.png")))
+            source: hybridScene.timeState === "night"
+                ? ("../images/" + hybridScene.resolvedThemePrefix + "_island_night.png")
+                : (hybridScene.timeState === "sunset"
+                    ? ("../images/" + hybridScene.resolvedThemePrefix + "_island_sunset.png")
+                    : ("../images/" + hybridScene.resolvedThemePrefix + "_island.png"))
             fillMode: Image.PreserveAspectFit
             smooth: true
             mipmap: true
@@ -197,7 +218,7 @@ Item {
                 var p = hybridScene.animPhase
                 var tState = hybridScene.timeState
                 var cat = hybridScene.weatherCategory
-                var isYorktownTheme = (hybridScene.dioramaTheme === "yorktown" && !hybridScene.useAiDiorama)
+                var isYorktownTheme = (hybridScene.dioramaTheme === "yorktown")
 
                 // 1. Animated water wave sparkles / ripples
                 var waterPoints = isYorktownTheme ? [
@@ -205,7 +226,7 @@ Item {
                     { x: 0.28, y: 0.46 }, { x: 0.33, y: 0.42 }, { x: 0.38, y: 0.34 },
                     { x: 0.44, y: 0.28 }, { x: 0.49, y: 0.32 }, { x: 0.21, y: 0.39 }
                 ] : [
-                    { x: 0.38, y: 0.68 }, { x: 0.45, y: 0.72 }, { x: 0.52, y: 0.70 }
+                    { x: 0.38, y: 0.68 }, { x: 0.46, y: 0.72 }, { x: 0.54, y: 0.66 }, { x: 0.62, y: 0.60 }
                 ]
                 for (var wi = 0; wi < waterPoints.length; wi++) {
                     var wp = waterPoints[wi]
@@ -432,13 +453,14 @@ Item {
             }
         }
 
-        // Interactive Landmark Hotspots (uses dynamic Wikipedia GeoSearch landmarks or Historic Yorktown defaults)
+        // Interactive Landmark Hotspots for Historic Yorktown & Jamestown dioramas
         Repeater {
-            model: (hybridScene.showLandmarkLabels && (hybridScene.dioramaTheme === "yorktown" || hybridScene.dioramaTheme === "custom_city"))
-                ? ((hybridScene.dynamicLandmarks && hybridScene.dynamicLandmarks.length > 0)
-                    ? hybridScene.dynamicLandmarks
-                    : hybridScene.defaultYorktownLandmarks)
-                : []
+            model: !hybridScene.showLandmarkLabels ? []
+                : (hybridScene.dioramaTheme === "jamestown"
+                    ? hybridScene.jamestownLandmarks
+                    : (hybridScene.dioramaTheme === "yorktown"
+                        ? hybridScene.defaultYorktownLandmarks
+                        : []))
 
             delegate: Item {
                 x: modelData.nx * islandViewport.width - width / 2

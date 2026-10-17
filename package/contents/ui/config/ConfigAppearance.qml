@@ -3,7 +3,6 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.kcmutils as KCM
-import "../js/LocationGenerator.js" as LocGen
 
 KCM.SimpleKCM {
     id: root
@@ -13,7 +12,6 @@ KCM.SimpleKCM {
     property double cfg_longitude
     property string cfg_renderMode
     property string cfg_dioramaTheme
-    property string cfg_customDioramaUrl
     property double cfg_dioramaZoom
     property int cfg_dioramaOffsetX
     property string cfg_timeOfDayMode
@@ -25,57 +23,20 @@ KCM.SimpleKCM {
     property bool cfg_showLocationBadge
     property double cfg_particleDensity
 
-    property string generatorStatus: ""
-    property bool generatingCutout: false
-
-    /**
-     * Synthesizes a custom high-resolution 3D isometric diorama cutout for any city
-     * directly inside the Configuration Menu by querying Wikipedia GeoSearch for
-     * real landmarks and generating a 1376x768 isometric island URL.
-     */
-    function generateCustomHighResDiorama(targetCityName) {
-        var city = (targetCityName && targetCityName.trim().length > 0)
-            ? targetCityName.trim()
-            : (root.cfg_locationName || "Yorktown, VA")
-
-        root.generatingCutout = true
-        root.generatorStatus = "Discovering landmarks for " + city + " and synthesizing high-res 3D isometric cutout..."
-
-        LocGen.fetchWikipediaLandmarks(root.cfg_latitude || 37.2388, root.cfg_longitude || -76.5097, function(landmarks) {
-            var titles = []
-            for (var i = 0; i < landmarks.length; i++) {
-                titles.push(landmarks[i].title)
-            }
-            var timeMode = (root.cfg_timeOfDayMode === "realtime") ? "day" : root.cfg_timeOfDayMode
-            var wxMode = (root.cfg_weatherOverride === "realtime") ? "clear" : root.cfg_weatherOverride
-            var url = LocGen.buildGenerativeDioramaUrl(city, titles, timeMode, wxMode)
-
-            root.cfg_customDioramaUrl = url
-            root.cfg_dioramaTheme = "custom_city"
-            root.cfg_renderMode = "hybrid"
-            dioramaThemeCombo.currentIndex = Math.max(0, dioramaThemeCombo.indexOfValue("custom_city"))
-            renderModeCombo.currentIndex = Math.max(0, renderModeCombo.indexOfValue("hybrid"))
-            root.generatingCutout = false
-            root.generatorStatus = "✓ Generated custom high-res 3D isometric diorama for " + city
-                + (titles.length > 0 ? (" (featuring " + titles.slice(0, 3).join(", ") + ")") : "") + ". Click Apply to save."
-        })
-    }
-
     Kirigami.FormLayout {
         anchors.fill: parent
 
         Kirigami.Separator {
             Kirigami.FormData.isSection: true
-            Kirigami.FormData.label: i18n("3D Isometric Rendering Engine & Pre-Generated Dioramas")
+            Kirigami.FormData.label: i18n("3D Isometric Rendering Engine & Pre-Generated Regional Dioramas")
         }
 
         QQC2.ComboBox {
             id: renderModeCombo
             Kirigami.FormData.label: i18n("Render Mode:")
             model: [
-                { text: i18n("Hybrid: High-Detail 3D Isometric Cutout + Real-Time Weather FX (Recommended)"), value: "hybrid" },
-                { text: i18n("Interactive Procedural 3D Diorama (Zoomable/Centerable + Live OpenStreetMap 3D Buildings)"), value: "procedural3d" },
-                { text: i18n("AI Generative Diorama (Auto-synthesizes 3D Isometric Art for Any Selected City)"), value: "ai_generative" }
+                { text: i18n("Pre-Generated 3D Isometric Cutout + Real-Time Weather FX (Recommended)"), value: "hybrid" },
+                { text: i18n("Interactive Procedural 3D Vector Diorama (Zoomable/Centerable + Live OSM)"), value: "procedural3d" }
             ]
             textRole: "text"
             valueRole: "value"
@@ -85,13 +46,27 @@ KCM.SimpleKCM {
 
         QQC2.ComboBox {
             id: dioramaThemeCombo
-            Kirigami.FormData.label: i18n("3D Diorama Scene:")
+            Kirigami.FormData.label: i18n("3D Isometric Diorama:")
+            Layout.fillWidth: true
             model: [
-                { text: i18n("Historic Yorktown, VA (1781 Colonial Waterfront & Coleman Bridge)"), value: "yorktown" },
-                { text: i18n("Pre-Generated Generic: Coastal Harbor & Lighthouse Town (Non-City-Specific)"), value: "coastal" },
-                { text: i18n("Pre-Generated Generic: Modern Downtown Metropolis & Bridge (Non-City-Specific)"), value: "modern" },
-                { text: i18n("Pre-Generated Generic: Alpine Mountain & Lake Village (Non-City-Specific)"), value: "alpine" },
-                { text: i18n("Custom Generated High-Res City Diorama Cutout (Any Global City)"), value: "custom_city" }
+                { text: i18n("Historic Yorktown, VA — 1781 Colonial Waterfront, Coleman Bridge & Tall Ship (NPS)"), value: "yorktown" },
+                { text: i18n("Historic Jamestown, VA — 1607 James Fort Palisade, 3 Ships & Turquoise River (NPS)"), value: "jamestown" },
+                { text: i18n("Washington, D.C. & Mid-Atlantic — US Capitol, Monument, Lincoln Memorial & Tidal Basin"), value: "washington_dc" },
+                { text: i18n("New York City & Northeast — Statue of Liberty, Brooklyn Bridge, Empire State & Harbor"), value: "new_york" },
+                { text: i18n("San Francisco & California Coast — Golden Gate Bridge, Alcatraz, Painted Ladies & Bay"), value: "san_francisco" },
+                { text: i18n("Chicago & Great Lakes Midwest — Willis Tower, Red Bascule Bridge, Navy Pier & Bean"), value: "chicago_great_lakes" },
+                { text: i18n("Grand Canyon & Southwest — Red-Rock Buttes, Cliff Dwellings, Arch Bridge & Colorado River"), value: "grand_canyon" },
+                { text: i18n("New Orleans & Gulf South — St. Louis Cathedral, French Quarter, Steamboat & Bayou"), value: "new_orleans" },
+                { text: i18n("Seattle & Pacific Northwest — Space Needle, Pike Place, Mt. Rainier & Puget Sound Ferry"), value: "seattle_pnw" },
+                { text: i18n("Miami Beach, Florida Keys & Tropics — Art Deco Ocean Drive, Overseas Bridge & Lagoon"), value: "miami_caribbean" },
+                { text: i18n("New England & Maritime Atlantic — Lighthouse Point, Schooner & Historic Wharf"), value: "coastal" },
+                { text: i18n("London & UK (Europe/London) — Big Ben, Parliament, Tower of London & Thames Bridge"), value: "london_uk" },
+                { text: i18n("Paris & Western Europe (Europe/Paris) — Notre-Dame, Louvre Palace, Arc & Seine Bridge"), value: "paris_europe" },
+                { text: i18n("Rome, Athens & Mediterranean — Colosseum, Parthenon, Roman Aqueduct & Harbor"), value: "rome_mediterranean" },
+                { text: i18n("Cairo, Giza & Middle East — Ancient Citadel, Sacred Temple Pool & Pharos Lighthouse"), value: "cairo_giza" },
+                { text: i18n("Tokyo, Kyoto & East Asia (Asia/Tokyo) — 5-Story Pagoda, Imperial Hall & Torii Bridge"), value: "tokyo_east_asia" },
+                { text: i18n("Global Modern Metropolis (Sydney / Singapore / Toronto) — Skyline & Harbour Bridge"), value: "modern" },
+                { text: i18n("Alpine Mountain & Glacial Lake Village (Rockies / Swiss Alps / Andes)"), value: "alpine" }
             ]
             textRole: "text"
             valueRole: "value"
@@ -99,37 +74,11 @@ KCM.SimpleKCM {
             onActivated: root.cfg_dioramaTheme = currentValue
         }
 
-        Kirigami.Separator {
-            Kirigami.FormData.isSection: true
-            Kirigami.FormData.label: i18n("Generate Custom High-Res Diorama Cutout for Any City")
-        }
-
-        RowLayout {
-            Kirigami.FormData.label: i18n("Target City / Prompt:")
-            Layout.fillWidth: true
-            spacing: 8
-
-            QQC2.TextField {
-                id: customCityPromptField
-                text: root.cfg_locationName || "Yorktown, VA"
-                placeholderText: i18n("Enter any city or architectural theme (e.g. Kyoto, Paris, Charleston, SC)...")
-                Layout.fillWidth: true
-            }
-
-            QQC2.Button {
-                text: root.generatingCutout ? i18n("Generating...") : i18n("✨ Generate High-Res Cutout")
-                icon.name: "view-refresh"
-                enabled: !root.generatingCutout
-                onClicked: root.generateCustomHighResDiorama(customCityPromptField.text)
-            }
-        }
-
         QQC2.Label {
-            visible: root.generatorStatus.length > 0
-            text: root.generatorStatus
+            text: i18n("Tip: Your 3D Isometric Diorama selection is independent of your weather coordinates — e.g., you can monitor live weather in Tabb, VA while displaying the Jamestown, Yorktown, Grand Canyon, or Tokyo 3D render.")
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
-            opacity: 0.85
+            opacity: 0.78
             font.italic: true
         }
 

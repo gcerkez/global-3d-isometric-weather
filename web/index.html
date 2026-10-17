@@ -127,12 +127,31 @@
       <div class="hud-controls">
         <input id="citySearch" type="text" placeholder="Search any city..." />
         <button id="btnSearch">Go</button>
-        <select id="themeSelect" title="3D Diorama Theme">
-          <option value="yorktown">🏛️ Yorktown, VA</option>
-          <option value="coastal">⚓ Generic: Coastal Harbor</option>
-          <option value="modern">🌆 Generic: Modern City</option>
-          <option value="alpine">🏔️ Generic: Alpine Village</option>
-          <option value="custom_city">✨ Custom City Cutout</option>
+        <select id="themeSelect" title="3D Isometric Diorama Scene (Independent of Weather Location)">
+          <optgroup label="Historic Virginia &amp; Mid-Atlantic (NPS)">
+            <option value="yorktown">🏛️ Historic Yorktown, VA (1781 Waterfront)</option>
+            <option value="jamestown">⛵ Historic Jamestown, VA (1607 James Fort)</option>
+            <option value="washington_dc">🏛️ Washington, D.C. (Capitol &amp; Tidal Basin)</option>
+          </optgroup>
+          <optgroup label="US Regions, Timezones &amp; National Parks">
+            <option value="new_york">🗽 New York City &amp; Northeast</option>
+            <option value="san_francisco">🌉 San Francisco &amp; California Coast</option>
+            <option value="chicago_great_lakes">🏙️ Chicago &amp; Great Lakes Midwest</option>
+            <option value="grand_canyon">🏜️ Grand Canyon &amp; Southwest</option>
+            <option value="new_orleans">🎷 New Orleans &amp; Gulf South</option>
+            <option value="seattle_pnw">🌲 Seattle &amp; Pacific Northwest</option>
+            <option value="miami_caribbean">🌴 Miami Beach, Keys &amp; Tropics</option>
+            <option value="coastal">⚓ New England &amp; Maritime Harbor</option>
+          </optgroup>
+          <optgroup label="Global Capitals &amp; UNESCO Landmarks">
+            <option value="london_uk">🕰️ London &amp; UK (Big Ben &amp; Tower)</option>
+            <option value="paris_europe">🏰 Paris &amp; Western Europe (Notre-Dame &amp; Louvre)</option>
+            <option value="rome_mediterranean">🏛️ Rome, Athens &amp; Mediterranean</option>
+            <option value="cairo_giza">🏺 Cairo, Giza &amp; Middle East</option>
+            <option value="tokyo_east_asia">⛩️ Tokyo, Kyoto &amp; East Asia</option>
+            <option value="modern">🌆 Global Metropolis (Sydney / Singapore / Toronto)</option>
+            <option value="alpine">🏔️ Alpine Mountain &amp; Lake Village</option>
+          </optgroup>
         </select>
         <button id="btnTime">☀️ Time</button>
       </div>
@@ -164,7 +183,7 @@
         document.getElementById("hudUv").textContent = `UV ${st.uvIndex.toFixed(1)}`;
         const moon = engine.computeMoonPhase();
         document.getElementById("hudMoon").textContent = `${moon.emoji} ${moon.name}`;
-        document.getElementById("locBadge").textContent = `${st.locationName} • ${st.dioramaTheme === "custom_city" ? "Custom 3D Cutout" : "3D Isometric"}`;
+        document.getElementById("locBadge").textContent = `${st.locationName} • 3D Isometric`;
       }
     });
     window.isoEngine = engine;
@@ -185,9 +204,6 @@
 
     document.getElementById("themeSelect").addEventListener("change", (e) => {
       engine.setDioramaTheme(e.target.value);
-      if (e.target.value === "custom_city") {
-        engine.refreshGenerativeLocation();
-      }
       engine.onHudUpdate(engine.state);
     });
 

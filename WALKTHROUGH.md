@@ -4,7 +4,7 @@ We designed, built, documented, and packaged the **Global 3D Isometric Weather W
 
 ---
 
-## 1. Visual Previews (KDE Plasma 6 & Pre-Generated Generic Dioramas)
+## 1. Visual Previews (KDE Plasma 6 & Pre-Generated Regional / Landmark Dioramas)
 
 | Sunny Daylight (Historic Yorktown 3D) | Night Rain & Expanded HUD (AQI / UV / Moon / 12h Sparkline) | Interactive Procedural 3D Mode |
 | :---: | :---: | :---: |
@@ -12,38 +12,48 @@ We designed, built, documented, and packaged the **Global 3D Isometric Weather W
 
 ---
 
-## 2. Built-In Pre-Generated Generic Dioramas & In-Menu Custom City Cutout Generator
+## 2. 18 Pre-Generated Regional, Timezone, NPS & UNESCO 3D Isometric Dioramas (Dropdown Selector)
 
-- **4 Built-In Pre-Generated 3D Isometric Diorama Sets (`1376×768` RGBA with Day, Sunset & Night variants)**:
-  1. **`yorktown`** (`yorktown_island*.png`): Historic Yorktown, VA (Coleman Memorial Bridge, 18th-Century Tall Ship, Colonial Main Street, Victory Monument, and 1781 Siege Redoubts).
-  2. **`coastal`** (`coastal_island*.png`): Pre-Generated Generic Coastal Harbor & Lighthouse Town (Non-City-Specific).
-  3. **`modern`** (`modern_island*.png`): Pre-Generated Generic Modern Downtown Metropolis & Suspension Bridge (Non-City-Specific).
-  4. **`alpine`** (`alpine_island*.png`): Pre-Generated Generic Alpine Mountain & Lake Village (Non-City-Specific).
-- **Integrated Config Menu Custom High-Res City Diorama Cutout Generator**:
-  - **KDE Plasma 6** (`package/contents/ui/config/ConfigAppearance.qml` & `ConfigLocation.qml`): Includes a **`✨ Generate High-Res Cutout`** button right inside the widget settings that discovers local Wikipedia landmarks and synthesizes a high-resolution 3D isometric cutout for any city.
-  - **Android** (`android/app/src/main/java/com/antigravity/yorktownweather/MainActivity.kt`): Includes an on-device **`🎨 Generate & Apply High-Res 3D Cutout Now`** card that queries Wikipedia GeoSearch, downloads a 3D isometric floating-island render, runs edge flood-fill background removal in Kotlin, and saves transparent `custom_city_day.png`, `custom_city_sunset.png`, and `custom_city_night.png` variants directly to device storage (`filesDir`).
+Every pre-generated diorama features **Jamestown-style translucent turquoise cutaway water blocks** and ships with **Daylight**, **Golden Hour / Sunset**, and **Starry Night** transparent PNG variants (**54 bundled cutouts** across `package/contents/images/`, `web/images/`, and `android/app/src/main/assets/web/images/`), selectable from a clean dropdown in the Configuration Menu:
+
+1. **`yorktown`** (`yorktown_island*.png`): **Historic Yorktown, VA** (NPS Colonial Historical Park — 1781 Colonial Waterfront, George P. Coleman Memorial Bridge, 18th-Century Tall Ship, Victory Monument & Siege Redoubts).
+2. **`jamestown`** (`jamestown_island*.png`): **Historic Jamestown, VA** (NPS 1607 Settlement — Triangular James Fort Wooden Palisade, Colonial Brick Church, Thatch Houses, *Susan Constant*, *Godspeed* & *Discovery* on Turquoise James River).
+3. **`washington_dc`** (`washington_dc_island*.png`): **Washington, D.C. & Mid-Atlantic** (`America/New_York` — U.S. Capitol Dome, Washington Monument Obelisk, Lincoln Memorial, Jefferson Memorial, Cherry Blossoms & Tidal Basin).
+4. **`new_york`** (`new_york_island*.png`): **New York City & Northeast** (`America/New_York` UNESCO / NPS — Statue of Liberty, Brooklyn Bridge, Empire State & Chrysler Skyline, Central Park & Harbor Ferry).
+5. **`san_francisco`** (`san_francisco_island*.png`): **San Francisco & California Coast** (`America/Los_Angeles` NPS — Golden Gate Bridge, Alcatraz Island Lighthouse, Painted Ladies Victorians, Coit Tower & Cable Car).
+6. **`chicago_great_lakes`** (`chicago_great_lakes_island*.png`): **Chicago & Great Lakes Midwest** (`America/Chicago` — Willis Tower, Red Bascule Drawbridge, Navy Pier Ferris Wheel, Cloud Gate Bean & Lake Michigan).
+7. **`grand_canyon`** (`grand_canyon_island*.png`): **Grand Canyon & American Southwest** (`America/Phoenix` & `America/Denver` UNESCO / NPS — Red-Rock Sandstone Buttes, Pueblo Cliff Dwellings, Arch Bridge & Turquoise Colorado River).
+8. **`new_orleans`** (`new_orleans_island*.png`): **New Orleans, Gulf Coast & Mississippi** (`America/Chicago` NPS — St. Louis Cathedral, French Quarter Cast-Iron Balconies, Streetcar, Paddlewheel Steamboat & Bayou).
+9. **`seattle_pnw`** (`seattle_pnw_island*.png`): **Seattle & Pacific Northwest** (`America/Los_Angeles` & `America/Anchorage` — Space Needle, Pike Place Market, Snow-Capped Mt. Rainier & Puget Sound Ferry).
+10. **`miami_caribbean`** (`miami_caribbean_island*.png`): **Miami Beach, Florida Keys & Tropics** (`America/New_York` & `Pacific/Honolulu` — Pastel Art Deco Ocean Drive, Seven Mile Overseas Bridge, Lighthouse & Coral Reef Lagoon).
+11. **`coastal`** (`coastal_island*.png`): **New England & Maritime Atlantic** (`America/New_York` & `America/Halifax` — Striped Coastal Lighthouse, Stone Pier, Schooners & Historic Wharf).
+12. **`london_uk`** (`london_uk_island*.png`): **London & British Isles** (`Europe/London` UNESCO — Big Ben Elizabeth Tower, Parliament, Tower of London Keep, Westminster Abbey, Red Phone Box, Double-Decker Bus & Thames Bridge).
+13. **`paris_europe`** (`paris_europe_island*.png`): **Paris & Western Europe** (`Europe/Paris` & `Europe/Berlin` UNESCO — Notre-Dame Cathedral, Louvre / Versailles Palace, Arc de Triomphe, Fountain Gardens & Seine Bridge).
+14. **`rome_mediterranean`** (`rome_mediterranean_island*.png`): **Rome, Athens & Mediterranean** (`Europe/Rome` & `Europe/Athens` UNESCO — Roman Colosseum, Parthenon, Roman Aqueduct, Pantheon Basilica & Harbor Lighthouse).
+15. **`cairo_giza`** (`cairo_giza_island*.png`): **Cairo, Giza & Middle East** (`Africa/Cairo` & `Asia/Dubai` UNESCO — Ancient Sandstone Citadel, Sacred Torch-Lit Temple Pool, Chariot Colonnade Temple & Pharos of Alexandria).
+16. **`tokyo_east_asia`** (`tokyo_east_asia_island*.png`): **Tokyo, Kyoto, Beijing & East Asia** (`Asia/Tokyo` & `Asia/Shanghai` UNESCO — 5-Story Pagoda, Imperial Palace Hall, Traditional Multi-Tiered Temple & Garden Bridge).
+17. **`modern`** (`modern_island*.png`): **Global Modern Metropolis** (`Australia/Sydney`, `Asia/Singapore`, `America/Toronto` — Glass Skyscraper District, Harbour Suspension Bridge & Ferry).
+18. **`alpine`** (`alpine_island*.png`): **Alpine Mountain & Glacial Lake Village** (`Europe/Zurich`, Rockies & Andes — Snow-Capped Peak, Timber Chalets, Stone Arch Bridge & Turquoise Glacial Lake).
 
 ---
 
-## 3. Isometric Zoom & Horizontal Centering (Rotation Removed, Overlay Stationary)
+## 3. Decoupled Weather Telemetry Location & 3D Diorama Visual
+
+- Weather coordinates (`latitude`, `longitude`, `locationName`) are completely independent of the selected 3D Isometric Diorama (`dioramaTheme`).
+- Searching or selecting any town/city (such as **Tabb, VA**, **Williamsburg, VA**, or any global city via Open-Meteo geocoding) updates live weather telemetry without overwriting the user's chosen 3D isometric render.
+- The unreliable online "Generate a Render" option has been removed across all platforms in favor of the 18 curated, zero-latency pre-generated 3D isometric cutout sets.
+
+---
+
+## 4. Isometric Zoom, Horizontal Centering & Extrapolated Android HUD
 
 - **Horizontal Centering / Offset (`◀` `🎯` `▶`) + Zoom (`➖` `➕`)**:
-  - Rotation has been removed across all platforms (`YorktownHybridScene.qml`, `YorktownProcedural3D.qml`, `web/isometric-weather.js`, and `IsometricWeatherWidgetProvider.kt`) so the isometric scene always remains at its optimal architectural angle.
-  - Users can move the entire 3D isometric diorama left, center (`0 px`), or right (`-220 px` to `+220 px`) using the bottom-left pill (`➖` `➕` `◀` `🎯` `▶`), horizontal mouse/touch drag, or Config Menu sliders while the **Weather HUD Overlay stays completely stationary** in its configured position.
-- **Static Scenic Miniature Sprites**:
-  - Animated walking people have been removed; static scenic miniature sprites (stationed Colonial Horse & Carriage on Historic Main Street, miniature cars on bridges, and sailboats) remain proportional to the 3D render.
-
----
-
-## 4. Extrapolated Android Homescreen HUD & Scroll-Safe Config Menu
-
-- **Extrapolated High-Readability Android HUD Without Covering the 3D Render** (`android/app/src/main/res/layout/widget_isometric_weather.xml` & `IsometricWeatherWidgetProvider.kt`):
-  - Renders the weather overlay using crisp native Android `RemoteViews` `TextView`s (`17sp+` bold temperature, condition, location, humidity, wind, AQI, UV, and Moon phase) instead of downsampled bitmap text.
-  - **Top-Sky Split Banner (`top-sky`, Default)**: Docks the wide, legible HUD across the upper sky while shifting the 3D isometric island downward (`islandOffsetY = +28f`) so **0% of the 3D rendering is obscured**.
-  - **Configurable HUD Text Scale**: Choose `100%`, `115% (Recommended)`, or `130% (Extra-Large)` in the Android Config Menu.
-- **Spacious, Scroll-Safe Android Config Menu** (`MainActivity.kt`):
-  - Uses a single full-screen `ScrollView` with `FOCUS_BEFORE_DESCENDANTS` so `EditText` boxes never steal focus while scrolling.
-  - Replaces all `Spinner` dropdowns with scroll-safe `Button` rows that open a native `AlertDialog` single-choice picker only on deliberate tap.
+  - Rotation is disabled so the isometric island remains at its optimal architectural angle.
+  - Users can shift the 3D isometric diorama left, center (`0 px`), or right (`-220 px` to `+220 px`) while the **Weather HUD Overlay stays stationary**.
+- **Extrapolated High-Readability Android HUD (`widget_isometric_weather.xml` & `IsometricWeatherWidgetProvider.kt`)**:
+  - Uses native high-DPI `RemoteViews` typography (`Top-Sky Split Banner` or `Corner Card`) with `100% / 115% / 130%` text scaling and shifts the 3D island slightly downward so **0% of the 3D rendering is covered**.
+- **Spacious, Scroll-Safe Android Config Menu (`MainActivity.kt`)**:
+  - Single full-screen `ScrollView` with `FOCUS_BEFORE_DESCENDANTS` and scroll-safe `AlertDialog` modal pickers.
 
 ---
 

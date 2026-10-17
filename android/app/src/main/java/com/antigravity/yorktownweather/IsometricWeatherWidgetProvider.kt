@@ -188,10 +188,23 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                 }
 
                 val themeLabel = when (cfg.dioramaTheme) {
-                    "coastal" -> "Coastal Harbor 3D"
-                    "modern" -> "Modern City 3D"
+                    "jamestown" -> "Historic Jamestown 3D"
+                    "washington_dc" -> "Washington, D.C. 3D"
+                    "new_york" -> "New York City 3D"
+                    "san_francisco" -> "San Francisco 3D"
+                    "chicago_great_lakes" -> "Chicago & Great Lakes 3D"
+                    "grand_canyon" -> "Grand Canyon & SW 3D"
+                    "new_orleans" -> "New Orleans 3D"
+                    "seattle_pnw" -> "Seattle & PNW 3D"
+                    "miami_caribbean" -> "Miami & Keys 3D"
+                    "coastal" -> "Maritime Harbor 3D"
+                    "london_uk" -> "London & UK 3D"
+                    "paris_europe" -> "Paris & Europe 3D"
+                    "rome_mediterranean" -> "Rome & Mediterranean 3D"
+                    "cairo_giza" -> "Cairo & Giza 3D"
+                    "tokyo_east_asia" -> "Tokyo & East Asia 3D"
+                    "modern" -> "Modern Metropolis 3D"
                     "alpine" -> "Alpine Village 3D"
-                    "custom_city" -> "Custom City 3D Cutout"
                     else -> "Historic Yorktown 3D"
                 }
 
@@ -262,39 +275,22 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
     }
 
     /**
-     * Loads the appropriate 3D isometric cutout bitmap:
-     *   - Built-in Pre-Generated Generic themes (`coastal`, `modern`, `alpine`)
-     *   - Historic `yorktown`
-     *   - On-device generated `custom_city` cutout stored in `context.filesDir`
+     * Loads the selected pre-generated 3D isometric cutout bitmap (`day`, `sunset`, or `night`)
+     * from the 18 regional, US state, timezone, NPS, and UNESCO landmark dioramas bundled in assets.
      */
     private fun loadDioramaBitmap(context: Context, cfg: WidgetConfig, wx: WeatherTelemetry): Bitmap? {
         val effectiveTime = if (cfg.timeMode != "realtime") cfg.timeMode else (if (wx.isDay) "day" else "night")
         val isNight = effectiveTime == "night"
         val isSunset = effectiveTime == "sunset"
 
-        // 1. Check for on-device Custom Generated High-Res City Cutout first
-        if (cfg.dioramaTheme == "custom_city" || cfg.renderMode == "ai_generative") {
-            val suffix = when {
-                isNight -> "night"
-                isSunset -> "sunset"
-                else -> "day"
-            }
-            val customFile = File(context.filesDir, "custom_city_$suffix.png")
-            if (customFile.exists() && customFile.length() > 1024) {
-                runCatching {
-                    val bmp = BitmapFactory.decodeFile(customFile.absolutePath)
-                    if (bmp != null) return bmp
-                }
-            }
-        }
-
-        // 2. Load from built-in Pre-Generated Diorama Cutout sets in assets
-        val prefix = when (cfg.dioramaTheme) {
-            "coastal" -> "coastal_island"
-            "modern" -> "modern_island"
-            "alpine" -> "alpine_island"
-            else -> "yorktown_island"
-        }
+        val validThemes = setOf(
+            "yorktown", "jamestown", "washington_dc", "new_york", "san_francisco",
+            "chicago_great_lakes", "grand_canyon", "new_orleans", "seattle_pnw",
+            "miami_caribbean", "coastal", "london_uk", "paris_europe",
+            "rome_mediterranean", "cairo_giza", "tokyo_east_asia", "modern", "alpine"
+        )
+        val cleanTheme = if (cfg.dioramaTheme in validThemes) cfg.dioramaTheme else "yorktown"
+        val prefix = "${cleanTheme}_island"
         val assetName = when {
             isNight -> "web/images/${prefix}_night.png"
             isSunset -> "web/images/${prefix}_sunset.png"

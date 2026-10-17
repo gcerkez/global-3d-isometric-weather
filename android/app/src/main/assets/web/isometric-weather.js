@@ -9,15 +9,35 @@
  *   - Open-Meteo Forecast & Air Quality live telemetry (Temp, Feels Like,
  *     Humidity, 16-compass Wind, US EPA AQI, UV Index, 12h Sparkline, 3-Day Forecast)
  *   - Astronomical Lunar Synodic Phase & Solar Golden Hour calculation
- *   - Built-In Pre-Generated 3D Isometric Diorama Themes:
- *       1. "yorktown": Historic Yorktown, VA (1781 Colonial Waterfront & Coleman Bridge)
- *       2. "coastal":  Generic Coastal Harbor & Lighthouse Town (Non-City-Specific)
- *       3. "modern":   Generic Modern Downtown Metropolis & Bridge (Non-City-Specific)
- *       4. "alpine":   Generic Alpine Mountain & Lake Village (Non-City-Specific)
- *       5. "custom_city": Custom Generated High-Res City Diorama Cutout (Any Global City)
+ *   - Built-In Pre-Generated 3D Isometric Diorama Themes (18 Regional, NPS & UNESCO Cutouts):
+ *       1. "yorktown":            Historic Yorktown, VA (1781 Waterfront, Coleman Bridge & Tall Ship)
+ *       2. "jamestown":           Historic Jamestown, VA (1607 James Fort Palisade, 3 Ships & Turquoise River)
+ *       3. "washington_dc":       Washington, D.C. & Mid-Atlantic (US Capitol, Monument, Lincoln Memorial)
+ *       4. "new_york":            New York City & Northeast (Statue of Liberty, Brooklyn Bridge, Empire State)
+ *       5. "san_francisco":       San Francisco & California Coast (Golden Gate Bridge, Alcatraz, Painted Ladies)
+ *       6. "chicago_great_lakes": Chicago & Great Lakes Midwest (Willis Tower, Red Bascule Bridge, Navy Pier)
+ *       7. "grand_canyon":        Grand Canyon & Southwest (Red-Rock Buttes, Cliff Dwellings & Colorado River)
+ *       8. "new_orleans":         New Orleans & Gulf South (St. Louis Cathedral, French Quarter & Steamboat)
+ *       9. "seattle_pnw":         Seattle & Pacific Northwest (Space Needle, Pike Place, Mt. Rainier & Ferry)
+ *      10. "miami_caribbean":     Miami Beach, Florida Keys & Tropics (Art Deco Ocean Drive & Coral Lagoon)
+ *      11. "coastal":             New England & Maritime Atlantic (Lighthouse Point, Schooner & Wharf)
+ *      12. "london_uk":           London & UK (Big Ben, Parliament, Tower of London & Thames Bridge)
+ *      13. "paris_europe":        Paris & Western Europe (Notre-Dame, Louvre Palace, Arc & Seine Bridge)
+ *      14. "rome_mediterranean":  Rome, Athens & Mediterranean (Colosseum, Parthenon, Aqueduct & Harbor)
+ *      15. "cairo_giza":          Cairo, Giza & Middle East (Ancient Citadel, Sacred Temple Pool & Pharos)
+ *      16. "tokyo_east_asia":     Tokyo, Kyoto & East Asia (5-Story Pagoda, Imperial Hall & Torii Bridge)
+ *      17. "modern":              Global Modern Metropolis (Sydney / Singapore / Toronto Skyline & Bridge)
+ *      18. "alpine":              Alpine Mountain & Glacial Lake Village (Rockies / Swiss Alps / Andes)
  *   - Isometric Zoom & Horizontal Centering (move left/right/center while HUD overlay stays fixed)
  *   - Static Miniature Diorama Sprites (Horse & Carriage, Cars, Sailboats)
  */
+
+export const VALID_DIORAMA_THEMES = [
+    "yorktown", "jamestown", "washington_dc", "new_york", "san_francisco",
+    "chicago_great_lakes", "grand_canyon", "new_orleans", "seattle_pnw",
+    "miami_caribbean", "coastal", "london_uk", "paris_europe",
+    "rome_mediterranean", "cairo_giza", "tokyo_east_asia", "modern", "alpine"
+];
 
 export class IsometricWeatherEngine {
     /**
@@ -34,8 +54,8 @@ export class IsometricWeatherEngine {
             regionSubtitle: options.regionSubtitle || "Historic Colonial Waterfront & 1781 Battlefield",
             latitude: options.latitude ?? 37.2388,
             longitude: options.longitude ?? -76.5097,
-            renderMode: options.renderMode || "hybrid",       // "hybrid" | "procedural3d" | "ai_generative"
-            dioramaTheme: options.dioramaTheme || "yorktown", // "yorktown" | "coastal" | "modern" | "alpine" | "custom_city"
+            renderMode: options.renderMode || "hybrid",       // "hybrid" | "procedural3d"
+            dioramaTheme: options.dioramaTheme || "yorktown", // Any of VALID_DIORAMA_THEMES (independent of weather lat/lon)
             timeMode: options.timeMode || "realtime",         // "realtime" | "day" | "sunset" | "night"
             weatherOverride: options.weatherOverride || "realtime",
             tempUnit: options.tempUnit || "BOTH",
@@ -59,23 +79,17 @@ export class IsometricWeatherEngine {
                 { dayName: "DAY 3", tempRange: "67° / 54°F" }
             ],
 
-            // Generative location state
-            landmarks: [],
-            osmBuildings: [],
-            aiDioramaUrl: "",
-
             // Isometric Zoom & Horizontal Offset (rotation intentionally disabled)
             cameraZoom: options.cameraZoom ?? 1.0,
             cameraPanX: options.cameraPanX ?? 0.0,
-            particleIntensity: options.particleIntensity ?? 1.0,
+            particleIntensity: options.particleIntensity ?? 0.5,
             animTime: 0
         };
 
         this.images = {
             day: new Image(),
             sunset: new Image(),
-            night: new Image(),
-            aiCustom: new Image()
+            night: new Image()
         };
         this.setDioramaTheme(this.state.dioramaTheme);
 
@@ -84,15 +98,13 @@ export class IsometricWeatherEngine {
     }
 
     /**
-     * Switches between the built-in pre-generated diorama cutout themes or custom city cutout.
-     * @param {"yorktown"|"coastal"|"modern"|"alpine"|"custom_city"} theme
+     * Switches between the 18 built-in pre-generated regional & landmark diorama cutout themes.
+     * @param {string} theme
      */
     setDioramaTheme(theme) {
-        this.state.dioramaTheme = theme || "yorktown";
-        let prefix = "yorktown_island";
-        if (theme === "coastal") prefix = "coastal_island";
-        else if (theme === "modern") prefix = "modern_island";
-        else if (theme === "alpine") prefix = "alpine_island";
+        const cleanTheme = VALID_DIORAMA_THEMES.includes(theme) ? theme : "yorktown";
+        this.state.dioramaTheme = cleanTheme;
+        const prefix = `${cleanTheme}_island`;
 
         this.images.day.src = `images/${prefix}.png`;
         this.images.sunset.src = `images/${prefix}_sunset.png`;
@@ -178,48 +190,7 @@ export class IsometricWeatherEngine {
             console.warn("Open-Meteo AQI fetch error:", err);
         }
 
-        await this.refreshGenerativeLocation();
         this.onHudUpdate(this.state);
-    }
-
-    /**
-     * Queries Wikipedia GeoSearch and synthesizes a high-res isometric diorama URL for any city.
-     */
-    async refreshGenerativeLocation() {
-        const { latitude, longitude, locationName } = this.state;
-        const isYorktown = Math.abs(latitude - 37.2388) < 0.08 && Math.abs(longitude - (-76.5097)) < 0.08;
-        if (isYorktown && this.state.dioramaTheme === "yorktown") {
-            this.state.landmarks = [];
-            this.state.osmBuildings = [];
-            return;
-        }
-
-        try {
-            const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${latitude}|${longitude}&gsradius=8000&gslimit=5&format=json&origin=*`;
-            const res = await fetch(wikiUrl);
-            const json = await res.json();
-            if (json.query && json.query.geosearch) {
-                const slots = [
-                    { nx: 0.365, ny: 0.365 }, { nx: 0.695, ny: 0.235 },
-                    { nx: 0.495, ny: 0.635 }, { nx: 0.775, ny: 0.485 }, { nx: 0.228, ny: 0.475 }
-                ];
-                this.state.landmarks = json.query.geosearch.slice(0, 5).map((item, i) => ({
-                    title: item.title,
-                    desc: `Notable landmark in ${locationName} (${Math.round(item.dist)}m from center).`,
-                    nx: slots[i].nx,
-                    ny: slots[i].ny
-                }));
-            }
-        } catch (e) {
-            console.warn("Wikipedia GeoSearch error:", e);
-        }
-
-        const landmarkNames = this.state.landmarks.map(l => l.title).join(", ") || `${locationName} waterfront and historic architecture`;
-        const prompt = `3D isometric miniature city diorama of ${locationName}, featuring ${landmarkNames}, tilt-shift architectural model, clean cut-out floating island base, high detail digital illustration`;
-        this.state.aiDioramaUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1376&height=768&nologo=true&seed=42`;
-        if (this.state.renderMode === "ai_generative" || this.state.dioramaTheme === "custom_city") {
-            this.images.aiCustom.src = this.state.aiDioramaUrl;
-        }
     }
 
     /**
@@ -355,12 +326,8 @@ export class IsometricWeatherEngine {
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, w, h);
 
-        // 2. Main Diorama Cutout with Zoom & Horizontal Offset (no rotation)
-        const useCustom = (this.state.renderMode === "ai_generative" || this.state.dioramaTheme === "custom_city")
-            && this.images.aiCustom.complete && this.images.aiCustom.naturalWidth > 0;
-        const img = useCustom
-            ? this.images.aiCustom
-            : (tState === "night" ? this.images.night : (tState === "sunset" ? this.images.sunset : this.images.day));
+        // 2. Main Pre-Generated Diorama Cutout with Zoom & Horizontal Offset (no rotation)
+        const img = tState === "night" ? this.images.night : (tState === "sunset" ? this.images.sunset : this.images.day);
 
         const baseScale = Math.min(w / 1376, h / 768);
         const dw = 1376 * baseScale;
@@ -401,7 +368,7 @@ export class IsometricWeatherEngine {
             ctx.stroke();
         }
 
-        if (this.state.dioramaTheme === "yorktown" && !useCustom) {
+        if (this.state.dioramaTheme === "yorktown") {
             // Static Sprite 1: Colonial Horse & Carriage stationed on Historic Main Street
             const hcX = dx + 0.442 * dw;
             const hcY = dy + 0.648 * dh;
