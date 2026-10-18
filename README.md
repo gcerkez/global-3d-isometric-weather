@@ -183,6 +183,23 @@ gradle -p android test assembleRelease
 # Output APK: android/app/build/outputs/apk/release/app-release.apk
 ```
 
+#### 3. Run Android SDK Mock Device UI Tests & Emulator (No Phone Required)
+To run user visual tests and widget validation without having a physical phone connected:
+- **Headless Mock Device UI Tests (Robolectric & AndroidX Test)**:
+  ```bash
+  gradle -p android test
+  ```
+  Runs 19 automated tests validating 5-tab layout navigation, camera framing controls, location presets, background sync intervals, widget RemoteViews inflation, alarm clock intent creation, and diorama canvas rendering.
+- **Interactive Visual Testing in Android Virtual Device (AVD Emulator)**:
+  ```bash
+  ./scripts/run_android_emulator.sh
+  ```
+  Or in **IntelliJ IDEA** / **Android Studio**:
+  1. Open the project in IntelliJ IDEA with the Android plugins installed.
+  2. Open **Tools -> Device Manager**.
+  3. Launch any virtual device (e.g. Pixel 8 / API 34).
+  4. Press **Run** to pop up the interactive emulator with the app installed for visual testing.
+
 ---
 
 ### Option C: Portable Web / PWA Widget

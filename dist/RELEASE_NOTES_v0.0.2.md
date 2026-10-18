@@ -33,10 +33,13 @@ Release `v0.0.2` of **Global 3D Isometric Weather Widget** (`com.antigravity.yor
     * **Tab 3 (`☀️ Atmosphere`)**: Sun & sky cycle, weather simulation overrides, and particle density.
     * **Tab 4 (`⚙️ Settings`)**: Top HUD text scale (`100% / 115% / 130%`), transparent cutout mode, extended telemetry toggle, background sync interval, and units (°F/°C, MPH/km/h).
 
-* **Comprehensive Automated Unit Tests**:
-  * Added 11 automated unit tests running with Gradle and JUnit 4:
+* **Comprehensive Automated Mock Device UI & Unit Tests (19 Tests)**:
+  * Integrated **Robolectric** and **AndroidX Test** to run full Android SDK mock device UI simulation tests on the JVM without requiring a physical phone connected:
+    * `MainActivityVisualMockDeviceTest.kt`: 5 mock device UI tests verifying 5-tab navigation, camera framing controls (zoom in/out, pan left/right, reset), location presets (Yorktown, Tabb, Jamestown), background sync interval selection, and preference persistence.
+    * `WidgetRemoteViewsMockDeviceTest.kt`: 3 mock device tests verifying widget layout inflation, total absence of legacy corner cards, alarm clock intent creation, and dynamic procedural weather canvas rendering.
     * `DeviceLocationManagerTest.kt`: 6 tests verifying Haversine distance, Yorktown / Tabb auto-matching, Jamestown matching, global landmark bounds, and GPS coordinates for all 18 dioramas.
     * `WeatherTelemetryTest.kt`: 5 tests verifying WMO weather code mapping, headlines, day/night emojis, EPA AQI categories, and 16-point wind compass directions.
+  * Added `scripts/run_android_emulator.sh` to easily launch an Android Virtual Device (AVD) emulator, install the app, and run visual usage tests directly or via IntelliJ IDEA / Android Studio.
 
 ---
 
@@ -44,14 +47,14 @@ Release `v0.0.2` of **Global 3D Isometric Weather Widget** (`com.antigravity.yor
 
 | Asset File | Size | Description |
 | :--- | :--- | :--- |
-| `global-3d-isometric-weather-v0.0.2.apk` | ~27 MB | Android Release APK signed and optimized for OnePlus 13 (OxygenOS 15) & Android 8.0+ devices |
-| `global-3d-isometric-weather-v0.0.2.plasmoid` | ~37 MB | KDE Plasma 6 Desktop widget package (Bazzite / Steam Deck / Fedora Linux) |
-| `global-3d-isometric-weather-web-android-v0.0.2.zip` | ~63 MB | Complete web & Android source archive with all 18 high-res diorama assets and tests |
+| `global-3d-isometric-weather-v0.0.2.apk` | ~48.6 MB | Android Release APK signed and optimized for OnePlus 13 (OxygenOS 15) & Android 8.0+ devices |
+| `global-3d-isometric-weather-v0.0.2.plasmoid` | ~48.7 MB | KDE Plasma 6 Desktop widget package (Bazzite / Steam Deck / Fedora Linux) |
+| `global-3d-isometric-weather-web-android-v0.0.2.zip` | ~95.0 MB | Complete web & Android source archive with all 18 high-res diorama assets and tests |
 | `SHA256SUMS.txt` | — | Cryptographic SHA-256 checksums for verifying asset integrity |
 
 ---
 
 ### Verification & Testing
-* **Device**: OnePlus 13 (`PJZ110`, Android 15 / OxygenOS 15) via ADB.
-* **Unit Tests**: 11/11 tests passed in `:app:testDebugUnitTest` and `:app:testReleaseUnitTest`.
+* **Physical Device**: Verified on OnePlus 13 (`PJZ110`, Android 15 / OxygenOS 15) via ADB.
+* **Android SDK Mock Device UI**: 19/19 tests passed in `:app:testDebugUnitTest` and `:app:testReleaseUnitTest`.
 * **Lint & Build**: Clean release build via Gradle (`assembleRelease`).

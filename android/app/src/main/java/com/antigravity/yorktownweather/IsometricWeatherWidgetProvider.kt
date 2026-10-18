@@ -530,7 +530,7 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
      * @param heightDp widget height in dp
      * @param hudHeightDp estimated height of the top HUD (0 for the corner card layout)
      */
-    private fun renderIsometricWidgetFrame(
+    internal fun renderIsometricWidgetFrame(
         cfg: WidgetConfig,
         wx: WeatherTelemetry,
         islandBmp: Bitmap?,
