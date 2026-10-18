@@ -418,32 +418,53 @@ export class IsometricWeatherEngine {
 
         ctx.restore();
 
-        // 3. Gentle, Natural-Speed Weather Particles (Rain / Snow)
+        // 3. Gentle Weather Particles (Rain / Thunderstorm / Snow) centered over the 3D Island
         const pScale = Math.max(0.15, this.state.particleIntensity ?? 1.0);
+        const ix0 = dx + 0.08 * dw;
+        const ix1 = dx + 0.92 * dw;
+        const iSpanX = ix1 - ix0;
+        const iy0 = dy - 0.06 * dh;
+        const iy1 = dy + 0.88 * dh;
+        const iSpanY = iy1 - iy0;
+
         if (cat === "rain" || cat === "thunderstorm") {
-            const dropCount = Math.max(4, Math.round((cat === "thunderstorm" ? 32 : 20) * pScale));
-            ctx.strokeStyle = "rgba(205, 232, 255, 0.46)";
-            ctx.lineWidth = 1.2;
+            const dropCount = Math.max(4, Math.round((cat === "thunderstorm" ? 34 : 22) * pScale));
+            ctx.strokeStyle = "rgba(210, 238, 255, 0.52)";
+            ctx.lineWidth = 1.3 * s;
             ctx.beginPath();
             for (let i = 0; i < dropCount; i++) {
-                const prog = ((t * 0.24 + i * 0.173) % 1.0);
-                const rx = (((i * 0.618) % 1.1) - prog * 0.14) * w;
-                const ry = prog * h;
+                const prog = ((t * 0.28 + i * 0.173) % 1.0);
+                const seedX = ((i * 0.6180339 + 0.12) % 1.0);
+                const rx = ix0 + seedX * iSpanX - prog * 0.06 * dw;
+                const ry = iy0 + prog * iSpanY;
                 ctx.moveTo(rx, ry);
-                ctx.lineTo(rx - 4, ry + 14);
+                ctx.lineTo(rx - 4 * s, ry + 14 * s);
             }
             ctx.stroke();
+
+            // Splash ripples on the island
+            ctx.strokeStyle = "rgba(225, 245, 255, 0.40)";
+            ctx.lineWidth = 1.0 * s;
+            for (let j = 0; j < 5; j++) {
+                const spProg = ((t * 0.45 + j * 0.23) % 1.0);
+                const spX = dx + (0.26 + ((j * 0.19) % 0.48)) * dw;
+                const spY = dy + (0.34 + ((j * 0.17) % 0.40)) * dh;
+                ctx.beginPath();
+                ctx.ellipse(spX, spY, (4 + spProg * 8) * s, (2 + spProg * 4) * s, 0, 0, Math.PI * 2);
+                ctx.stroke();
+            }
         } else if (cat === "snow") {
             const flakeCount = Math.max(5, Math.round(26 * pScale));
-            ctx.fillStyle = "rgba(255, 255, 255, 0.82)";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
             for (let i = 0; i < flakeCount; i++) {
-                const prog = ((t * 0.10 + i * 0.137) % 1.0);
-                const sx = (((i * 0.618) % 1.0) + Math.sin(t * 0.8 + i) * 0.02) * w;
-                const sy = prog * h;
+                const prog = ((t * 0.14 + i * 0.137) % 1.0);
+                const seedX = ((i * 0.6180339 + 0.08) % 1.0);
+                const sx = ix0 + seedX * iSpanX + 0.015 * dw * Math.sin(t * 1.8 + i);
+                const sy = iy0 + prog * iSpanY;
                 ctx.beginPath();
-                ctx.arc(sx, sy, 2.2, 0, Math.PI * 2);
+                ctx.arc(sx, sy, 2.4 * s, 0, Math.PI * 2);
                 ctx.fill();
-            }
         }
     }
 }
+

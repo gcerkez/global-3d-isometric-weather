@@ -519,6 +519,12 @@ PlasmoidItem {
             lastUpdated: root.lastFetchTime
             cardOpacity: root.cfgHudOpacity
             forecastDays: root.liveForecastDays
+            forecastUrl: {
+                if (root.cfgLatitude >= 18.0 && root.cfgLatitude <= 72.0 && root.cfgLongitude >= -170.0 && root.cfgLongitude <= -65.0) {
+                    return "https://forecast.weather.gov/MapClick.php?lat=" + root.cfgLatitude + "&lon=" + root.cfgLongitude
+                }
+                return "https://weather.com/weather/today/l/" + root.cfgLatitude + "," + root.cfgLongitude
+            }
 
             aqiValue: root.liveUsAqi
             aqiLabel: root.aqiInfo.label

@@ -28,6 +28,18 @@ Release of **Global 3D Isometric Weather Widget** (`com.antigravity.yorktownweat
     18. `alpine` — **Alpine Mountain & Glacial Lake Village** (`Europe/Zurich`, Rockies & Andes — Snow-Capped Peak, Chalets & Glacial Lake)
 * **Decoupled Weather Telemetry Location & 3D Diorama Visual**:
   * Your weather coordinates (`lat, lon`) are completely independent of the active 3D isometric diorama—for example, you can monitor live weather in **Tabb, VA** while displaying the **Jamestown**, **Yorktown**, **Grand Canyon**, or **Tokyo** 3D render.
+* **Precipitation Strictly Over 3D Island Bounds & Water Splash Ripples**:
+  * Rain streaks, thunderstorm rain, and snowflakes are now mathematically calculated to fall strictly over the bounds of the 3D diorama island (`islandLeft..islandRight` and `islandTop..islandBottom`).
+  * Added animated ground and cutaway water splash ripples on the island surfaces instead of drifting off to the bottom-right corner.
+* **Distraction-Free Visuals (Hidden Camera Buttons & Settings Gear)**:
+  * On-screen zoom and camera movement buttons (`➖` `➕` `◀` `🎯` `▶`) and the settings gear (`⚙️`) are cleanly hidden from the widget canvas across Android, KDE Plasma 6 Desktop, and Web.
+  * Tapping the 3D diorama canvas opens the configuration settings dialog.
+* **Interactive 7-Day & Hourly Weather Forecast on HUD Tap**:
+  * Tapping the Weather HUD Overlay (banner or corner card) opens the official 7-day and hourly weather forecast in the browser (`forecast.weather.gov` for US locations or `weather.com` worldwide).
+* **Auto-Detect Current Device / Computer Location**:
+  * One-click / one-tap `📍 Auto-Detect Current Location` via fast HTTPS IP geolocation (`https://get.geojs.io/v1/ip/geo.json`) across Android, Desktop, and Web without needing GPS permissions.
+* **Integrated Sky Digital Clock**:
+  * Live digital clock embedded in the HUD banner and corner card across all platforms (`TextClock` in Android `RemoteViews`, 1-second live `Timer` in KDE Plasma 6 `WeatherHudCard.qml`, and `setInterval` in Web HTML5), designed to sit elegantly in the upper sky without obstructing the 3D island.
 * **Isometric Zoom & Horizontal Centering (Rotation Removed, HUD Stays Stationary)**:
   * Move the entire 3D isometric diorama left (`◀`), center (`🎯`), or right (`▶`) and zoom (`➖` / `➕`) on both Desktop and Android while leaving the Weather HUD Overlay fixed in its configured position.
 * **Extrapolated, High-Readability Android Homescreen HUD & Scroll-Safe Config Menu**:

@@ -264,47 +264,62 @@ Item {
                 }
             }
 
-            // Rain & Thunderstorm precipitation streaks + water/street splash rings (calm & proportional)
+            // Rain & Thunderstorm precipitation streaks + water/street splash rings centered over the 3D island
             if (cat === "rain" || cat === "thunderstorm") {
-                var dropCount = Math.max(3, Math.round((cat === "thunderstorm" ? 36 : 22) * fxRoot.particleDensity))
-                ctx.strokeStyle = night ? "rgba(165, 210, 255, 0.46)" : "rgba(215, 238, 255, 0.54)"
+                var dropCount = Math.max(4, Math.round((cat === "thunderstorm" ? 38 : 24) * fxRoot.particleDensity))
+                ctx.strokeStyle = night ? "rgba(175, 215, 255, 0.50)" : "rgba(220, 242, 255, 0.58)"
                 ctx.lineWidth = Math.max(1.0, 1.4 * s)
                 ctx.lineCap = "round"
 
                 var windSlant = Math.min(11.0, 3.0 + fxRoot.windSpeedMph * 0.25) * s
                 var dropLen = 16.0 * s
 
+                // Bounded directly over the 3D isometric island
+                var islandX0 = width * 0.14
+                var islandX1 = width * 0.86
+                var islandW = islandX1 - islandX0
+                var islandY0 = height * 0.12
+                var islandY1 = height * 0.88
+                var islandH = islandY1 - islandY0
+
                 for (var r = 0; r < dropCount; r++) {
-                    var rx = ((r * 0.6180339 - t * 0.14 * ((r % 3) * 0.12 + 0.88) + 100.0) % 1.0) * width
-                    var ry = ((r * 0.381966 + t * 0.58 * ((r % 4) * 0.08 + 0.92)) % 1.0) * height
+                    var rSeed = ((r * 0.6180339 - t * 0.14 * ((r % 3) * 0.12 + 0.88) + 100.0) % 1.0)
+                    var rx = islandX0 + rSeed * islandW
+                    var ry = islandY0 + (((r * 0.381966 + t * 0.58 * ((r % 4) * 0.08 + 0.92)) % 1.0) * islandH)
                     ctx.beginPath()
                     ctx.moveTo(rx, ry)
                     ctx.lineTo(rx - windSlant, ry + dropLen)
                     ctx.stroke()
                 }
 
-                var splashCount = Math.max(2, Math.round(6 * fxRoot.particleDensity))
-                ctx.strokeStyle = "rgba(220, 242, 255, 0.38)"
-                ctx.lineWidth = 1.0 * s
+                var splashCount = Math.max(3, Math.round(8 * fxRoot.particleDensity))
+                ctx.strokeStyle = "rgba(225, 245, 255, 0.42)"
+                ctx.lineWidth = 1.1 * s
                 for (var rp = 0; rp < splashCount; rp++) {
                     var prog = (t * 0.55 + rp * 0.21) % 1.0
-                    var rpx = (0.16 + ((rp * 0.29) % 0.46)) * width
-                    var rpy = (0.44 + ((rp * 0.17) % 0.30)) * height
+                    // Distribute splashes on the island land and water
+                    var rpx = islandX0 + (0.22 + ((rp * 0.23) % 0.56)) * islandW
+                    var rpy = islandY0 + (0.32 + ((rp * 0.19) % 0.52)) * islandH
                     ctx.beginPath()
                     ctx.ellipse(rpx - prog * 7 * s, rpy - prog * 3.5 * s, prog * 14 * s, prog * 6.5 * s)
                     ctx.stroke()
                 }
             }
 
-            // Snowfall particles (calm drifting flakes)
+            // Snowfall particles (calm drifting flakes over the island)
             if (cat === "snow") {
                 var snowCount = Math.max(4, Math.round(28 * fxRoot.particleDensity))
+                var snX0 = width * 0.14
+                var snW = width * 0.72
+                var snY0 = height * 0.10
+                var snH = height * 0.88
+
                 for (var sn = 0; sn < snowCount; sn++) {
                     var snProg = (sn * 0.273 + t * 0.19 * ((sn % 3) * 0.15 + 0.8)) % 1.0
-                    var snX = ((sn * 0.618 + Math.sin(t * 0.9 + sn) * 0.025 + t * 0.05) % 1.0) * width
-                    var snY = snProg * height
+                    var snX = snX0 + (((sn * 0.618 + Math.sin(t * 0.9 + sn) * 0.025 + t * 0.05) % 1.0) * snW)
+                    var snY = snY0 + snProg * snH
                     var flakeR = (1.8 + (sn % 3) * 1.0) * s
-                    ctx.fillStyle = "rgba(255, 255, 255, 0.82)"
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.85)"
                     ctx.beginPath()
                     ctx.arc(snX, snY, flakeR, 0, Math.PI * 2)
                     ctx.fill()

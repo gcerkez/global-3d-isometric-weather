@@ -530,7 +530,7 @@ Item {
         }
     }
 
-    // Compact Interactive Zoom & Horizontal Centering Control Pill in Bottom-Left (No Rotation)
+    // Compact Interactive Zoom & Horizontal Centering Control Pill (Hidden per user request for photographic clean look)
     Rectangle {
         anchors.left: parent.left
         anchors.bottom: parent.bottom
@@ -542,6 +542,7 @@ Item {
         border.color: "#4a78a0"
         border.width: 1
         z: 40
+        visible: false
 
         Row {
             id: camBtnRow

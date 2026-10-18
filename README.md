@@ -44,21 +44,31 @@ All 18 pre-generated 3D isometric floating-island dioramas feature **Jamestown-s
 - Your **live weather coordinates (`lat, lon`) are completely independent of your selected 3D Isometric Diorama**.
 - For example, if you live in **Tabb, Virginia (`37.1310, -76.4452`)**, you can configure **Tabb, VA** (or any global city via Open-Meteo geocoding search) for live temperature, wind, AQI, UV, and forecast telemetry while displaying the **Historic Jamestown**, **Historic Yorktown**, **Grand Canyon**, or **Tokyo** 3D isometric render!
 
-### 3. Isometric Zoom & Horizontal Centering (Overlay Stays Fixed)
+### 3. Isometric Zoom & Horizontal Centering (Clean View & Overlay Stays Fixed)
 - **Zoom & Horizontal Offset (`➖` `➕` `◀` `🎯` `▶`)**:
   - **Rotation is intentionally disabled** so the isometric island always stays at its crisp architectural projection angle.
   - **Move Isometric Left / Center / Right (`◀` `🎯` `▶` or Horizontal Drag / Slider)**: Shift the entire 3D isometric diorama left or right as a whole (`-220 px` to `+220 px`) to frame or center it wherever you like **while the Weather HUD Overlay stays stationary in its configured position**.
+  - **Clean Presentation (Hidden Camera Buttons & Settings Gear)**: On-screen camera movement pills and settings gears are cleanly hidden from view on the widget canvas. Tapping the 3D diorama canvas opens the configuration settings.
   - **Zoom In / Out (`➖` `➕` / Scroll Wheel / Pinch)**: Smoothly scale the isometric diorama from `65%` to `240%`.
 
-### 4. Extrapolated, High-Readability Android Widget HUD (Zero Island Overlap)
-- On Android Homescreens (`widget_isometric_weather.xml` & `IsometricWeatherWidgetProvider.kt`), the weather overlay is rendered using **native high-DPI Android `RemoteViews` typography** rather than downsampled bitmap text:
-  - **Top-Sky Split Banner (`top-sky`, Recommended Default)**: Docks a wide, extrapolated translucent glass header across the upper sky (`17sp+` bold temperature, condition, location, humidity, wind, AQI, UV, and Moon phase) while shifting the 3D isometric island slightly downward so **0% of the 3D town is covered**.
-  - **Top-Right / Top-Left Corner Card (`top-right`, `top-left`)**: Classic corner card layout with configurable **Extrapolated Text Size (`100%`, `115% Recommended`, `130% Extra-Large`)**.
+### 4. Precipitation & Weather Events Centered Over 3D Island
+- **Strictly Bounded Island Weather**: Rain streaks, thunderstorm rain, and snowflakes are mathematically bounded directly over the 3D diorama island (`islandLeft..islandRight` and `islandTop..islandBottom`).
+- **Ground & Water Splash Ripples**: Animated splash ripples render on the diorama ground and cutaway water surfaces instead of drifting off to the bottom-right corner.
 
-### 5. Spacious, Scroll-Safe Android Configuration Menu
+### 5. Interactive 7-Day & Hourly Forecast & Auto-Detect Location
+- **Tap Overlay for Full Forecast**: Tapping the Weather HUD banner or corner card immediately opens the detailed 7-day and hourly weather forecast in your web browser (NWS `forecast.weather.gov` for US locations or `weather.com` worldwide).
+- **Auto-Detect Device / Computer Location**: One-click / one-tap `📍 Auto-Detect Current Location` instantly resolves your current city and latitude/longitude via fast HTTPS IP geolocation (`https://get.geojs.io/v1/ip/geo.json`) across Android, Desktop, and Web without needing GPS permissions.
+
+### 6. Integrated Sky Digital Clock & High-Readability Android HUD
+- **Live Digital Clock**: An elegant, high-contrast digital clock is embedded directly into the Weather HUD banner and corner card across all platforms (`TextClock` in Android `RemoteViews`, 1-second live `Timer` in KDE Plasma 6 `WeatherHudCard.qml`, and `setInterval` in Web HTML5). Positioned in the upper sky to ensure zero encroachment on the 3D diorama render.
+- **Extrapolated High-Readability Android HUD**:
+  - Native high-DPI `RemoteViews` typography (**Top-Sky Split Banner** or **Corner Card**) with auto-fitting text scaling (`100%`, `115% Recommended`, `130% Extra-Large`) preventing text cutoff or squashing on any phone screen.
+  - Uses an auto-animating 4-frame `<ViewFlipper>` so gentle rain/snow and water ripples animate live on your Homescreen.
+
+### 7. Spacious, Scroll-Safe Android Configuration Menu
 - The Android Configuration App (`MainActivity.kt`) uses a **single full-screen vertical `ScrollView`** with `FOCUS_BEFORE_DESCENDANTS` and replaces hair-trigger `Spinner` dropdowns with **scroll-safe modal `AlertDialog` setting cards** that only open on a deliberate tap—eliminating accidental dropdown pops or keyboard focus thefts while scrolling.
 
-### 6. Static Scenic Miniature Sprites & Calm Weather Physics
+### 8. Static Scenic Miniature Sprites & Calm Weather Physics
 - **Static Scenic Miniature Sprites**: Stationed colonial Horse & Carriage on Historic Main Street, miniature cars on the Coleman Bridge, and harbor ships/sailboats (animated walking people removed for a clean, distraction-free architectural model aesthetic).
 - **Calm, Natural-Speed Weather Particles**: Gentle rain and snow physics (`25%`, `50%`, `100%` intensity) paired with US EPA AQI, WHO UV Index, Lunar Synodic Phase, 12-Hour Temperature/Precipitation Sparkline, 3D Volumetric Cloud Ground Shadows, and Post-Rain Rainbow arcs.
 
@@ -175,18 +185,24 @@ python3 -m http.server 8080 --directory web
 
 ## Developer Troubleshooting: Clearing QML & Android Widget Caches
 
-### 1. KDE Plasma 6 (`plasmashell` QML Cache)
+### 1. KDE Plasma 6 (`plasmashell` QML Bytecode Cache)
+To ensure modified QML files take effect and are not loaded from cached bytecode:
 ```bash
-rm -rf ~/.cache/plasmashell/qmlcache/*
+rm -rf ~/.cache/plasmashell/qmlcache/* ~/.cache/plasmawindowed/qmlcache/*
 ./install.sh
 systemctl --user restart plasma-plasmashell.service
 ```
 
 ### 2. Android Launcher & AppWidget Cache (OnePlus OxygenOS 15 / Android 12+)
+To force the Android launcher to re-inflate `RemoteViews` layouts and clear cached widget views:
 ```bash
 adb install -r dist/global-3d-isometric-weather-v0.0.1.apk
 adb shell am broadcast -a com.antigravity.yorktownweather.ACTION_REFRESH_WIDGET \
   -n com.antigravity.yorktownweather/.IsometricWeatherWidgetProvider
+```
+Or run the automated installer script:
+```bash
+./scripts/install_android_usb.sh
 ```
 
 ---

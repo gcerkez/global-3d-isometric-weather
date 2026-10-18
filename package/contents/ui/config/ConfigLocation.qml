@@ -78,12 +78,47 @@ KCM.SimpleKCM {
         cfg_longitude = lon
     }
 
+    function detectCurrentLocation() {
+        searchStatusText = "Auto-detecting current location via network/IP..."
+        var xhr = new XMLHttpRequest()
+        xhr.open("GET", "https://get.geojs.io/v1/ip/geo.json")
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    try {
+                        var resp = JSON.parse(xhr.responseText)
+                        if (resp.city && resp.latitude && resp.longitude) {
+                            var disp = resp.city + (resp.region ? (", " + resp.region) : "")
+                            applyWeatherLocation(disp, "Current Local Area", parseFloat(resp.latitude), parseFloat(resp.longitude))
+                            searchStatusText = "📍 Auto-detected current location: " + disp + " (" + parseFloat(resp.latitude).toFixed(4) + ", " + parseFloat(resp.longitude).toFixed(4) + ")"
+                        } else {
+                            searchStatusText = "Could not parse location data."
+                        }
+                    } catch (e) {
+                        searchStatusText = "Error parsing IP location response."
+                    }
+                } else {
+                    searchStatusText = "Network error detecting location (" + xhr.status + ")."
+                }
+            }
+        }
+        xhr.send()
+    }
+
     Kirigami.FormLayout {
         anchors.fill: parent
 
         Kirigami.Separator {
             Kirigami.FormData.isSection: true
             Kirigami.FormData.label: i18n("Active Weather Telemetry Location (Independent of 3D Diorama Visual)")
+        }
+
+        QQC2.Button {
+            Kirigami.FormData.label: i18n("Auto-Detect:")
+            text: i18n("📍 Detect Current Computer Location")
+            icon.name: "mark-location"
+            Layout.fillWidth: true
+            onClicked: root.detectCurrentLocation()
         }
 
         QQC2.TextField {

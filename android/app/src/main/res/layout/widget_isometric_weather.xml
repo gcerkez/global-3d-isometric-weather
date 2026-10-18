@@ -61,7 +61,7 @@
         android:paddingTop="5dp"
         android:paddingBottom="6dp">
 
-        <!-- Row 1: Weather icon + temperature (left) and condition headline (right) -->
+        <!-- Row 1: Weather icon + temperature (left), digital clock (center/right) & condition headline (right) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -79,19 +79,40 @@
                 android:includeFontPadding="false"
                 android:maxLines="1" />
 
-            <TextView
-                android:id="@+id/hud_bar_condition"
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:gravity="end"
-                android:text="CLEAR"
-                android:textColor="#FFD166"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:maxLines="1"
-                android:ellipsize="end" />
+                android:gravity="end|center_vertical"
+                android:orientation="horizontal">
+
+                <TextClock
+                    android:id="@+id/hud_bar_clock"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:format12Hour="h:mm a"
+                    android:format24Hour="HH:mm"
+                    android:textColor="#E0F2FE"
+                    android:textSize="11.5sp"
+                    android:textStyle="bold"
+                    android:background="#38000000"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="6dp"
+                    android:paddingTop="1dp"
+                    android:paddingBottom="1dp"
+                    android:layout_marginEnd="6dp" />
+
+                <TextView
+                    android:id="@+id/hud_bar_condition"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="CLEAR"
+                    android:textColor="#FFD166"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- Row 2: Location + feels-like -->
@@ -150,15 +171,38 @@
         android:paddingBottom="8dp"
         android:visibility="gone">
 
-        <TextView
-            android:id="@+id/hud_corner_condition"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="☀️ CLEAR WEATHER"
-            android:textColor="#FFD166"
-            android:textSize="11.5sp"
-            android:textStyle="bold"
-            android:singleLine="true" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextClock
+                android:id="@+id/hud_corner_clock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:format12Hour="h:mm a"
+                android:format24Hour="HH:mm"
+                android:textColor="#E0F2FE"
+                android:textSize="11.5sp"
+                android:textStyle="bold"
+                android:background="#38000000"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:layout_marginEnd="6dp" />
+
+            <TextView
+                android:id="@+id/hud_corner_condition"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="☀️ CLEAR WEATHER"
+                android:textColor="#FFD166"
+                android:textSize="11.5sp"
+                android:textStyle="bold"
+                android:singleLine="true" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/hud_corner_temp"
@@ -202,7 +246,7 @@
             android:singleLine="true" />
     </LinearLayout>
 
-    <!-- 3. Interactive On-Widget Zoom, Horizontal Centering (Left / Center / Right) & Settings Control Bar (Bottom-Left) -->
+    <!-- 3. Interactive On-Widget Zoom, Horizontal Centering & Settings Control Bar (Hidden per user request for photographic diorama clean look) -->
     <LinearLayout
         android:id="@+id/widget_camera_bar"
         android:layout_width="wrap_content"
@@ -215,7 +259,8 @@
         android:paddingStart="6dp"
         android:paddingEnd="6dp"
         android:paddingTop="2dp"
-        android:paddingBottom="2dp">
+        android:paddingBottom="2dp"
+        android:visibility="gone">
 
         <TextView
             android:id="@+id/btn_zoom_out"

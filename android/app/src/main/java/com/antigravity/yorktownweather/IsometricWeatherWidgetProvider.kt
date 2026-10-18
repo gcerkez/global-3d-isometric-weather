@@ -109,10 +109,30 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         scope.launch {
             try {
                 val prefs = context.getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
+
+                // Auto-detect phone location if enabled or if requested
+                var locName = prefs.getString("locationName", "Yorktown, VA") ?: "Yorktown, VA"
+                var lat = prefs.getFloat("latitude", 37.2388f).toDouble()
+                var lon = prefs.getFloat("longitude", -76.5097f).toDouble()
+
+                if (prefs.getBoolean("useCurrentLocation", false)) {
+                    val detected = fetchDeviceLocation()
+                    if (detected != null) {
+                        locName = detected.first
+                        lat = detected.second.first
+                        lon = detected.second.second
+                        prefs.edit()
+                            .putString("locationName", locName)
+                            .putFloat("latitude", lat.toFloat())
+                            .putFloat("longitude", lon.toFloat())
+                            .apply()
+                    }
+                }
+
                 val cfg = WidgetConfig(
-                    locationName = prefs.getString("locationName", "Yorktown, VA") ?: "Yorktown, VA",
-                    lat = prefs.getFloat("latitude", 37.2388f).toDouble(),
-                    lon = prefs.getFloat("longitude", -76.5097f).toDouble(),
+                    locationName = locName,
+                    lat = lat,
+                    lon = lon,
                     renderMode = prefs.getString("renderMode", "hybrid") ?: "hybrid",
                     dioramaTheme = prefs.getString("dioramaTheme", "yorktown") ?: "yorktown",
                     hudPosition = prefs.getString("hudPosition", "top-sky") ?: "top-sky",
@@ -146,17 +166,21 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
 
-                fun makeActionPendingIntent(action: String, reqCode: Int): PendingIntent {
-                    val i = Intent(context, IsometricWeatherWidgetProvider::class.java).apply {
-                        this.action = action
-                    }
-                    return PendingIntent.getBroadcast(
-                        context,
-                        reqCode,
-                        i,
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                    )
+                // 7-day & hourly detailed forecast URL for the active telemetry coordinates
+                val forecastUrl = if (cfg.lat >= 18.0 && cfg.lat <= 72.0 && cfg.lon >= -170.0 && cfg.lon <= -65.0) {
+                    "https://forecast.weather.gov/MapClick.php?lat=${cfg.lat}&lon=${cfg.lon}"
+                } else {
+                    "https://weather.com/weather/today/l/${cfg.lat},${cfg.lon}"
                 }
+                val browserIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(forecastUrl)).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                val pendingOpenForecast = PendingIntent.getActivity(
+                    context,
+                    201,
+                    browserIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
 
                 val effectiveCat = if (cfg.weatherOverride != "realtime") cfg.weatherOverride else wmoToCategory(telemetry.weatherCode)
                 val effectiveTime = if (cfg.timeMode != "realtime") cfg.timeMode else (if (telemetry.isDay) "day" else "night")
@@ -248,11 +272,12 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                         views.setTextViewText(R.id.hud_bar_badges, badgeLine)
                         views.setViewVisibility(R.id.hud_bar_badges, if (cfg.showExtendedHud) View.VISIBLE else View.GONE)
 
-                        // Row 1 shares its width: temperature gets ~62%, the headline the rest
+                        // Row 1 shares its width: temperature gets ~58%, the clock and headline the rest
                         views.setTextViewTextSize(R.id.hud_bar_temp, TypedValue.COMPLEX_UNIT_DIP,
-                            fitTextSp(tempLine, 17f * scale, rowWidthDp * 0.62f, bold = true))
+                            fitTextSp(tempLine, 17f * scale, rowWidthDp * 0.58f, bold = true))
+                        views.setTextViewTextSize(R.id.hud_bar_clock, TypedValue.COMPLEX_UNIT_DIP, 11.5f * scale)
                         views.setTextViewTextSize(R.id.hud_bar_condition, TypedValue.COMPLEX_UNIT_DIP,
-                            fitTextSp(headline, 12f * scale, rowWidthDp * 0.36f - 8f, bold = true))
+                            fitTextSp(headline, 12f * scale, rowWidthDp * 0.40f - 55f, bold = true))
                         views.setTextViewTextSize(R.id.hud_bar_condition_loc, TypedValue.COMPLEX_UNIT_DIP,
                             fitTextSp(feelsLine, 11.5f * scale, rowWidthDp, bold = true))
                         views.setTextViewTextSize(R.id.hud_bar_wind_hum, TypedValue.COMPLEX_UNIT_DIP,
@@ -274,8 +299,9 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                         views.setTextViewText(R.id.hud_corner_badges, badgeLine)
                         views.setViewVisibility(R.id.hud_corner_badges, if (cfg.showExtendedHud) View.VISIBLE else View.GONE)
 
+                        views.setTextViewTextSize(R.id.hud_corner_clock, TypedValue.COMPLEX_UNIT_DIP, 11.5f * scale)
                         views.setTextViewTextSize(R.id.hud_corner_condition, TypedValue.COMPLEX_UNIT_DIP,
-                            fitTextSp(condLine, 11.2f * scale, cardWidthDp, bold = true))
+                            fitTextSp(condLine, 11.2f * scale, cardWidthDp - 55f, bold = true))
                         views.setTextViewTextSize(R.id.hud_corner_temp, TypedValue.COMPLEX_UNIT_DIP,
                             fitTextSp(tempFormatted, 17f * scale, cardWidthDp, bold = true))
                         views.setTextViewTextSize(R.id.hud_corner_meta, TypedValue.COMPLEX_UNIT_DIP,
@@ -298,15 +324,13 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                         views.setViewVisibility(R.id.widget_bottom_badge, View.GONE)
                     }
 
+                    // Tapping the 3D scene opens the customization & settings app
                     views.setOnClickPendingIntent(R.id.widget_flipper, pendingOpenApp)
-                    views.setOnClickPendingIntent(R.id.widget_hud_top_bar, pendingOpenApp)
-                    views.setOnClickPendingIntent(R.id.widget_hud_corner, pendingOpenApp)
-                    views.setOnClickPendingIntent(R.id.btn_open_config, pendingOpenApp)
-                    views.setOnClickPendingIntent(R.id.btn_zoom_in, makeActionPendingIntent(ACTION_ZOOM_IN, 101))
-                    views.setOnClickPendingIntent(R.id.btn_zoom_out, makeActionPendingIntent(ACTION_ZOOM_OUT, 102))
-                    views.setOnClickPendingIntent(R.id.btn_pan_left, makeActionPendingIntent(ACTION_PAN_LEFT, 103))
-                    views.setOnClickPendingIntent(R.id.btn_pan_right, makeActionPendingIntent(ACTION_PAN_RIGHT, 104))
-                    views.setOnClickPendingIntent(R.id.btn_cam_reset, makeActionPendingIntent(ACTION_CAM_RESET, 105))
+                    views.setOnClickPendingIntent(R.id.widget_bottom_badge, pendingOpenApp)
+
+                    // Tapping the HUD overlay directly launches the 7-day / hourly forecast URL for the location!
+                    views.setOnClickPendingIntent(R.id.widget_hud_top_bar, pendingOpenForecast)
+                    views.setOnClickPendingIntent(R.id.widget_hud_corner, pendingOpenForecast)
 
                     appWidgetManager.updateAppWidget(widgetId, views)
                 }
@@ -557,26 +581,50 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
 
         canvas.restore()
 
-        // 4. Gentle, Natural-Speed Animated Weather Particles (Rain / Snow)
+        // 4. Weather Particles (Rain / Thunderstorm / Snow) & Splash Ripples directly over the 3D Island & Land/Water Areas
         val density = cfg.particleDensity.coerceIn(0.15f, 1.5f)
+        val islandLeft = ix + 0.08f * iw
+        val islandRight = ix + 0.92f * iw
+        val islandSpanX = islandRight - islandLeft
+        val islandTop = iy - 0.08f * ih
+        val islandBottom = iy + 0.88f * ih
+        val islandSpanY = islandBottom - islandTop
+
         if (effectiveCat == "rain" || effectiveCat == "thunderstorm") {
-            val dropCount = max(4, ((if (effectiveCat == "thunderstorm") 26 else 16) * density).roundToInt())
-            paint.color = Color.argb(125, 205, 234, 255)
-            paint.strokeWidth = 1.4f * s
+            val dropCount = max(6, ((if (effectiveCat == "thunderstorm") 32 else 20) * density).roundToInt())
+            paint.color = Color.argb(145, 210, 238, 255)
+            paint.strokeWidth = 1.4f * sI
             for (i in 0 until dropCount) {
-                val prog = ((i * 0.173f) + phase * 0.25f) % 1.0f
-                val rx = (((i * 0.618f) % 1.08f) - prog * 0.12f) * width
-                val ry = prog * height
-                canvas.drawLine(rx, ry, rx - 4.5f * s, ry + 15f * s, paint)
+                val prog = ((i * 0.173f) + phase * 0.30f) % 1.0f
+                val seedX = ((i * 0.6180339f + 0.12f) % 1.0f)
+                val rx = islandLeft + seedX * islandSpanX - prog * 0.06f * iw
+                val ry = islandTop + prog * islandSpanY
+                canvas.drawLine(rx, ry, rx - 4.5f * sI, ry + 14f * sI, paint)
             }
+
+            // Animated water / ground splash ripples on the island's land & water surfaces
+            val splashCount = max(3, (6 * density).roundToInt())
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 1.1f * sI
+            paint.color = Color.argb(120, 225, 245, 255)
+            for (j in 0 until splashCount) {
+                val spProg = ((j * 0.283f) + phase * 0.50f) % 1.0f
+                val spX = ix + (0.28f + ((j * 0.19f) % 0.46f)) * iw
+                val spY = iy + (0.36f + ((j * 0.17f) % 0.38f)) * ih
+                val radX = (4.0f + spProg * 8.0f) * sI
+                val radY = radX * 0.48f // isometric elliptical perspective
+                canvas.drawOval(RectF(spX - radX, spY - radY, spX + radX, spY + radY), paint)
+            }
+            paint.style = Paint.Style.FILL
         } else if (effectiveCat == "snow") {
-            val flakeCount = max(5, (22 * density).roundToInt())
-            paint.color = Color.argb(210, 255, 255, 255)
+            val flakeCount = max(6, (26 * density).roundToInt())
+            paint.color = Color.argb(220, 255, 255, 255)
             for (i in 0 until flakeCount) {
-                val prog = ((i * 0.137f) + phase * 0.20f) % 1.0f
-                val sx = (((i * 0.618f) % 1.0f) + 0.015f * sin((phase * 2 * Math.PI + i).toFloat())) * width
-                val sy = prog * height
-                canvas.drawCircle(sx, sy, 2.6f * s, paint)
+                val prog = ((i * 0.137f) + phase * 0.22f) % 1.0f
+                val seedX = ((i * 0.6180339f + 0.08f) % 1.0f)
+                val sx = islandLeft + seedX * islandSpanX + 0.015f * iw * sin((phase * 2 * Math.PI + i).toFloat())
+                val sy = islandTop + prog * islandSpanY
+                canvas.drawCircle(sx, sy, 2.4f * sI, paint)
             }
         }
 
@@ -682,6 +730,29 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         "snow" -> "❄️"
         "thunderstorm" -> "⛈️"
         else -> if (isNight) "🌙" else "☀️"
+    }
+
+    /**
+     * Auto-detects device location using HTTPS IP Geolocation (geojs.io).
+     * Returns "City, Region" to Pair(latitude, longitude) or null on failure.
+     */
+    private fun fetchDeviceLocation(): Pair<String, Pair<Double, Double>>? {
+        return runCatching {
+            val conn = (URL("https://get.geojs.io/v1/ip/geo.json").openConnection() as HttpURLConnection).apply {
+                connectTimeout = 4000
+                readTimeout = 4000
+            }
+            val text = conn.inputStream.bufferedReader().use { it.readText() }
+            val json = JSONObject(text)
+            val city = json.optString("city", "").trim()
+            val region = json.optString("region", "").trim()
+            val lat = json.optDouble("latitude", Double.NaN)
+            val lon = json.optDouble("longitude", Double.NaN)
+            if (!lat.isNaN() && !lon.isNaN() && city.isNotEmpty()) {
+                val name = if (region.isNotEmpty()) "$city, $region" else city
+                name to (lat to lon)
+            } else null
+        }.getOrNull()
     }
 
     data class WidgetConfig(

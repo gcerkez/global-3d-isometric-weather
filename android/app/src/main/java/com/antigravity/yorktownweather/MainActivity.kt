@@ -254,12 +254,26 @@ class MainActivity : Activity() {
         configContainer.addView(makeSectionHeader("3. Active Weather Location (Independent of 3D Render)"))
 
         val locHint = TextView(this).apply {
-            text = "Pick any city or town for live Open-Meteo weather (e.g. Tabb, VA) while keeping whichever 3D isometric diorama you like best."
+            text = "Use your phone's auto-detected current location or search any city/town for live Open-Meteo weather while keeping whichever 3D isometric diorama you like best."
             setTextColor(Color.parseColor("#b8d4ec"))
             textSize = 12f
             setPadding(0, 0, 0, dp(6))
         }
         configContainer.addView(locHint)
+
+        val autoLocBtn = makeStyledButton("📍 Auto-Detect My Current Location") {
+            detectAndApplyCurrentLocation()
+        }.apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, dp(2), 0, dp(8))
+            }
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            textSize = 13f
+        }
+        configContainer.addView(autoLocBtn)
 
         val searchRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -656,9 +670,44 @@ class MainActivity : Activity() {
             }
             if (result != null) {
                 val (disp, lat, lon) = result
+                val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
+                prefs.edit().putBoolean("useCurrentLocation", false).apply()
                 saveLocation(disp, lat, lon)
             } else {
                 statusLabel.text = "No matching location found for '$query'."
+            }
+        }
+    }
+
+    private fun detectAndApplyCurrentLocation() {
+        statusLabel.text = "Auto-detecting current phone location via network/IP..."
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val conn = (URL("https://get.geojs.io/v1/ip/geo.json").openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 5000
+                        readTimeout = 5000
+                    }
+                    val text = conn.inputStream.bufferedReader().use { it.readText() }
+                    val json = JSONObject(text)
+                    val city = json.optString("city", "").trim()
+                    val region = json.optString("region", "").trim()
+                    val lat = json.optDouble("latitude", Double.NaN)
+                    val lon = json.optDouble("longitude", Double.NaN)
+                    if (!lat.isNaN() && !lon.isNaN() && city.isNotEmpty()) {
+                        val name = if (region.isNotEmpty()) "$city, $region" else city
+                        Triple(name, lat.toFloat(), lon.toFloat())
+                    } else null
+                }.getOrNull()
+            }
+            if (result != null) {
+                val (disp, lat, lon) = result
+                val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
+                prefs.edit().putBoolean("useCurrentLocation", true).apply()
+                saveLocation(disp, lat, lon)
+                statusLabel.text = "📍 Auto-detected current phone location: $disp"
+            } else {
+                statusLabel.text = "Could not auto-detect phone location. Please search manually."
             }
         }
     }

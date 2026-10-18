@@ -50,12 +50,21 @@ Item {
     property string currentRenderMode: "hybrid"
     property string currentTimeMode: "realtime"
     property string currentWeatherOverride: "realtime"
+    property string forecastUrl: ""
+    property string liveClockText: Qt.formatTime(new Date(), "h:mm AP")
     signal toggleRenderModeRequested()
     signal cycleTimeModeRequested()
     signal cycleWeatherOverrideRequested()
     signal refreshRequested()
 
     property bool expanded: false
+
+    Timer {
+        interval: 1000
+        running: true
+        repeat: true
+        onTriggered: hudRoot.liveClockText = Qt.formatTime(new Date(), "h:mm AP")
+    }
 
     width: Math.round(248 * scaleFactor)
     height: expanded ? Math.round(298 * scaleFactor) : Math.round(94 * scaleFactor)
@@ -254,14 +263,26 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: Math.round(2 * hudRoot.scaleFactor)
 
-                    Text {
-                        text: hudRoot.conditionText.toUpperCase()
-                        color: "#ffffff"
-                        font.pixelSize: Math.max(10, Math.round(12.5 * hudRoot.scaleFactor))
-                        font.weight: Font.DemiBold
-                        font.letterSpacing: 0.5
-                        elide: Text.ElideRight
+                    Row {
                         width: parent.width
+                        spacing: 5
+
+                        Text {
+                            text: hudRoot.liveClockText
+                            color: "#ffd166"
+                            font.pixelSize: Math.max(9, Math.round(11 * hudRoot.scaleFactor))
+                            font.weight: Font.Bold
+                        }
+
+                        Text {
+                            text: "• " + hudRoot.conditionText.toUpperCase()
+                            color: "#ffffff"
+                            font.pixelSize: Math.max(9, Math.round(11.5 * hudRoot.scaleFactor))
+                            font.weight: Font.DemiBold
+                            font.letterSpacing: 0.4
+                            elide: Text.ElideRight
+                            width: Math.max(10, parent.width - 65 * hudRoot.scaleFactor)
+                        }
                     }
 
                     Text {
@@ -490,7 +511,7 @@ Item {
                             {
                                 label: hudRoot.currentRenderMode === "hybrid"
                                     ? "🎨 Hybrid"
-                                    : (hudRoot.currentRenderMode === "ai_generative" ? "✨ AI City" : "🧊 3D Model"),
+                                    : (hudRoot.currentRenderMode === "ai_generative" ? "✨ AI City" : "🧊 3D"),
                                 action: "mode"
                             },
                             {
@@ -498,8 +519,8 @@ Item {
                                 action: "time"
                             },
                             {
-                                label: "🌧 " + (hudRoot.currentWeatherOverride === "realtime" ? "Live" : hudRoot.currentWeatherOverride.toUpperCase()),
-                                action: "wx"
+                                label: "🌐 7-Day",
+                                action: "forecast"
                             },
                             {
                                 label: "↻",
@@ -533,7 +554,7 @@ Item {
                                 onClicked: {
                                     if (modelData.action === "mode") hudRoot.toggleRenderModeRequested()
                                     else if (modelData.action === "time") hudRoot.cycleTimeModeRequested()
-                                    else if (modelData.action === "wx") hudRoot.cycleWeatherOverrideRequested()
+                                    else if (modelData.action === "forecast" && hudRoot.forecastUrl) Qt.openUrlExternally(hudRoot.forecastUrl)
                                     else if (modelData.action === "refresh") hudRoot.refreshRequested()
                                 }
                             }

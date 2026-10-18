@@ -83,10 +83,10 @@
       color: #eef6fc;
     }
     .camera-pill {
+      display: none;
       position: absolute;
       left: 14px;
       bottom: 14px;
-      display: flex;
       gap: 4px;
       background: rgba(20, 34, 48, 0.76);
       border: 1px solid rgba(110, 168, 215, 0.45);
@@ -112,8 +112,11 @@
   <div class="widget-frame">
     <canvas id="isoCanvas" width="1376" height="768"></canvas>
 
-    <div class="hud-card">
-      <div class="hud-condition" id="hudCondition">CLEAR WEATHER</div>
+    <div class="hud-card" id="hudCard">
+      <div style="display:flex; justify-content:space-between; align-items:baseline;">
+        <div class="hud-condition" id="hudCondition">CLEAR WEATHER</div>
+        <div class="hud-clock" id="hudClock" style="font-size:13px; font-weight:800; color:#93c5fd; letter-spacing:0.5px;">--:-- --</div>
+      </div>
       <div class="hud-temp" id="hudTemp">68°F (20°C)</div>
       <div class="hud-meta" id="hudHumidity">64% HUMIDITY</div>
       <div class="hud-meta" id="hudWind">8 MPH NNE WIND</div>
@@ -123,10 +126,12 @@
         <span class="pill" id="hudAqi" style="color:#4cd137">AQI 24 GOOD</span>
         <span class="pill" id="hudUv" style="color:#fbc531">UV 3.2</span>
         <span class="pill" id="hudMoon">🌔 Waxing Gibbous</span>
+        <a id="hudForecastLink" target="_blank" rel="noopener noreferrer" class="pill" style="color:#60a5fa; text-decoration:none; cursor:pointer;" title="Open detailed 7-day weather forecast">🌐 7-Day Forecast ↗</a>
       </div>
       <div class="hud-controls">
         <input id="citySearch" type="text" placeholder="Search any city..." />
         <button id="btnSearch">Go</button>
+        <button id="btnAutoLoc" title="Detect Current Computer Location">📍 My Loc</button>
         <select id="themeSelect" title="3D Isometric Diorama Scene (Independent of Weather Location)">
           <optgroup label="Historic Virginia &amp; Mid-Atlantic (NPS)">
             <option value="yorktown">🏛️ Historic Yorktown, VA (1781 Waterfront)</option>
@@ -171,6 +176,23 @@
   <script type="module">
     import { IsometricWeatherEngine } from "./isometric-weather.js";
 
+    function updateLiveClock() {
+      const now = new Date();
+      const clockEl = document.getElementById("hudClock");
+      if (clockEl) {
+        clockEl.textContent = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+      }
+    }
+    setInterval(updateLiveClock, 1000);
+    updateLiveClock();
+
+    function getForecastUrl(lat, lon) {
+      if (lat >= 24 && lat <= 50 && lon >= -125 && lon <= -66) {
+        return `https://forecast.weather.gov/MapClick.php?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}`;
+      }
+      return `https://weather.com/weather/today/l/${lat.toFixed(4)},${lon.toFixed(4)}`;
+    }
+
     const canvas = document.getElementById("isoCanvas");
     const engine = new IsometricWeatherEngine(canvas, {
       onHudUpdate: (st) => {
@@ -184,18 +206,18 @@
         const moon = engine.computeMoonPhase();
         document.getElementById("hudMoon").textContent = `${moon.emoji} ${moon.name}`;
         document.getElementById("locBadge").textContent = `${st.locationName} • 3D Isometric`;
+
+        const fUrl = getForecastUrl(st.latitude, st.longitude);
+        const fLink = document.getElementById("hudForecastLink");
+        if (fLink) {
+          fLink.href = fUrl;
+        }
       }
     });
     window.isoEngine = engine;
 
     engine.start();
     engine.refreshAll();
-
-    document.getElementById("camZoomIn").addEventListener("click", () => engine.adjustCamera("zoom_in"));
-    document.getElementById("camZoomOut").addEventListener("click", () => engine.adjustCamera("zoom_out"));
-    document.getElementById("camPanLeft").addEventListener("click", () => engine.adjustCamera("pan_left"));
-    document.getElementById("camCenter").addEventListener("click", () => engine.adjustCamera("center"));
-    document.getElementById("camPanRight").addEventListener("click", () => engine.adjustCamera("pan_right"));
 
     document.getElementById("btnTime").addEventListener("click", () => {
       const modes = ["realtime", "day", "sunset", "night"];
@@ -218,6 +240,25 @@
         engine.state.latitude = r.latitude;
         engine.state.longitude = r.longitude;
         await engine.refreshAll();
+      }
+    });
+
+    document.getElementById("btnAutoLoc").addEventListener("click", async () => {
+      try {
+        const res = await fetch("https://get.geojs.io/v1/ip/geo.json");
+        const data = await res.json();
+        if (data && data.latitude && data.longitude) {
+          const lat = parseFloat(data.latitude);
+          const lon = parseFloat(data.longitude);
+          const city = data.city || "Current Location";
+          const region = data.region ? `, ${data.region}` : "";
+          engine.state.locationName = `${city}${region}`;
+          engine.state.latitude = lat;
+          engine.state.longitude = lon;
+          await engine.refreshAll();
+        }
+      } catch (e) {
+        console.error("Auto-detect failed:", e);
       }
     });
   </script>

@@ -45,13 +45,25 @@ Every pre-generated diorama features **Jamestown-style translucent turquoise cut
 
 ---
 
-## 4. Isometric Zoom, Horizontal Centering & Extrapolated Android HUD
+## 4. Isometric Zoom, Horizontal Centering, Hidden Camera Controls & Island-Centered Weather
 
 - **Horizontal Centering / Offset (`◀` `🎯` `▶`) + Zoom (`➖` `➕`)**:
   - Rotation is disabled so the isometric island remains at its optimal architectural angle.
   - Users can shift the 3D isometric diorama left, center (`0 px`), or right (`-220 px` to `+220 px`) while the **Weather HUD Overlay stays stationary**.
+- **Distraction-Free Visuals (Hidden Camera Buttons & Settings Gear)**:
+  - On-screen zoom and camera movement buttons (`➖` `➕` `◀` `🎯` `▶`) and the settings gear (`⚙️`) are cleanly hidden from the widget canvas across Android, KDE Plasma 6 Desktop, and Web.
+  - Tapping the 3D diorama canvas directly opens the configuration settings dialog.
+- **Precipitation & Weather Events Centered Over 3D Island**:
+  - Rain streaks, thunderstorm rain, and snowflakes are now mathematically calculated to fall strictly over the bounds of the 3D diorama island (`islandLeft..islandRight` and `islandTop..islandBottom`).
+  - Animated ground and water splash ripples render directly on the island surfaces rather than floating off to the bottom-right.
+- **Interactive 7-Day & Hourly Weather Forecast Link**:
+  - Tapping the Weather HUD Overlay (banner or corner card) opens the official 7-day and hourly weather forecast in the browser (`forecast.weather.gov` for US locations or `weather.com` worldwide).
+- **Auto-Detect Current Device / Computer Location**:
+  - Added a one-click/one-tap `📍 Auto-Detect Current Location` feature using fast HTTPS IP geolocation (`https://get.geojs.io/v1/ip/geo.json`). Works seamlessly without needing runtime GPS permissions.
+- **Integrated Sky Digital Clock**:
+  - Live digital clock embedded in the HUD banner and corner card across all platforms (`TextClock` in Android `RemoteViews`, 1-second live `Timer` in KDE Plasma 6 `WeatherHudCard.qml`, and `setInterval` in Web HTML5), designed to sit elegantly in the upper sky without obstructing the 3D island.
 - **Extrapolated High-Readability Android HUD (`widget_isometric_weather.xml` & `IsometricWeatherWidgetProvider.kt`)**:
-  - Uses native high-DPI `RemoteViews` typography (`Top-Sky Split Banner` or `Corner Card`) with `100% / 115% / 130%` text scaling and shifts the 3D island slightly downward so **0% of the 3D rendering is covered**.
+  - Uses native high-DPI `RemoteViews` typography (`Top-Sky Split Banner` or `Corner Card`) with `100% / 115% / 130%` text scaling and auto-fitting text sizes so words and icons never clip or run off screen.
 - **Spacious, Scroll-Safe Android Config Menu (`MainActivity.kt`)**:
   - Single full-screen `ScrollView` with `FOCUS_BEFORE_DESCENDANTS` and scroll-safe `AlertDialog` modal pickers.
 
@@ -59,13 +71,28 @@ Every pre-generated diorama features **Jamestown-style translucent turquoise cut
 
 ## 5. Developer Cache-Clearing Reference
 
-- **KDE Plasma 6**:
+When developing or modifying QML components or Android widgets, local caches can sometimes serve stale bytecode or layout definitions:
+
+- **KDE Plasma 6 (Desktop)**:
+  Wipe QML bytecode caches and reload the Plasma shell service:
   ```bash
-  rm -rf ~/.cache/plasmashell/qmlcache/*
+  rm -rf ~/.cache/plasmashell/qmlcache/* ~/.cache/plasmawindowed/qmlcache/*
   ./install.sh
   systemctl --user restart plasma-plasmashell.service
   ```
+  Or preview standalone without restarting the shell:
+  ```bash
+  plasmawindowed com.antigravity.yorktownweather
+  ```
+
 - **Android (OnePlus 13 / ADB)**:
+  Reinstall the APK with `-r` (replace existing) and broadcast the widget refresh intent to force `RemoteViews` re-inflation:
+  ```bash
+  adb install -r android/app/build/outputs/apk/release/app-release.apk
+  adb shell am broadcast -a com.antigravity.yorktownweather.ACTION_REFRESH_WIDGET \
+    -n com.antigravity.yorktownweather/.IsometricWeatherWidgetProvider
+  ```
+  Or run the automated helper script:
   ```bash
   ./scripts/install_android_usb.sh
   ```
