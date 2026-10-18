@@ -55,9 +55,11 @@ All 18 pre-generated 3D isometric floating-island dioramas feature **Jamestown-s
 - **Strictly Bounded Island Weather**: Rain streaks, thunderstorm rain, and snowflakes are mathematically bounded directly over the 3D diorama island (`islandLeft..islandRight` and `islandTop..islandBottom`).
 - **Ground & Water Splash Ripples**: Animated splash ripples render on the diorama ground and cutaway water surfaces instead of drifting off to the bottom-right corner.
 
-### 5. Interactive 7-Day & Hourly Forecast & Auto-Detect Location
+### 5. Interactive 7-Day & Hourly Forecast & True GPS Auto-Detection
 - **Tap Overlay for Full Forecast**: Tapping the Weather HUD banner or corner card immediately opens the detailed 7-day and hourly weather forecast in your web browser (NWS `forecast.weather.gov` for US locations or `weather.com` worldwide).
-- **Auto-Detect Device / Computer Location**: One-click / one-tap `📍 Auto-Detect Current Location` instantly resolves your current city and latitude/longitude via fast HTTPS IP geolocation (`https://get.geojs.io/v1/ip/geo.json`) across Android, Desktop, and Web without needing GPS permissions.
+- **True Hardware GPS & Network Location Acquisition**: Resolves your phone's true physical coordinates using Android's native GPS and network location providers (`ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`) rather than cellular carrier IP proxies (which often route mobile data through distant regional ISP gateways in Washington, D.C.).
+- **Periodic Background Location Updates**: When "Follow Phone GPS Location" is enabled, the widget periodically re-checks your position every 15 minutes via `AlarmManager` and `onUpdate`, keeping your weather and city name continuously updated as you travel.
+- **Desktop & Web Auto-Detection**: Supports instant one-click geolocation auto-detection on Desktop KDE Plasma 6 and Web.
 
 ### 6. Integrated Sky Digital Clock & High-Readability Android HUD
 - **Live Digital Clock**: An elegant, high-contrast digital clock is embedded directly into the Weather HUD banner and corner card across all platforms (`TextClock` in Android `RemoteViews`, 1-second live `Timer` in KDE Plasma 6 `WeatherHudCard.qml`, and `setInterval` in Web HTML5). Positioned in the upper sky to ensure zero encroachment on the 3D diorama render.

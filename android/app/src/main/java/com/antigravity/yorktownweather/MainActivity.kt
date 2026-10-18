@@ -59,12 +59,17 @@ import kotlin.math.sqrt
  */
 class MainActivity : Activity() {
 
+    companion object {
+        private const val RC_LOCATION_PERM = 1001
+    }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var appWidgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID
     private lateinit var webView: WebView
     private lateinit var statusLabel: TextView
     private lateinit var activeLocationHeader: TextView
     private lateinit var dioramaThemeButton: Button
+    private lateinit var autoUpdateLocCheck: CheckBox
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -274,6 +279,23 @@ class MainActivity : Activity() {
             textSize = 13f
         }
         configContainer.addView(autoLocBtn)
+
+        autoUpdateLocCheck = CheckBox(this).apply {
+            text = "Follow Phone GPS Location (Automatically update weather as you travel)"
+            setTextColor(Color.parseColor("#e6f1fa"))
+            textSize = 13f
+            isChecked = prefs.getBoolean("useCurrentLocation", false)
+            setPadding(dp(4), dp(2), dp(4), dp(8))
+            setOnCheckedChangeListener { _, checked ->
+                prefs.edit().putBoolean("useCurrentLocation", checked).apply()
+                if (checked) {
+                    detectAndApplyCurrentLocation()
+                } else {
+                    applyAndRefreshWidgets("Auto-update disabled (locked to current city)")
+                }
+            }
+        }
+        configContainer.addView(autoUpdateLocCheck)
 
         val searchRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -679,35 +701,46 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun detectAndApplyCurrentLocation() {
-        statusLabel.text = "Auto-detecting current phone location via network/IP..."
-        scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                runCatching {
-                    val conn = (URL("https://get.geojs.io/v1/ip/geo.json").openConnection() as HttpURLConnection).apply {
-                        connectTimeout = 5000
-                        readTimeout = 5000
-                    }
-                    val text = conn.inputStream.bufferedReader().use { it.readText() }
-                    val json = JSONObject(text)
-                    val city = json.optString("city", "").trim()
-                    val region = json.optString("region", "").trim()
-                    val lat = json.optDouble("latitude", Double.NaN)
-                    val lon = json.optDouble("longitude", Double.NaN)
-                    if (!lat.isNaN() && !lon.isNaN() && city.isNotEmpty()) {
-                        val name = if (region.isNotEmpty()) "$city, $region" else city
-                        Triple(name, lat.toFloat(), lon.toFloat())
-                    } else null
-                }.getOrNull()
-            }
-            if (result != null) {
-                val (disp, lat, lon) = result
-                val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putBoolean("useCurrentLocation", true).apply()
-                saveLocation(disp, lat, lon)
-                statusLabel.text = "📍 Auto-detected current phone location: $disp"
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == RC_LOCATION_PERM) {
+            if (grantResults.isNotEmpty() && grantResults.any { it == android.content.pm.PackageManager.PERMISSION_GRANTED }) {
+                statusLabel.text = "GPS permission granted. Resolving exact device location..."
+                detectAndApplyCurrentLocation()
             } else {
-                statusLabel.text = "Could not auto-detect phone location. Please search manually."
+                statusLabel.text = "⚠️ Location permission was denied. You can search any city manually."
+            }
+        }
+    }
+
+    private fun detectAndApplyCurrentLocation() {
+        if (!DeviceLocationManager.hasLocationPermission(this)) {
+            requestPermissions(
+                arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION),
+                RC_LOCATION_PERM
+            )
+            return
+        }
+
+        statusLabel.text = "Acquiring true GPS/device location..."
+        scope.launch {
+            val coords = DeviceLocationManager.getBestDeviceLocation(this@MainActivity)
+            if (coords != null) {
+                val (lat, lon) = coords
+                statusLabel.text = "Reverse geocoding ($lat, $lon)..."
+                val disp = DeviceLocationManager.reverseGeocode(this@MainActivity, lat, lon)
+                val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
+                prefs.edit()
+                    .putBoolean("useCurrentLocation", true)
+                    .putLong("lastLocationCheckTime", System.currentTimeMillis())
+                    .apply()
+                if (::autoUpdateLocCheck.isInitialized) {
+                    autoUpdateLocCheck.isChecked = true
+                }
+                saveLocation(disp, lat.toFloat(), lon.toFloat(), keepAutoUpdate = true)
+                statusLabel.text = "📍 Auto-detected GPS location: $disp"
+            } else {
+                statusLabel.text = "Could not resolve GPS location. Please ensure Location is enabled in Settings."
             }
         }
     }
@@ -716,13 +749,17 @@ class MainActivity : Activity() {
      * Saves the active weather telemetry coordinates (`name`, `lat`, `lon`) independently of
      * the user's selected 3D Isometric Diorama (`dioramaTheme`).
      */
-    private fun saveLocation(name: String, lat: Float, lon: Float) {
+    private fun saveLocation(name: String, lat: Float, lon: Float, keepAutoUpdate: Boolean = false) {
         val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
         prefs.edit()
             .putString("locationName", name)
             .putFloat("latitude", lat)
             .putFloat("longitude", lon)
+            .putBoolean("useCurrentLocation", keepAutoUpdate)
             .apply()
+        if (!keepAutoUpdate && ::autoUpdateLocCheck.isInitialized) {
+            autoUpdateLocCheck.isChecked = false
+        }
         activeLocationHeader.text = "⚙️ Global 3D Isometric Weather\nActive Location: $name"
         applyAndRefreshWidgets("Weather location set to $name (3D Diorama render unchanged)")
     }

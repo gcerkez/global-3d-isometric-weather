@@ -36,8 +36,10 @@ Release of **Global 3D Isometric Weather Widget** (`com.antigravity.yorktownweat
   * Tapping the 3D diorama canvas opens the configuration settings dialog.
 * **Interactive 7-Day & Hourly Weather Forecast on HUD Tap**:
   * Tapping the Weather HUD Overlay (banner or corner card) opens the official 7-day and hourly weather forecast in the browser (`forecast.weather.gov` for US locations or `weather.com` worldwide).
-* **Auto-Detect Current Device / Computer Location**:
-  * One-click / one-tap `📍 Auto-Detect Current Location` via fast HTTPS IP geolocation (`https://get.geojs.io/v1/ip/geo.json`) across Android, Desktop, and Web without needing GPS permissions.
+* **True Hardware GPS & Network Location Acquisition (`ACCESS_FINE_LOCATION`)**:
+  * Resolves true physical coordinates via GPS and network providers rather than relying on cellular ISP IP proxies (which often route mobile data through Ashburn / Washington, D.C.).
+  * Reverse-geocodes exact coordinates into local city names (e.g. `Yorktown, VA`, `Poquoson, VA`, `Tabb, VA`) using Android's native `Geocoder` and BigDataCloud.
+  * **Periodic Background Updates**: When "Follow Phone GPS Location" is enabled, the widget checks for location changes every 15 minutes via `AlarmManager` and `onUpdate`, continuously syncing weather as the user travels.
 * **Integrated Sky Digital Clock**:
   * Live digital clock embedded in the HUD banner and corner card across all platforms (`TextClock` in Android `RemoteViews`, 1-second live `Timer` in KDE Plasma 6 `WeatherHudCard.qml`, and `setInterval` in Web HTML5), designed to sit elegantly in the upper sky without obstructing the 3D island.
 * **Isometric Zoom & Horizontal Centering (Rotation Removed, HUD Stays Stationary)**:

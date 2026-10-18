@@ -1,5 +1,6 @@
 package com.antigravity.yorktownweather
 
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -8,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.*
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
@@ -90,6 +92,16 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         }
     }
 
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        schedulePeriodicUpdates(context)
+    }
+
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        cancelPeriodicUpdates(context)
+    }
+
     override fun onAppWidgetOptionsChanged(
         context: Context,
         appWidgetManager: AppWidgetManager,
@@ -108,24 +120,38 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         val pendingResult = goAsync()
         scope.launch {
             try {
+                schedulePeriodicUpdates(context)
                 val prefs = context.getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
 
-                // Auto-detect phone location if enabled or if requested
+                // Auto-detect phone location via GPS/Network if enabled
                 var locName = prefs.getString("locationName", "Yorktown, VA") ?: "Yorktown, VA"
                 var lat = prefs.getFloat("latitude", 37.2388f).toDouble()
                 var lon = prefs.getFloat("longitude", -76.5097f).toDouble()
 
                 if (prefs.getBoolean("useCurrentLocation", false)) {
-                    val detected = fetchDeviceLocation()
-                    if (detected != null) {
-                        locName = detected.first
-                        lat = detected.second.first
-                        lon = detected.second.second
-                        prefs.edit()
-                            .putString("locationName", locName)
-                            .putFloat("latitude", lat.toFloat())
-                            .putFloat("longitude", lon.toFloat())
-                            .apply()
+                    val coords = DeviceLocationManager.getBestDeviceLocation(context)
+                    if (coords != null) {
+                        val newLat = coords.first
+                        val newLon = coords.second
+                        val dLat = Math.abs(newLat - lat)
+                        val dLon = Math.abs(newLon - lon)
+                        val lastCheck = prefs.getLong("lastLocationCheckTime", 0L)
+                        val now = System.currentTimeMillis()
+                        if (dLat > 0.008 || dLon > 0.008 || locName.isEmpty() || (now - lastCheck) > 30 * 60 * 1000L) {
+                            val newName = DeviceLocationManager.reverseGeocode(context, newLat, newLon)
+                            locName = newName
+                            lat = newLat
+                            lon = newLon
+                            prefs.edit()
+                                .putString("locationName", locName)
+                                .putFloat("latitude", lat.toFloat())
+                                .putFloat("longitude", lon.toFloat())
+                                .putLong("lastLocationCheckTime", now)
+                                .apply()
+                        } else {
+                            lat = newLat
+                            lon = newLon
+                        }
                     }
                 }
 
@@ -732,27 +758,41 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         else -> if (isNight) "🌙" else "☀️"
     }
 
-    /**
-     * Auto-detects device location using HTTPS IP Geolocation (geojs.io).
-     * Returns "City, Region" to Pair(latitude, longitude) or null on failure.
-     */
-    private fun fetchDeviceLocation(): Pair<String, Pair<Double, Double>>? {
-        return runCatching {
-            val conn = (URL("https://get.geojs.io/v1/ip/geo.json").openConnection() as HttpURLConnection).apply {
-                connectTimeout = 4000
-                readTimeout = 4000
-            }
-            val text = conn.inputStream.bufferedReader().use { it.readText() }
-            val json = JSONObject(text)
-            val city = json.optString("city", "").trim()
-            val region = json.optString("region", "").trim()
-            val lat = json.optDouble("latitude", Double.NaN)
-            val lon = json.optDouble("longitude", Double.NaN)
-            if (!lat.isNaN() && !lon.isNaN() && city.isNotEmpty()) {
-                val name = if (region.isNotEmpty()) "$city, $region" else city
-                name to (lat to lon)
-            } else null
-        }.getOrNull()
+    private fun schedulePeriodicUpdates(context: Context) {
+        val intent = Intent(context, IsometricWeatherWidgetProvider::class.java).apply {
+            action = ACTION_REFRESH_WIDGET
+        }
+        val pi = PendingIntent.getBroadcast(
+            context,
+            100,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+        try {
+            am?.setInexactRepeating(
+                AlarmManager.ELAPSED_REALTIME,
+                SystemClock.elapsedRealtime() + 15 * 60 * 1000L,
+                15 * 60 * 1000L,
+                pi
+            )
+        } catch (_: Exception) {}
+    }
+
+    private fun cancelPeriodicUpdates(context: Context) {
+        val intent = Intent(context, IsometricWeatherWidgetProvider::class.java).apply {
+            action = ACTION_REFRESH_WIDGET
+        }
+        val pi = PendingIntent.getBroadcast(
+            context,
+            100,
+            intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+        if (pi != null) {
+            val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+            am?.cancel(pi)
+        }
     }
 
     data class WidgetConfig(

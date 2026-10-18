@@ -58,8 +58,10 @@ Every pre-generated diorama features **Jamestown-style translucent turquoise cut
   - Animated ground and water splash ripples render directly on the island surfaces rather than floating off to the bottom-right.
 - **Interactive 7-Day & Hourly Weather Forecast Link**:
   - Tapping the Weather HUD Overlay (banner or corner card) opens the official 7-day and hourly weather forecast in the browser (`forecast.weather.gov` for US locations or `weather.com` worldwide).
-- **Auto-Detect Current Device / Computer Location**:
-  - Added a one-click/one-tap `📍 Auto-Detect Current Location` feature using fast HTTPS IP geolocation (`https://get.geojs.io/v1/ip/geo.json`). Works seamlessly without needing runtime GPS permissions.
+- **True Hardware GPS & Network Location Acquisition (`DeviceLocationManager.kt`)**:
+  - Added Android runtime permissions `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` to acquire the phone's true physical coordinates via GPS and network providers rather than relying solely on cellular carrier IP proxies (which route mobile traffic through distant ISP data centers like Washington, D.C.).
+  - Reverse-geocodes exact coordinates into local city names (e.g. `Yorktown, VA`, `Poquoson, VA`, `Tabb, VA`) using Android's native `Geocoder` with a robust fallback to BigDataCloud reverse geocoding.
+  - **Periodic Background Location Updates**: When "Follow Phone GPS Location" is enabled, the widget periodically re-checks the device's location every 15 minutes via `AlarmManager` and `onUpdate`, automatically refreshing the weather and local city name as the user travels.
 - **Integrated Sky Digital Clock**:
   - Live digital clock embedded in the HUD banner and corner card across all platforms (`TextClock` in Android `RemoteViews`, 1-second live `Timer` in KDE Plasma 6 `WeatherHudCard.qml`, and `setInterval` in Web HTML5), designed to sit elegantly in the upper sky without obstructing the 3D island.
 - **Extrapolated High-Readability Android HUD (`widget_isometric_weather.xml` & `IsometricWeatherWidgetProvider.kt`)**:
