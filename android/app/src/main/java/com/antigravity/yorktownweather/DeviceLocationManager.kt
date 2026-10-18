@@ -159,9 +159,10 @@ object DeviceLocationManager {
         if (state.isNullOrBlank()) return ""
         if (state.length == 2) return state.uppercase()
         val map = mapOf(
-            "Virginia" to "VA", "Maryland" to "MD", "North Carolina" to "NC", "District of Columbia" to "DC",
-            "California" to "CA", "New York" to "NY", "Florida" to "FL", "Texas" to "TX",
-            "Illinois" to "IL", "Washington" to "WA", "Pennsylvania" to "PA", "Georgia" to "GA"
+            "Virginia" to "VA", "Maryland" to "MD", "North Carolina" to "NC", "South Carolina" to "SC",
+            "District of Columbia" to "DC", "California" to "CA", "New York" to "NY", "Florida" to "FL",
+            "Texas" to "TX", "Illinois" to "IL", "Washington" to "WA", "Pennsylvania" to "PA",
+            "Georgia" to "GA", "Colorado" to "CO", "Arizona" to "AZ", "Nevada" to "NV"
         )
         return map[state] ?: state
     }
@@ -191,14 +192,24 @@ object DeviceLocationManager {
     val REGIONAL_DIORAMAS = listOf(
         DioramaLocation("yorktown", "Historic Yorktown, VA", 37.2388, -76.5097, "1781 Colonial Waterfront, Victory Monument & Coleman Bridge"),
         DioramaLocation("jamestown", "Historic Jamestown, VA", 37.2085, -76.7741, "1607 James Fort Wooden Palisade & 3 Tall Ships on James River"),
+        DioramaLocation("virginia_beach", "Virginia Beach, VA", 36.8529, -75.9780, "Oceanfront Boardwalk, Cape Henry Lighthouse & Fishing Pier"),
+        DioramaLocation("chesapeake_bay", "Chesapeake Bay, VA", 37.1667, -76.0833, "Chesapeake Bay Bridge-Tunnel, Oyster/Crab Docks & Harbor Light"),
         DioramaLocation("washington_dc", "Washington, D.C. & Mid-Atlantic", 38.8951, -77.0364, "U.S. Capitol Dome, Washington Monument & Tidal Basin"),
         DioramaLocation("new_york", "New York City & Northeast", 40.7128, -74.0060, "Statue of Liberty, Brooklyn Bridge & Empire State Building"),
-        DioramaLocation("san_francisco", "San Francisco & California Coast", 37.7749, -122.4194, "Golden Gate Bridge, Alcatraz & Painted Ladies"),
-        DioramaLocation("chicago_great_lakes", "Chicago & Great Lakes Midwest", 41.8781, -87.6298, "Willis Tower, Red Bascule Bridge & Cloud Gate Bean"),
-        DioramaLocation("grand_canyon", "Grand Canyon & American Southwest", 36.0544, -112.1401, "Red-Rock Buttes, Cliff Dwellings & Colorado River"),
-        DioramaLocation("new_orleans", "New Orleans & Gulf South", 29.9511, -90.0715, "St. Louis Cathedral, French Quarter & Steamboat"),
-        DioramaLocation("seattle_pnw", "Seattle & Pacific Northwest", 47.6062, -122.3321, "Space Needle, Pike Place Market & Mt. Rainier"),
+        DioramaLocation("myrtle_beach", "Myrtle Beach & Grand Strand, SC", 33.6891, -78.8867, "SkyWheel Ferris Wheel, Oceanfront Promenade & Fishing Pier"),
+        DioramaLocation("atlanta", "Atlanta & Georgia Piedmont", 33.7490, -84.3880, "Peachtree Center Tower, Georgia Capitol Dome & Olympic Park"),
+        DioramaLocation("orlando", "Orlando & Theme Parks, FL", 28.5383, -81.3792, "Fairytale Spires, Roller Coaster & Lake Eola Swan Lagoon"),
         DioramaLocation("miami_caribbean", "Miami Beach & Florida Keys", 25.7617, -80.1918, "Art Deco Ocean Drive, Overseas Bridge & Coral Reef"),
+        DioramaLocation("new_orleans", "New Orleans & Gulf South", 29.9511, -90.0715, "St. Louis Cathedral, French Quarter & Steamboat"),
+        DioramaLocation("texas", "Texas Capitol & Hill Country", 30.2672, -97.7431, "Pink Granite Capitol Dome, Austin Skyline & River Walk"),
+        DioramaLocation("chicago_great_lakes", "Chicago & Great Lakes Midwest", 41.8781, -87.6298, "Willis Tower, Red Bascule Bridge & Cloud Gate Bean"),
+        DioramaLocation("denver", "Denver Mile High Skyline, CO", 39.7392, -104.9903, "Mile High Skyline, Historic Union Station & Rocky Mountain Foothills"),
+        DioramaLocation("colorado_springs", "Colorado Springs & Pikes Peak, CO", 38.8339, -104.8214, "Garden of the Gods Sandstone Spires, Pikes Peak Depot & Manor"),
+        DioramaLocation("arizona", "Arizona & Sonoran Desert", 33.4484, -112.0740, "Sedona Cathedral Rock, Adobe Mission & Sonoran Oasis"),
+        DioramaLocation("grand_canyon", "Grand Canyon & American Southwest", 36.0544, -112.1401, "Red-Rock Buttes, Cliff Dwellings & Colorado River"),
+        DioramaLocation("las_vegas", "Las Vegas Strip & Mojave Oasis, NV", 36.1699, -115.1398, "Strip Mega-Resorts, High Roller Wheel & Bellagio Fountains"),
+        DioramaLocation("san_francisco", "San Francisco & California Coast", 37.7749, -122.4194, "Golden Gate Bridge, Alcatraz & Painted Ladies"),
+        DioramaLocation("seattle_pnw", "Seattle & Pacific Northwest", 47.6062, -122.3321, "Space Needle, Pike Place Market & Mt. Rainier"),
         DioramaLocation("coastal", "New England & Maritime Atlantic", 43.6615, -70.2553, "Striped Lighthouse, Stone Pier & Historic Wharf"),
         DioramaLocation("london_uk", "London & British Isles", 51.5074, -0.1278, "Big Ben, Palace of Westminster & Tower of London"),
         DioramaLocation("paris_europe", "Paris & Western Europe", 48.8566, 2.3522, "Notre-Dame Cathedral, Louvre Palace & Arc de Triomphe"),

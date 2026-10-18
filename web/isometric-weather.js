@@ -9,33 +9,45 @@
  *   - Open-Meteo Forecast & Air Quality live telemetry (Temp, Feels Like,
  *     Humidity, 16-compass Wind, US EPA AQI, UV Index, 12h Sparkline, 3-Day Forecast)
  *   - Astronomical Lunar Synodic Phase & Solar Golden Hour calculation
- *   - Built-In Pre-Generated 3D Isometric Diorama Themes (18 Regional, NPS & UNESCO Cutouts):
+ *   - Built-In Pre-Generated 3D Isometric Diorama Themes (28 Regional, NPS & UNESCO Cutouts):
  *       1. "yorktown":            Historic Yorktown, VA (1781 Waterfront, Coleman Bridge & Tall Ship)
- *       2. "jamestown":           Historic Jamestown, VA (1607 James Fort Palisade, 3 Ships & Turquoise River)
- *       3. "washington_dc":       Washington, D.C. & Mid-Atlantic (US Capitol, Monument, Lincoln Memorial)
- *       4. "new_york":            New York City & Northeast (Statue of Liberty, Brooklyn Bridge, Empire State)
- *       5. "san_francisco":       San Francisco & California Coast (Golden Gate Bridge, Alcatraz, Painted Ladies)
- *       6. "chicago_great_lakes": Chicago & Great Lakes Midwest (Willis Tower, Red Bascule Bridge, Navy Pier)
- *       7. "grand_canyon":        Grand Canyon & Southwest (Red-Rock Buttes, Cliff Dwellings & Colorado River)
- *       8. "new_orleans":         New Orleans & Gulf South (St. Louis Cathedral, French Quarter & Steamboat)
- *       9. "seattle_pnw":         Seattle & Pacific Northwest (Space Needle, Pike Place, Mt. Rainier & Ferry)
+ *       2. "jamestown":           Historic Jamestown, VA (1607 James Fort Palisade, 3 Ships & River)
+ *       3. "virginia_beach":      Virginia Beach, VA (Boardwalk, Cape Henry Lighthouse & Pier)
+ *       4. "chesapeake_bay":      Chesapeake Bay, VA (Bay Bridge-Tunnel, Crab Docks & Harbor Light)
+ *       5. "washington_dc":       Washington, D.C. & Mid-Atlantic (US Capitol, Monument, Lincoln Memorial)
+ *       6. "new_york":            New York City & Northeast (Statue of Liberty, Brooklyn Bridge, Empire State)
+ *       7. "myrtle_beach":        Myrtle Beach & Grand Strand, SC (SkyWheel, Resorts & Promenade)
+ *       8. "atlanta":             Atlanta & Georgia Piedmont (Peachtree Tower, Olympic Park & Gold Capitol)
+ *       9. "orlando":             Orlando Theme Parks, FL (Fairytale Spire Castle, Coaster & Swan Lagoon)
  *      10. "miami_caribbean":     Miami Beach, Florida Keys & Tropics (Art Deco Ocean Drive & Coral Lagoon)
- *      11. "coastal":             New England & Maritime Atlantic (Lighthouse Point, Schooner & Wharf)
- *      12. "london_uk":           London & UK (Big Ben, Parliament, Tower of London & Thames Bridge)
- *      13. "paris_europe":        Paris & Western Europe (Notre-Dame, Louvre Palace, Arc & Seine Bridge)
- *      14. "rome_mediterranean":  Rome, Athens & Mediterranean (Colosseum, Parthenon, Aqueduct & Harbor)
- *      15. "cairo_giza":          Cairo, Giza & Middle East (Ancient Citadel, Sacred Temple Pool & Pharos)
- *      16. "tokyo_east_asia":     Tokyo, Kyoto & East Asia (5-Story Pagoda, Imperial Hall & Torii Bridge)
- *      17. "modern":              Global Modern Metropolis (Sydney / Singapore / Toronto Skyline & Bridge)
- *      18. "alpine":              Alpine Mountain & Glacial Lake Village (Rockies / Swiss Alps / Andes)
+ *      11. "new_orleans":         New Orleans & Gulf South (St. Louis Cathedral, French Quarter & Steamboat)
+ *      12. "texas":               Texas Capitol, Austin & Hill Country (Pink Granite Capitol, River Walk)
+ *      13. "chicago_great_lakes": Chicago & Great Lakes Midwest (Willis Tower, Red Bascule Bridge, Navy Pier)
+ *      14. "denver":              Denver Mile High Skyline, CO (Union Station, 16th St Mall & Foothills)
+ *      15. "colorado_springs":    Colorado Springs & Pikes Peak, CO (Garden of the Gods, Broadmoor & Peak)
+ *      16. "arizona":             Arizona Sonoran Desert & Red Rocks (Sedona Cathedral Rock, Adobe Mission)
+ *      17. "grand_canyon":        Grand Canyon & Southwest (Red-Rock Buttes, Cliff Dwellings & Colorado River)
+ *      18. "las_vegas":           Las Vegas Strip & Mojave Oasis, NV (Strip Resorts, High Roller Wheel & Fountain)
+ *      19. "san_francisco":       San Francisco & California Coast (Golden Gate Bridge, Alcatraz, Painted Ladies)
+ *      20. "seattle_pnw":         Seattle & Pacific Northwest (Space Needle, Pike Place, Mt. Rainier & Ferry)
+ *      21. "coastal":             New England & Maritime Atlantic (Lighthouse Point, Schooner & Wharf)
+ *      22. "london_uk":           London & UK (Big Ben, Parliament, Tower of London & Thames Bridge)
+ *      23. "paris_europe":        Paris & Western Europe (Notre-Dame, Louvre Palace, Arc & Seine Bridge)
+ *      24. "rome_mediterranean":  Rome, Athens & Mediterranean (Colosseum, Parthenon, Aqueduct & Harbor)
+ *      25. "cairo_giza":          Cairo, Giza & Middle East (Ancient Citadel, Sacred Temple Pool & Pharos)
+ *      26. "tokyo_east_asia":     Tokyo, Kyoto & East Asia (5-Story Pagoda, Imperial Hall & Torii Bridge)
+ *      27. "modern":              Global Modern Metropolis (Sydney / Singapore / Toronto Skyline & Bridge)
+ *      28. "alpine":              Alpine Mountain & Glacial Lake Village (Rockies / Swiss Alps / Andes)
  *   - Isometric Zoom & Horizontal Centering (move left/right/center while HUD overlay stays fixed)
  *   - Static Miniature Diorama Sprites (Horse & Carriage, Cars, Sailboats)
  */
 
 export const VALID_DIORAMA_THEMES = [
-    "yorktown", "jamestown", "washington_dc", "new_york", "san_francisco",
-    "chicago_great_lakes", "grand_canyon", "new_orleans", "seattle_pnw",
-    "miami_caribbean", "coastal", "london_uk", "paris_europe",
+    "yorktown", "jamestown", "virginia_beach", "chesapeake_bay",
+    "washington_dc", "new_york", "myrtle_beach", "atlanta", "orlando",
+    "miami_caribbean", "new_orleans", "texas", "chicago_great_lakes",
+    "denver", "colorado_springs", "arizona", "grand_canyon", "las_vegas",
+    "san_francisco", "seattle_pnw", "coastal", "london_uk", "paris_europe",
     "rome_mediterranean", "cairo_giza", "tokyo_east_asia", "modern", "alpine"
 ];
 
@@ -344,76 +356,6 @@ export class IsometricWeatherEngine {
 
         if (img && img.complete && img.naturalWidth > 0) {
             ctx.drawImage(img, dx, dy, dw, dh);
-        }
-
-        // 2B. Water wave sparkles & static scenic miniature sprites (animated walking people removed)
-        const s = dw / 1376.0;
-        const waterPts = [
-            { x: 0.14, y: 0.47 }, { x: 0.18, y: 0.52 }, { x: 0.24, y: 0.56 },
-            { x: 0.28, y: 0.46 }, { x: 0.33, y: 0.42 }, { x: 0.38, y: 0.34 },
-            { x: 0.44, y: 0.28 }, { x: 0.49, y: 0.32 }
-        ];
-        for (let wi = 0; wi < waterPts.length; wi++) {
-            const wp = waterPts[wi];
-            const waveAlpha = 0.20 + 0.18 * Math.sin(t * 2.2 + wi * 1.3);
-            const wx = dx + (wp.x + Math.sin(t * 0.9 + wi) * 0.006) * dw;
-            const wy = dy + wp.y * dh;
-            ctx.strokeStyle = tState === "sunset"
-                ? `rgba(255, 210, 145, ${waveAlpha.toFixed(3)})`
-                : `rgba(225, 245, 255, ${waveAlpha.toFixed(3)})`;
-            ctx.lineWidth = 1.6 * s;
-            ctx.beginPath();
-            ctx.moveTo(wx - 10 * s, wy - 4 * s);
-            ctx.lineTo(wx + 10 * s, wy + 4 * s);
-            ctx.stroke();
-        }
-
-        if (this.state.dioramaTheme === "yorktown") {
-            // Static Sprite 1: Colonial Horse & Carriage stationed on Historic Main Street
-            const hcX = dx + 0.442 * dw;
-            const hcY = dy + 0.648 * dh;
-            const hx = hcX + 4.1 * s;
-            const hy = hcY - 3.0 * s;
-
-            ctx.strokeStyle = "rgba(70, 48, 32, 0.75)";
-            ctx.lineWidth = 0.9 * s;
-            ctx.beginPath();
-            ctx.moveTo(hcX, hcY - 2.0 * s);
-            ctx.lineTo(hx, hy - 1.6 * s);
-            ctx.stroke();
-
-            ctx.fillStyle = "#6e4226";
-            ctx.beginPath();
-            ctx.ellipse(hx, hy - 1.5 * s, 2.1 * s, 1.3 * s, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = "#3b2316";
-            ctx.beginPath();
-            ctx.ellipse(hcX, hcY - 2.5 * s, 3.5 * s, 2.1 * s, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "#9e3b2b";
-            ctx.beginPath();
-            ctx.ellipse(hcX, hcY - 3.8 * s, 2.8 * s, 1.5 * s, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Static Sprite 2 & 3: Miniature Cars on the George P. Coleman Memorial Bridge
-            const carX = dx + 0.365 * dw;
-            const carY = dy + 0.384 * dh;
-            ctx.fillStyle = "#d64035";
-            ctx.beginPath();
-            ctx.ellipse(carX, carY - 1.2 * s, 2.4 * s, 1.3 * s, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "#f2f6fa";
-            ctx.beginPath();
-            ctx.ellipse(carX, carY - 2.1 * s, 1.4 * s, 0.8 * s, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            const car2X = dx + 0.422 * dw;
-            const car2Y = dy + 0.425 * dh;
-            ctx.fillStyle = "#2b6cb0";
-            ctx.beginPath();
-            ctx.ellipse(car2X, car2Y - 1.2 * s, 2.3 * s, 1.2 * s, 0, 0, Math.PI * 2);
-            ctx.fill();
         }
 
         ctx.restore();

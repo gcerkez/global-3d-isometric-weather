@@ -31,9 +31,11 @@ Item {
     signal panXEdited(int newPanX)
 
     readonly property var validDioramaThemes: [
-        "yorktown", "jamestown", "washington_dc", "new_york", "san_francisco",
-        "chicago_great_lakes", "grand_canyon", "new_orleans", "seattle_pnw",
-        "miami_caribbean", "coastal", "modern", "alpine",
+        "yorktown", "jamestown", "virginia_beach", "chesapeake_bay",
+        "washington_dc", "new_york", "myrtle_beach", "atlanta", "orlando",
+        "miami_caribbean", "new_orleans", "texas", "chicago_great_lakes",
+        "denver", "colorado_springs", "arizona", "grand_canyon", "las_vegas",
+        "san_francisco", "seattle_pnw", "coastal", "modern", "alpine",
         "london_uk", "paris_europe", "rome_mediterranean", "cairo_giza", "tokyo_east_asia"
     ]
 

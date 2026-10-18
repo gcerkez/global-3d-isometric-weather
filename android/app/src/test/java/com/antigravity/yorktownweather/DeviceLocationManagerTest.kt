@@ -50,6 +50,16 @@ class DeviceLocationManagerTest {
         val testCases = listOf(
             Triple(38.8951, -77.0364, "washington_dc"),
             Triple(40.7128, -74.0060, "new_york"),
+            Triple(36.8529, -75.9780, "virginia_beach"),
+            Triple(37.1667, -76.0833, "chesapeake_bay"),
+            Triple(33.6891, -78.8867, "myrtle_beach"),
+            Triple(33.7490, -84.3880, "atlanta"),
+            Triple(28.5383, -81.3792, "orlando"),
+            Triple(30.2672, -97.7431, "texas"),
+            Triple(39.7392, -104.9903, "denver"),
+            Triple(38.8339, -104.8214, "colorado_springs"),
+            Triple(33.4484, -112.0740, "arizona"),
+            Triple(36.1699, -115.1398, "las_vegas"),
             Triple(37.7749, -122.4194, "san_francisco"),
             Triple(41.8781, -87.6298, "chicago_great_lakes"),
             Triple(47.6062, -122.3321, "seattle_pnw"),
@@ -71,7 +81,7 @@ class DeviceLocationManagerTest {
     @Test
     fun testRegionalDioramaListIntegrity() {
         val list = DeviceLocationManager.REGIONAL_DIORAMAS
-        assertEquals("Must have 18 pre-generated dioramas", 18, list.size)
+        assertEquals("Must have 28 pre-generated dioramas", 28, list.size)
 
         val ids = mutableSetOf<String>()
         for (d in list) {

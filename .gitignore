@@ -3,3 +3,7 @@ android/build/
 android/app/build/
 android/local.properties
 __pycache__/
+dist/*.apk
+dist/*.plasmoid
+dist/*.zip
+dist/*.tar.gz

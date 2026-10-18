@@ -312,14 +312,24 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
 
                 val themeLabel = when (cfg.dioramaTheme) {
                     "jamestown" -> "Historic Jamestown 3D"
+                    "virginia_beach" -> "Virginia Beach 3D"
+                    "chesapeake_bay" -> "Chesapeake Bay 3D"
                     "washington_dc" -> "Washington, D.C. 3D"
                     "new_york" -> "New York City 3D"
-                    "san_francisco" -> "San Francisco 3D"
-                    "chicago_great_lakes" -> "Chicago & Great Lakes 3D"
-                    "grand_canyon" -> "Grand Canyon & SW 3D"
-                    "new_orleans" -> "New Orleans 3D"
-                    "seattle_pnw" -> "Seattle & PNW 3D"
+                    "myrtle_beach" -> "Myrtle Beach 3D"
+                    "atlanta" -> "Atlanta & Piedmont 3D"
+                    "orlando" -> "Orlando Theme Parks 3D"
                     "miami_caribbean" -> "Miami & Keys 3D"
+                    "new_orleans" -> "New Orleans 3D"
+                    "texas" -> "Texas & Austin 3D"
+                    "chicago_great_lakes" -> "Chicago & Great Lakes 3D"
+                    "denver" -> "Denver Mile High 3D"
+                    "colorado_springs" -> "Colorado Springs 3D"
+                    "arizona" -> "Arizona Sonoran 3D"
+                    "grand_canyon" -> "Grand Canyon & SW 3D"
+                    "las_vegas" -> "Las Vegas Strip 3D"
+                    "san_francisco" -> "San Francisco 3D"
+                    "seattle_pnw" -> "Seattle & PNW 3D"
                     "coastal" -> "Maritime Harbor 3D"
                     "london_uk" -> "London & UK 3D"
                     "paris_europe" -> "Paris & Europe 3D"
@@ -433,9 +443,11 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         val isSunset = effectiveTime == "sunset"
 
         val validThemes = setOf(
-            "yorktown", "jamestown", "washington_dc", "new_york", "san_francisco",
-            "chicago_great_lakes", "grand_canyon", "new_orleans", "seattle_pnw",
-            "miami_caribbean", "coastal", "london_uk", "paris_europe",
+            "yorktown", "jamestown", "virginia_beach", "chesapeake_bay",
+            "washington_dc", "new_york", "myrtle_beach", "atlanta", "orlando",
+            "miami_caribbean", "new_orleans", "texas", "chicago_great_lakes",
+            "denver", "colorado_springs", "arizona", "grand_canyon", "las_vegas",
+            "san_francisco", "seattle_pnw", "coastal", "london_uk", "paris_europe",
             "rome_mediterranean", "cairo_giza", "tokyo_east_asia", "modern", "alpine"
         )
         val cleanTheme = if (cfg.dioramaTheme in validThemes) cfg.dioramaTheme else "yorktown"
@@ -615,51 +627,6 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
 
         if (islandBmp != null) {
             canvas.drawBitmap(islandBmp, null, RectF(ix, iy, ix + iw, iy + ih), paint)
-        }
-
-        // 3B. Animated water sparkles on the front turquoise water block (normalized island coords)
-        val waterPts = arrayOf(
-            0.50f to 0.72f, 0.55f to 0.63f, 0.62f to 0.70f, 0.66f to 0.77f,
-            0.70f to 0.65f, 0.78f to 0.58f, 0.84f to 0.52f
-        )
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 1.6f * sI
-        for (wi in waterPts.indices) {
-            val (wpx, wpy) = waterPts[wi]
-            val alpha = (110 + (65 * sin((phase * 2.0 * Math.PI) + wi * 1.3)).toInt()).coerceIn(40, 210)
-            paint.color = if (isSunset) Color.argb(alpha, 255, 210, 145) else Color.argb(alpha, 230, 248, 255)
-            val wxPt = ix + (wpx + 0.005f * sin((phase * 2.0 * Math.PI + wi).toFloat())) * iw
-            val wyPt = iy + wpy * ih
-            canvas.drawLine(wxPt - 9f * sI, wyPt - 3.5f * sI, wxPt + 9f * sI, wyPt + 3.5f * sI, paint)
-        }
-        paint.style = Paint.Style.FILL
-
-        // 3C. Static scenic miniature sprites (animated walking people removed)
-        if (cfg.dioramaTheme == "yorktown") {
-            // Static Sprite 1: Colonial horse & carriage on the brick Main Street
-            val hcX = ix + 0.40f * iw
-            val hcY = iy + 0.49f * ih
-            val hx = hcX + 4.2f * sI
-            val hy = hcY - 3.1f * sI
-            paint.color = Color.parseColor("#6e4226")
-            canvas.drawOval(RectF(hx - 2.2f * sI, hy - 2.6f * sI, hx + 2.2f * sI, hy), paint)
-            paint.color = Color.parseColor("#3b2316")
-            canvas.drawOval(RectF(hcX - 3.6f * sI, hcY - 4.4f * sI, hcX + 3.6f * sI, hcY - 0.4f * sI), paint)
-            paint.color = Color.parseColor("#9e3b2b")
-            canvas.drawOval(RectF(hcX - 2.8f * sI, hcY - 5.2f * sI, hcX + 2.8f * sI, hcY - 2.0f * sI), paint)
-
-            // Static Sprites 2 & 3: miniature cars on the Coleman Memorial Bridge deck
-            val carX = ix + 0.33f * iw
-            val carY = iy + 0.60f * ih
-            paint.color = Color.parseColor("#d64035")
-            canvas.drawOval(RectF(carX - 2.5f * sI, carY - 2.4f * sI, carX + 2.5f * sI, carY), paint)
-            paint.color = Color.parseColor("#f2f6fa")
-            canvas.drawOval(RectF(carX - 1.4f * sI, carY - 3.0f * sI, carX + 1.4f * sI, carY - 1.2f * sI), paint)
-
-            val car2X = ix + 0.39f * iw
-            val car2Y = iy + 0.64f * ih
-            paint.color = Color.parseColor("#2b6cb0")
-            canvas.drawOval(RectF(car2X - 2.4f * sI, car2Y - 2.2f * sI, car2X + 2.4f * sI, car2Y), paint)
         }
 
         canvas.restore()
