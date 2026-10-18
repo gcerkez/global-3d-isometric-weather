@@ -32,6 +32,7 @@ Release of **Global 3D Isometric Weather Widget** (`com.antigravity.yorktownweat
   * Move the entire 3D isometric diorama left (`◀`), center (`🎯`), or right (`▶`) and zoom (`➖` / `➕`) on both Desktop and Android while leaving the Weather HUD Overlay fixed in its configured position.
 * **Extrapolated, High-Readability Android Homescreen HUD & Scroll-Safe Config Menu**:
   * Native high-DPI `RemoteViews` **Top-Sky Split Banner** and **Corner HUD Card** with `100% / 115% / 130%` text scaling that sits in the open upper sky without covering the 3D isometric town.
+  * The HUD uses stacked full-width rows that auto-fit to the real widget width, so text and icons never run off the edge on narrow (4-column) phone widgets; frames render at the widget's true aspect ratio with the island placed below the HUD.
   * Full-screen scroll-safe Android configuration menu (`MainActivity.kt`) using modal `AlertDialog` pickers instead of hair-trigger `Spinner`s so scrolling never triggers accidental taps.
 
 ---

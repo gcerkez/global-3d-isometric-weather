@@ -137,9 +137,6 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                     R.id.widget_frame_2,
                     R.id.widget_frame_3
                 )
-                val frames = (0 until 4).map { idx ->
-                    renderIsometricWidgetFrame(cfg, telemetry, baseIsland, idx / 4.0f)
-                }
 
                 val launchIntent = Intent(context, MainActivity::class.java)
                 val pendingOpenApp = PendingIntent.getActivity(
@@ -210,51 +207,96 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
 
                 for (widgetId in appWidgetIds) {
                     val views = RemoteViews(context.packageName, R.layout.widget_isometric_weather)
-                    for (i in frameIds.indices) {
-                        views.setImageViewBitmap(frameIds[i], frames[i])
-                    }
 
-                    // Populate & scale Extrapolated Native RemoteViews HUD
+                    // Real on-screen widget size (dp). Portrait launchers lay out at MIN_WIDTH x MAX_HEIGHT.
+                    val widgetWidthDp = widgetWidthDp(appWidgetManager, widgetId)
+                    val widgetHeightDp = widgetHeightDp(appWidgetManager, widgetId)
+
+                    // Populate & auto-fit the native RemoteViews HUD
                     val scale = cfg.hudScale.coerceIn(0.90f, 1.45f)
+
+                    // Upper-bound HUD height (dp) for the stacked top bar so the island is drawn below it:
+                    // root padding + margin + vertical padding + each row's line height (~1.3x text size)
+                    val hudHeightDp = if (cfg.hudPosition == "top-sky") {
+                        2f + 6f + 11f + 17f * scale * 1.22f + 2f + 2f * 11.5f * scale * 1.3f + 1f +
+                            (if (cfg.showExtendedHud) 1f + 11f * scale * 1.3f else 0f)
+                    } else 0f
+
+                    for (i in frameIds.indices) {
+                        val frame = renderIsometricWidgetFrame(
+                            cfg, telemetry, baseIsland, i / 4.0f,
+                            widgetWidthDp, widgetHeightDp, hudHeightDp
+                        )
+                        views.setImageViewBitmap(frameIds[i], frame)
+                    }
+                    val feelsLine = "📍 ${cfg.locationName.uppercase()} • FEELS $feelsFormatted"
+                    val metaLine = "💧 ${telemetry.humidity}% • 💨 $windFormatted"
+                    val badgeLine = "AQI ${telemetry.usAqi} ${aqiLabel(telemetry.usAqi)} • UV ${String.format("%.1f", telemetry.uvIndex)} • 🌔"
+
                     if (cfg.hudPosition == "top-sky") {
                         views.setViewVisibility(R.id.widget_hud_top_bar, View.VISIBLE)
                         views.setViewVisibility(R.id.widget_hud_corner, View.GONE)
 
-                        views.setTextViewText(R.id.hud_bar_temp, "$wxEmoji $tempFormatted")
-                        views.setTextViewText(R.id.hud_bar_condition_loc, "$headline • 📍 ${cfg.locationName.uppercase()}")
-                        views.setTextViewText(R.id.hud_bar_wind_hum, "💧 ${telemetry.humidity}% • 💨 $windFormatted")
-                        views.setTextViewText(
-                            R.id.hud_bar_badges,
-                            if (cfg.showExtendedHud) "AQI ${telemetry.usAqi} GOOD • UV ${String.format("%.1f", telemetry.uvIndex)} • 🌔 • FEELS $feelsFormatted"
-                            else "FEELS LIKE $feelsFormatted"
-                        )
+                        // Bar spans the widget: 2dp root padding + 6dp margins + 10dp padding per side
+                        val rowWidthDp = widgetWidthDp - 2 * (2f + 6f + 10f)
+                        val tempLine = "$wxEmoji $tempFormatted"
 
-                        views.setTextViewTextSize(R.id.hud_bar_temp, TypedValue.COMPLEX_UNIT_SP, 16.5f * scale)
-                        views.setTextViewTextSize(R.id.hud_bar_condition_loc, TypedValue.COMPLEX_UNIT_SP, 11.2f * scale)
-                        views.setTextViewTextSize(R.id.hud_bar_wind_hum, TypedValue.COMPLEX_UNIT_SP, 11.2f * scale)
-                        views.setTextViewTextSize(R.id.hud_bar_badges, TypedValue.COMPLEX_UNIT_SP, 10.5f * scale)
+                        views.setTextViewText(R.id.hud_bar_temp, tempLine)
+                        views.setTextViewText(R.id.hud_bar_condition, headline)
+                        views.setTextViewText(R.id.hud_bar_condition_loc, feelsLine)
+                        views.setTextViewText(R.id.hud_bar_wind_hum, metaLine)
+                        views.setTextViewText(R.id.hud_bar_badges, badgeLine)
+                        views.setViewVisibility(R.id.hud_bar_badges, if (cfg.showExtendedHud) View.VISIBLE else View.GONE)
+
+                        // Row 1 shares its width: temperature gets ~62%, the headline the rest
+                        views.setTextViewTextSize(R.id.hud_bar_temp, TypedValue.COMPLEX_UNIT_DIP,
+                            fitTextSp(tempLine, 17f * scale, rowWidthDp * 0.62f, bold = true))
+                        views.setTextViewTextSize(R.id.hud_bar_condition, TypedValue.COMPLEX_UNIT_DIP,
+                            fitTextSp(headline, 12f * scale, rowWidthDp * 0.36f - 8f, bold = true))
+                        views.setTextViewTextSize(R.id.hud_bar_condition_loc, TypedValue.COMPLEX_UNIT_DIP,
+                            fitTextSp(feelsLine, 11.5f * scale, rowWidthDp, bold = true))
+                        views.setTextViewTextSize(R.id.hud_bar_wind_hum, TypedValue.COMPLEX_UNIT_DIP,
+                            fitTextSp(metaLine, 11.5f * scale, rowWidthDp, bold = false))
+                        views.setTextViewTextSize(R.id.hud_bar_badges, TypedValue.COMPLEX_UNIT_DIP,
+                            fitTextSp(badgeLine, 11f * scale, rowWidthDp, bold = true))
                     } else {
                         views.setViewVisibility(R.id.widget_hud_top_bar, View.GONE)
                         views.setViewVisibility(R.id.widget_hud_corner, View.VISIBLE)
 
-                        views.setTextViewText(R.id.hud_corner_condition, "$wxEmoji $headline")
+                        // Corner card may use up to ~65% of the widget width (12dp padding each side)
+                        val cardWidthDp = widgetWidthDp * 0.65f - 24f
+                        val condLine = "$wxEmoji $headline"
+
+                        views.setTextViewText(R.id.hud_corner_condition, condLine)
                         views.setTextViewText(R.id.hud_corner_temp, tempFormatted)
-                        views.setTextViewText(R.id.hud_corner_meta, "💧 ${telemetry.humidity}% • 💨 $windFormatted")
-                        views.setTextViewText(R.id.hud_corner_loc, "📍 ${cfg.locationName.uppercase()} • FEELS $feelsFormatted")
-                        views.setTextViewText(
-                            R.id.hud_corner_badges,
-                            "AQI ${telemetry.usAqi} GOOD • UV ${String.format("%.1f", telemetry.uvIndex)} • 🌔"
-                        )
+                        views.setTextViewText(R.id.hud_corner_meta, metaLine)
+                        views.setTextViewText(R.id.hud_corner_loc, feelsLine)
+                        views.setTextViewText(R.id.hud_corner_badges, badgeLine)
                         views.setViewVisibility(R.id.hud_corner_badges, if (cfg.showExtendedHud) View.VISIBLE else View.GONE)
 
-                        views.setTextViewTextSize(R.id.hud_corner_condition, TypedValue.COMPLEX_UNIT_SP, 11.2f * scale)
-                        views.setTextViewTextSize(R.id.hud_corner_temp, TypedValue.COMPLEX_UNIT_SP, 17.0f * scale)
-                        views.setTextViewTextSize(R.id.hud_corner_meta, TypedValue.COMPLEX_UNIT_SP, 11.2f * scale)
-                        views.setTextViewTextSize(R.id.hud_corner_loc, TypedValue.COMPLEX_UNIT_SP, 10.8f * scale)
-                        views.setTextViewTextSize(R.id.hud_corner_badges, TypedValue.COMPLEX_UNIT_SP, 10.2f * scale)
+                        views.setTextViewTextSize(R.id.hud_corner_condition, TypedValue.COMPLEX_UNIT_DIP,
+                            fitTextSp(condLine, 11.2f * scale, cardWidthDp, bold = true))
+                        views.setTextViewTextSize(R.id.hud_corner_temp, TypedValue.COMPLEX_UNIT_DIP,
+                            fitTextSp(tempFormatted, 17f * scale, cardWidthDp, bold = true))
+                        views.setTextViewTextSize(R.id.hud_corner_meta, TypedValue.COMPLEX_UNIT_DIP,
+                            fitTextSp(metaLine, 11.2f * scale, cardWidthDp, bold = false))
+                        views.setTextViewTextSize(R.id.hud_corner_loc, TypedValue.COMPLEX_UNIT_DIP,
+                            fitTextSp(feelsLine, 10.8f * scale, cardWidthDp, bold = true))
+                        views.setTextViewTextSize(R.id.hud_corner_badges, TypedValue.COMPLEX_UNIT_DIP,
+                            fitTextSp(badgeLine, 10.2f * scale, cardWidthDp, bold = true))
                     }
 
-                    views.setTextViewText(R.id.widget_bottom_badge, "${cfg.locationName} • $themeLabel")
+                    // Bottom-right theme badge: only shown when there's room beside the ~190dp
+                    // control bar, and fitted to the remaining space so the two never overlap.
+                    val badgeRoomDp = widgetWidthDp - 4f - 10f - 190f - 10f - 16f - 8f
+                    if (badgeRoomDp >= 70f) {
+                        views.setViewVisibility(R.id.widget_bottom_badge, View.VISIBLE)
+                        views.setTextViewText(R.id.widget_bottom_badge, themeLabel)
+                        views.setTextViewTextSize(R.id.widget_bottom_badge, TypedValue.COMPLEX_UNIT_DIP,
+                            fitTextSp(themeLabel, 10.5f, badgeRoomDp, bold = false, minSp = 8f))
+                    } else {
+                        views.setViewVisibility(R.id.widget_bottom_badge, View.GONE)
+                    }
 
                     views.setOnClickPendingIntent(R.id.widget_flipper, pendingOpenApp)
                     views.setOnClickPendingIntent(R.id.widget_hud_top_bar, pendingOpenApp)
@@ -370,19 +412,29 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
     }
 
     /**
-     * Renders a single frame of the 3D isometric scene.
-     * The HUD overlay is rendered natively via RemoteViews in `widget_isometric_weather.xml`,
-     * while the 3D island is positioned slightly lower (`islandOffsetY`) and shifted horizontally
-     * by `cfg.widgetOffsetX` so the HUD never obscures the 3D rendering and stays fixed when panning.
+     * Renders a single frame of the 3D isometric scene at the widget's real aspect ratio.
+     *
+     * The HUD overlay is drawn natively via RemoteViews in `widget_isometric_weather.xml`.
+     * Here the island is fitted (aspect-preserving) into the region *below* the HUD
+     * ([hudHeightDp]) and above the bottom control bar, then zoomed by `cfg.widgetZoom` and
+     * shifted by `cfg.widgetOffsetX`, so the HUD never covers the render and stays fixed when panning.
+     *
+     * @param widthDp  widget width in dp
+     * @param heightDp widget height in dp
+     * @param hudHeightDp estimated height of the top HUD (0 for the corner card layout)
      */
     private fun renderIsometricWidgetFrame(
         cfg: WidgetConfig,
         wx: WeatherTelemetry,
         islandBmp: Bitmap?,
-        phase: Float
+        phase: Float,
+        widthDp: Float,
+        heightDp: Float,
+        hudHeightDp: Float
     ): Bitmap {
-        val width = 688
-        val height = 384
+        val width = 640
+        val k = width / widthDp                       // px per dp in this bitmap
+        val height = (heightDp * k).roundToInt().coerceIn(240, 1100)
         val s = width / 1376f
         val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
@@ -418,81 +470,89 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
             paint.style = Paint.Style.FILL
         }
 
-        // 2. Moon Crescent Disc in Night Sky
+        // 3. Fit the 3D island into the free area between the HUD and the bottom control bar.
+        // The island art is 1376x768; we preserve that aspect ratio and center it in the area.
+        val areaTop = (hudHeightDp + 4f) * k
+        val areaBottom = height - 30f * k              // leave most of the ~34dp control bar clear
+        val areaH = (areaBottom - areaTop).coerceAtLeast(height * 0.45f)
+        val islandAspect = 1376f / 768f
+        var iw = width.toFloat()
+        var ih = iw / islandAspect
+        if (ih > areaH) {
+            ih = areaH
+            iw = ih * islandAspect
+        }
+        // widgetOffsetX is stored in legacy 688px-frame units (±180), so scale to this frame width
+        val ix = (width - iw) / 2f + cfg.widgetOffsetX / 688f * width
+        val iy = areaTop + (areaH - ih) / 2f
+        val sI = iw / 1376f                            // sprite scale relative to island art
+
+        // Moon crescent in the night sky, just above-left of the island
         if (isNight) {
+            val mx = ix + 0.12f * iw
+            val my = (iy + 0.12f * ih).coerceAtLeast(areaTop + 30f * sI)
             paint.color = Color.parseColor("#fff2b2")
-            canvas.drawCircle(165f * s, 175f * s, 28f * s, paint)
+            canvas.drawCircle(mx, my, 26f * sI, paint)
             if (!cfg.transparentBg) {
                 paint.color = Color.parseColor("#112236")
-                canvas.drawCircle(153f * s, 169f * s, 24f * s, paint)
+                canvas.drawCircle(mx - 11f * sI, my - 6f * sI, 22f * sI, paint)
             }
         }
 
-        // 3. Draw 3D Isometric Diorama + Animated Water Sparkles + Static Miniature Sprites
-        // Shift island slightly down when using Top-Sky HUD so 0% of the 3D town is covered by the enlarged HUD!
-        val islandOffsetY = if (cfg.hudPosition == "top-sky") 28f else 8f
-        val islandOffsetX = cfg.widgetOffsetX
-
         canvas.save()
-        val pivotX = width * 0.5f + islandOffsetX
-        val pivotY = height * 0.56f + islandOffsetY
+        val pivotX = ix + iw * 0.5f
+        val pivotY = iy + ih * 0.56f
         canvas.translate(pivotX, pivotY)
         canvas.scale(cfg.widgetZoom, cfg.widgetZoom)
         canvas.translate(-pivotX, -pivotY)
 
         if (islandBmp != null) {
-            val destRect = RectF(
-                islandOffsetX,
-                islandOffsetY,
-                width + islandOffsetX,
-                height + islandOffsetY
-            )
-            canvas.drawBitmap(islandBmp, null, destRect, paint)
+            canvas.drawBitmap(islandBmp, null, RectF(ix, iy, ix + iw, iy + ih), paint)
         }
 
-        // 3B. Animated Water Sparkles
+        // 3B. Animated water sparkles on the front turquoise water block (normalized island coords)
         val waterPts = arrayOf(
-            0.14f to 0.47f, 0.18f to 0.52f, 0.24f to 0.56f,
-            0.28f to 0.46f, 0.33f to 0.42f, 0.38f to 0.34f, 0.44f to 0.28f
+            0.50f to 0.72f, 0.55f to 0.63f, 0.62f to 0.70f, 0.66f to 0.77f,
+            0.70f to 0.65f, 0.78f to 0.58f, 0.84f to 0.52f
         )
         paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 1.6f * s
+        paint.strokeWidth = 1.6f * sI
         for (wi in waterPts.indices) {
             val (wpx, wpy) = waterPts[wi]
             val alpha = (110 + (65 * sin((phase * 2.0 * Math.PI) + wi * 1.3)).toInt()).coerceIn(40, 210)
             paint.color = if (isSunset) Color.argb(alpha, 255, 210, 145) else Color.argb(alpha, 230, 248, 255)
-            val wxPt = islandOffsetX + (wpx + 0.005f * sin((phase * 2.0 * Math.PI + wi).toFloat())) * width
-            val wyPt = islandOffsetY + wpy * height
-            canvas.drawLine(wxPt - 9f * s, wyPt - 3.5f * s, wxPt + 9f * s, wyPt + 3.5f * s, paint)
+            val wxPt = ix + (wpx + 0.005f * sin((phase * 2.0 * Math.PI + wi).toFloat())) * iw
+            val wyPt = iy + wpy * ih
+            canvas.drawLine(wxPt - 9f * sI, wyPt - 3.5f * sI, wxPt + 9f * sI, wyPt + 3.5f * sI, paint)
         }
         paint.style = Paint.Style.FILL
 
-        // 3C. Static Scenic Miniature Sprites (Animated walking people removed)
+        // 3C. Static scenic miniature sprites (animated walking people removed)
         if (cfg.dioramaTheme == "yorktown") {
-            // Static Sprite 1: Colonial Horse & Carriage stationed on Historic Main Street
-            val hcX = islandOffsetX + 0.442f * width
-            val hcY = islandOffsetY + 0.648f * height
-            val hx = hcX + 4.2f * s
-            val hy = hcY - 3.1f * s
+            // Static Sprite 1: Colonial horse & carriage on the brick Main Street
+            val hcX = ix + 0.40f * iw
+            val hcY = iy + 0.49f * ih
+            val hx = hcX + 4.2f * sI
+            val hy = hcY - 3.1f * sI
             paint.color = Color.parseColor("#6e4226")
-            canvas.drawOval(RectF(hx - 2.2f * s, hy - 2.6f * s, hx + 2.2f * s, hy), paint)
+            canvas.drawOval(RectF(hx - 2.2f * sI, hy - 2.6f * sI, hx + 2.2f * sI, hy), paint)
             paint.color = Color.parseColor("#3b2316")
-            canvas.drawOval(RectF(hcX - 3.6f * s, hcY - 4.4f * s, hcX + 3.6f * s, hcY - 0.4f * s), paint)
+            canvas.drawOval(RectF(hcX - 3.6f * sI, hcY - 4.4f * sI, hcX + 3.6f * sI, hcY - 0.4f * sI), paint)
             paint.color = Color.parseColor("#9e3b2b")
-            canvas.drawOval(RectF(hcX - 2.8f * s, hcY - 5.2f * s, hcX + 2.8f * s, hcY - 2.0f * s), paint)
+            canvas.drawOval(RectF(hcX - 2.8f * sI, hcY - 5.2f * sI, hcX + 2.8f * sI, hcY - 2.0f * sI), paint)
 
-            // Static Sprite 2 & 3: Miniature Cars on Coleman Memorial Bridge
-            val carX = islandOffsetX + 0.365f * width
-            val carY = islandOffsetY + 0.384f * height
+            // Static Sprites 2 & 3: miniature cars on the Coleman Memorial Bridge deck
+            val carX = ix + 0.33f * iw
+            val carY = iy + 0.60f * ih
             paint.color = Color.parseColor("#d64035")
-            canvas.drawOval(RectF(carX - 2.5f * s, carY - 2.4f * s, carX + 2.5f * s, carY), paint)
+            canvas.drawOval(RectF(carX - 2.5f * sI, carY - 2.4f * sI, carX + 2.5f * sI, carY), paint)
             paint.color = Color.parseColor("#f2f6fa")
-            canvas.drawOval(RectF(carX - 1.4f * s, carY - 3.0f * s, carX + 1.4f * s, carY - 1.2f * s), paint)
+            canvas.drawOval(RectF(carX - 1.4f * sI, carY - 3.0f * sI, carX + 1.4f * sI, carY - 1.2f * sI), paint)
 
-            val car2X = islandOffsetX + 0.422f * width
-            val car2Y = islandOffsetY + 0.425f * height
+            val car2X = ix + 0.39f * iw
+            val car2Y = iy + 0.64f * ih
             paint.color = Color.parseColor("#2b6cb0")
-            canvas.drawOval(RectF(car2X - 2.4f * s, car2Y - 2.2f * s, car2X + 2.4f * s, car2Y), paint)
+            canvas.drawOval(RectF(car2X - 2.4f * sI, car2Y - 2.2f * sI, car2X + 2.4f * sI, car2Y), paint)
         }
 
         canvas.restore()
@@ -521,6 +581,74 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         }
 
         return bmp
+    }
+
+    /**
+     * Returns the current widget width in dp. Launchers report a size range: in portrait the
+     * widget is laid out at OPTION_APPWIDGET_MIN_WIDTH, so that's the safe value to fit against.
+     * Falls back to a 4-column phone width (~300dp) before the launcher has sent options.
+     */
+    private fun widgetWidthDp(mgr: AppWidgetManager, widgetId: Int): Float {
+        val opts = mgr.getAppWidgetOptions(widgetId)
+        val minW = opts?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0) ?: 0
+        val maxW = opts?.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 0) ?: 0
+        val w = when {
+            minW > 0 -> minW
+            maxW > 0 -> maxW
+            else -> 300
+        }
+        return w.toFloat().coerceAtLeast(160f)
+    }
+
+    /**
+     * Returns the current widget height in dp. In portrait the widget is laid out at
+     * OPTION_APPWIDGET_MAX_HEIGHT. Falls back to a 3-row phone height (~250dp).
+     */
+    private fun widgetHeightDp(mgr: AppWidgetManager, widgetId: Int): Float {
+        val opts = mgr.getAppWidgetOptions(widgetId)
+        val maxH = opts?.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0) ?: 0
+        val minH = opts?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0) ?: 0
+        val h = when {
+            maxH > 0 -> maxH
+            minH > 0 -> minH
+            else -> 250
+        }
+        return h.toFloat().coerceAtLeast(120f)
+    }
+
+    /**
+     * Returns the largest text size (in dp, applied with COMPLEX_UNIT_DIP) up to [desired]
+     * at which [text] fits on one line within [availDp].
+     *
+     * Sizes are applied in dp rather than sp so the system font-scale setting can't push
+     * text past the edge after we've measured it. Emoji glyphs are measured with the default
+     * typeface, and a 6% safety margin covers launcher/OEM font differences (e.g. OnePlus Sans).
+     */
+    private fun fitTextSp(
+        text: String,
+        desired: Float,
+        availDp: Float,
+        bold: Boolean,
+        minSp: Float = 8.5f
+    ): Float {
+        if (availDp <= 0f) return minSp
+        val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = desired
+            typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        }
+        val measured = p.measureText(text) * 1.06f
+        if (measured <= availDp) return desired
+        return (desired * availDp / measured).coerceAtLeast(minSp)
+    }
+
+    /** US EPA AQI category label. */
+    private fun aqiLabel(aqi: Int): String = when {
+        aqi <= 50 -> "GOOD"
+        aqi <= 100 -> "MODERATE"
+        aqi <= 150 -> "SENSITIVE"
+        aqi <= 200 -> "UNHEALTHY"
+        aqi <= 300 -> "V.UNHEALTHY"
+        else -> "HAZARDOUS"
     }
 
     private fun wmoToCategory(code: Int): String = when (code) {
