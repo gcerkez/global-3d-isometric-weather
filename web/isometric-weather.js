@@ -418,25 +418,19 @@ export class IsometricWeatherEngine {
 
         ctx.restore();
 
-        // 3. Gentle Weather Particles (Rain / Thunderstorm / Snow) centered over the 3D Island
+        // 3. Gentle Weather Particles (Rain / Thunderstorm / Snow) across the WHOLE rendered area
         const pScale = Math.max(0.15, this.state.particleIntensity ?? 1.0);
-        const ix0 = dx + 0.08 * dw;
-        const ix1 = dx + 0.92 * dw;
-        const iSpanX = ix1 - ix0;
-        const iy0 = dy - 0.06 * dh;
-        const iy1 = dy + 0.88 * dh;
-        const iSpanY = iy1 - iy0;
 
         if (cat === "rain" || cat === "thunderstorm") {
-            const dropCount = Math.max(4, Math.round((cat === "thunderstorm" ? 34 : 22) * pScale));
+            const dropCount = Math.max(6, Math.round((cat === "thunderstorm" ? 36 : 24) * pScale));
             ctx.strokeStyle = "rgba(210, 238, 255, 0.52)";
             ctx.lineWidth = 1.3 * s;
             ctx.beginPath();
             for (let i = 0; i < dropCount; i++) {
                 const prog = ((t * 0.28 + i * 0.173) % 1.0);
                 const seedX = ((i * 0.6180339 + 0.12) % 1.0);
-                const rx = ix0 + seedX * iSpanX - prog * 0.06 * dw;
-                const ry = iy0 + prog * iSpanY;
+                const rx = seedX * w - prog * 0.08 * w;
+                const ry = prog * (h + 20) - 10;
                 ctx.moveTo(rx, ry);
                 ctx.lineTo(rx - 4 * s, ry + 14 * s);
             }
@@ -454,16 +448,17 @@ export class IsometricWeatherEngine {
                 ctx.stroke();
             }
         } else if (cat === "snow") {
-            const flakeCount = Math.max(5, Math.round(26 * pScale));
+            const flakeCount = Math.max(6, Math.round(30 * pScale));
             ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
             for (let i = 0; i < flakeCount; i++) {
                 const prog = ((t * 0.14 + i * 0.137) % 1.0);
                 const seedX = ((i * 0.6180339 + 0.08) % 1.0);
-                const sx = ix0 + seedX * iSpanX + 0.015 * dw * Math.sin(t * 1.8 + i);
-                const sy = iy0 + prog * iSpanY;
+                const sx = seedX * w + Math.sin(t * 1.8 + i) * 8 * s;
+                const sy = prog * (h + 20) - 10;
                 ctx.beginPath();
                 ctx.arc(sx, sy, 2.4 * s, 0, Math.PI * 2);
                 ctx.fill();
+            }
         }
     }
 }

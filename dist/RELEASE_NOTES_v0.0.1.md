@@ -26,11 +26,20 @@ Release of **Global 3D Isometric Weather Widget** (`com.antigravity.yorktownweat
     16. `tokyo_east_asia` — **Tokyo, Kyoto, Beijing & East Asia** (`Asia/Tokyo` & `Asia/Shanghai` UNESCO — 5-Story Pagoda, Imperial Palace Hall & Torii Bridge)
     17. `modern` — **Global Modern Metropolis** (`Australia/Sydney`, `Asia/Singapore`, `America/Toronto` — Contemporary Skyline & Harbour Bridge)
     18. `alpine` — **Alpine Mountain & Glacial Lake Village** (`Europe/Zurich`, Rockies & Andes — Snow-Capped Peak, Chalets & Glacial Lake)
+* **Full-Area Weather Precipitation & Water Splash Ripples**:
+  * Rain streaks, thunderstorm rain, and snowflakes now span the entire frame dimensions (`0..width`, `0..height`), falling naturally across the full sky and blanketing the landscape with animated cutaway water splash ripples on the diorama surfaces.
+* **Auto-Match Closest 3D Diorama to Physical GPS Location**:
+  * Added an intelligent GPS diorama auto-matcher: using high-precision Haversine distance, the app automatically selects the nearest regional/landmark 3D diorama for your physical coordinates (e.g. automatically matching Historic Yorktown for Yorktown, Poquoson, Newport News, and Tabb, VA).
+* **Modern Tabular Configuration View (Android)**:
+  * Redesigned the configuration page into a clean, responsive 6-tab interface with zero scrolling conflicts:
+    * **Tab 0 (`🖼️ 3D Preview & Framing`)**: Live 16:9 interactive 3D preview with camera zoom (`➖` / `➕`) and horizontal framing (`◀` / `🎯` / `▶`) controls, live readout, and 4 quick zoom presets (Far 85%, Standard 100%, Close-Up 125%, Hero Detail 160%).
+    * **Tab 1 (`🏛️ Diorama Scene`)**: GPS diorama auto-match toggle and live landmark distance indicator, plus manual picker for all 18 world landmark dioramas.
+    * **Tab 2 (`📍 Weather Location`)**: GPS Auto-detect button, travel follow toggle, live reverse-geocoding city search bar, and quick preset chips.
+    * **Tab 3 (`🪟 HUD Overlay`)**: Top-sky banner vs corner card position, text scale (`100% / 115% / 130%`), transparent cutout mode, and telemetry toggles.
+    * **Tab 4 (`☀️ Atmosphere & Weather`)**: Solar cycle / sky lighting, live weather simulation overrides (Clear, Clouds, Rain, Thunderstorm, Snow, Fog), and particle intensity.
+    * **Tab 5 (`⚙️ Units & Preferences`)**: Temperature (°F/°C) and wind speed (MPH/km/h) formatting.
 * **Decoupled Weather Telemetry Location & 3D Diorama Visual**:
   * Your weather coordinates (`lat, lon`) are completely independent of the active 3D isometric diorama—for example, you can monitor live weather in **Tabb, VA** while displaying the **Jamestown**, **Yorktown**, **Grand Canyon**, or **Tokyo** 3D render.
-* **Precipitation Strictly Over 3D Island Bounds & Water Splash Ripples**:
-  * Rain streaks, thunderstorm rain, and snowflakes are now mathematically calculated to fall strictly over the bounds of the 3D diorama island (`islandLeft..islandRight` and `islandTop..islandBottom`).
-  * Added animated ground and cutaway water splash ripples on the island surfaces instead of drifting off to the bottom-right corner.
 * **Distraction-Free Visuals (Hidden Camera Buttons & Settings Gear)**:
   * On-screen zoom and camera movement buttons (`➖` `➕` `◀` `🎯` `▶`) and the settings gear (`⚙️`) are cleanly hidden from the widget canvas across Android, KDE Plasma 6 Desktop, and Web.
   * Tapping the 3D diorama canvas opens the configuration settings dialog.
@@ -42,12 +51,9 @@ Release of **Global 3D Isometric Weather Widget** (`com.antigravity.yorktownweat
   * **Periodic Background Updates**: When "Follow Phone GPS Location" is enabled, the widget checks for location changes every 15 minutes via `AlarmManager` and `onUpdate`, continuously syncing weather as the user travels.
 * **Integrated Sky Digital Clock**:
   * Live digital clock embedded in the HUD banner and corner card across all platforms (`TextClock` in Android `RemoteViews`, 1-second live `Timer` in KDE Plasma 6 `WeatherHudCard.qml`, and `setInterval` in Web HTML5), designed to sit elegantly in the upper sky without obstructing the 3D island.
-* **Isometric Zoom & Horizontal Centering (Rotation Removed, HUD Stays Stationary)**:
-  * Move the entire 3D isometric diorama left (`◀`), center (`🎯`), or right (`▶`) and zoom (`➖` / `➕`) on both Desktop and Android while leaving the Weather HUD Overlay fixed in its configured position.
-* **Extrapolated, High-Readability Android Homescreen HUD & Scroll-Safe Config Menu**:
+* **Extrapolated, High-Readability Android Homescreen HUD**:
   * Native high-DPI `RemoteViews` **Top-Sky Split Banner** and **Corner HUD Card** with `100% / 115% / 130%` text scaling that sits in the open upper sky without covering the 3D isometric town.
-  * The HUD uses stacked full-width rows that auto-fit to the real widget width, so text and icons never run off the edge on narrow (4-column) phone widgets; frames render at the widget's true aspect ratio with the island placed below the HUD.
-  * Full-screen scroll-safe Android configuration menu (`MainActivity.kt`) using modal `AlertDialog` pickers instead of hair-trigger `Spinner`s so scrolling never triggers accidental taps.
+  * The HUD uses stacked full-width rows that auto-fit to the real widget width, so text and icons never run off the edge on narrow (4-column) phone widgets.
 
 ---
 

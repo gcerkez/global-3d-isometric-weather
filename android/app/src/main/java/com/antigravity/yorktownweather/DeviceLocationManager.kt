@@ -179,4 +179,57 @@ object DeviceLocationManager {
             if (!lat.isNaN() && !lon.isNaN()) Pair(lat, lon) else null
         }.getOrNull()
     }
+
+    data class DioramaLocation(
+        val id: String,
+        val name: String,
+        val lat: Double,
+        val lon: Double,
+        val description: String
+    )
+
+    val REGIONAL_DIORAMAS = listOf(
+        DioramaLocation("yorktown", "Historic Yorktown, VA", 37.2388, -76.5097, "1781 Colonial Waterfront, Victory Monument & Coleman Bridge"),
+        DioramaLocation("jamestown", "Historic Jamestown, VA", 37.2085, -76.7741, "1607 James Fort Wooden Palisade & 3 Tall Ships on James River"),
+        DioramaLocation("washington_dc", "Washington, D.C. & Mid-Atlantic", 38.8951, -77.0364, "U.S. Capitol Dome, Washington Monument & Tidal Basin"),
+        DioramaLocation("new_york", "New York City & Northeast", 40.7128, -74.0060, "Statue of Liberty, Brooklyn Bridge & Empire State Building"),
+        DioramaLocation("san_francisco", "San Francisco & California Coast", 37.7749, -122.4194, "Golden Gate Bridge, Alcatraz & Painted Ladies"),
+        DioramaLocation("chicago_great_lakes", "Chicago & Great Lakes Midwest", 41.8781, -87.6298, "Willis Tower, Red Bascule Bridge & Cloud Gate Bean"),
+        DioramaLocation("grand_canyon", "Grand Canyon & American Southwest", 36.0544, -112.1401, "Red-Rock Buttes, Cliff Dwellings & Colorado River"),
+        DioramaLocation("new_orleans", "New Orleans & Gulf South", 29.9511, -90.0715, "St. Louis Cathedral, French Quarter & Steamboat"),
+        DioramaLocation("seattle_pnw", "Seattle & Pacific Northwest", 47.6062, -122.3321, "Space Needle, Pike Place Market & Mt. Rainier"),
+        DioramaLocation("miami_caribbean", "Miami Beach & Florida Keys", 25.7617, -80.1918, "Art Deco Ocean Drive, Overseas Bridge & Coral Reef"),
+        DioramaLocation("coastal", "New England & Maritime Atlantic", 43.6615, -70.2553, "Striped Lighthouse, Stone Pier & Historic Wharf"),
+        DioramaLocation("london_uk", "London & British Isles", 51.5074, -0.1278, "Big Ben, Palace of Westminster & Tower of London"),
+        DioramaLocation("paris_europe", "Paris & Western Europe", 48.8566, 2.3522, "Notre-Dame Cathedral, Louvre Palace & Arc de Triomphe"),
+        DioramaLocation("rome_mediterranean", "Rome, Athens & Mediterranean", 41.9028, 12.4964, "Colosseum, Parthenon Temple & Roman Aqueduct"),
+        DioramaLocation("cairo_giza", "Cairo, Giza & Middle East", 30.0444, 31.2357, "Ancient Sandstone Citadel, Temple Pool & Nile River"),
+        DioramaLocation("tokyo_east_asia", "Tokyo, Kyoto & East Asia", 35.6762, 139.6503, "5-Story Pagoda, Imperial Palace Hall & Garden Bridge"),
+        DioramaLocation("modern", "Global Metropolis (Sydney / Modern)", -33.8688, 151.2093, "Contemporary Glass Skyscraper District & Harbour Bridge"),
+        DioramaLocation("alpine", "Alpine Mountains & Lake Village", 46.5197, 6.6323, "Snow-Capped Peak, Timber Chalets & Turquoise Glacial Lake")
+    )
+
+    fun calculateDistanceMiles(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val r = 3958.8 // Earth radius in miles
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = kotlin.math.sin(dLat / 2) * kotlin.math.sin(dLat / 2) +
+                kotlin.math.cos(Math.toRadians(lat1)) * kotlin.math.cos(Math.toRadians(lat2)) *
+                kotlin.math.sin(dLon / 2) * kotlin.math.sin(dLon / 2)
+        val c = 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+        return r * c
+    }
+
+    fun findClosestDiorama(lat: Double, lon: Double): Pair<DioramaLocation, Double> {
+        var best = REGIONAL_DIORAMAS[0]
+        var minD = Double.MAX_VALUE
+        for (d in REGIONAL_DIORAMAS) {
+            val dist = calculateDistanceMiles(lat, lon, d.lat, d.lon)
+            if (dist < minD) {
+                minD = dist
+                best = d
+            }
+        }
+        return Pair(best, minD)
+    }
 }

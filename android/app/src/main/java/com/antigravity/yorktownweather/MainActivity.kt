@@ -6,8 +6,6 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -22,40 +20,25 @@ import android.webkit.WebViewClient
 import android.widget.*
 import kotlinx.coroutines.*
 import org.json.JSONObject
-import java.io.File
-import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
-import java.util.ArrayDeque
-import kotlin.math.max
-import kotlin.math.min
+import java.util.Locale
 import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 /**
  * MainActivity
  * ============
- * Spacious, Scroll-Safe Interactive 3D Isometric Weather App & Comprehensive Widget Configurator
+ * Tabular Interactive 3D Isometric Weather App & Comprehensive Widget Configurator
  * for OnePlus 13 (OxygenOS 15) and Android 8.0+ devices.
  *
- * Key UX Improvements:
- *   - Full-screen vertical `ScrollView` (no cramped split screen) with `FOCUS_BEFORE_DESCENDANTS`
- *     so scrolling never triggers text boxes or pops up the keyboard accidentally.
- *   - Scroll-safe modal `AlertDialog` Option Pickers instead of hair-trigger `Spinner` dropdowns,
- *     so scrolling through the config menu is completely smooth and effortless.
- *   - Built-in Pre-Generated Generic (Non-City-Specific) 3D Isometric Dioramas:
- *       * `yorktown`: Historic Yorktown, VA (1781 Colonial Waterfront & Coleman Bridge)
- *       * `coastal`:  Pre-Generated Generic: Coastal Harbor & Lighthouse Town
- *       * `modern`:   Pre-Generated Generic: Modern Downtown Metropolis & Bridge
- *       * `alpine`:   Pre-Generated Generic: Alpine Mountain & Lake Village
- *       * `custom_city`: Custom Generated High-Res City Diorama Cutout
- *   - Built-in On-Device Custom High-Res Diorama Cutout Generator ("Section D" right inside the Config Menu):
- *       * Discovers city landmarks via Wikipedia GeoSearch, downloads a high-res 3D isometric island,
- *         runs edge flood-fill background removal on-device, and synthesizes Day, Sunset & Night variants.
- *   - Isometric Zoom (`➖`/`➕`) and Horizontal Centering (`◀ Left` / `🎯 Center` / `▶ Right`) while
- *     keeping the HUD overlay stationary in its configured position.
- *   - Extrapolated HUD Overlay Position (`Top-Sky Split Banner` or `Corner Card`) & Text Size Scale.
+ * Tab Structure:
+ *   - Tab 0: 🖼️ 3D Preview & Framing (Live 16:9 3D Scene + Camera Zoom & Pan Buttons)
+ *   - Tab 1: 🏛️ Diorama Scene (18 Regional/NPS/UNESCO Models + Auto-Match Closest GPS Diorama)
+ *   - Tab 2: 📍 Weather Location (GPS Auto-Detect + Travel Follow + Search + Presets)
+ *   - Tab 3: 🪟 HUD Overlay (Top-Sky vs Corner Card + 100/115/130% Scaling + Transparent Mode)
+ *   - Tab 4: ☀️ Atmosphere & Weather (Lighting Solar Cycle + Weather Sim Overrides + Particle Density)
+ *   - Tab 5: ⚙️ Units & Preferences (Temperature & Wind Units)
  */
 class MainActivity : Activity() {
 
@@ -70,6 +53,13 @@ class MainActivity : Activity() {
     private lateinit var activeLocationHeader: TextView
     private lateinit var dioramaThemeButton: Button
     private lateinit var autoUpdateLocCheck: CheckBox
+    private lateinit var autoMatchDioramaCheck: CheckBox
+    private lateinit var closestMatchStatusText: TextView
+    private lateinit var framingStatsText: TextView
+    private val tabButtons = mutableListOf<Button>()
+    private var currentTabIndex = 0
+
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).roundToInt()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,51 +70,187 @@ class MainActivity : Activity() {
         ) ?: AppWidgetManager.INVALID_APPWIDGET_ID
 
         val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
-        val density = resources.displayMetrics.density
-        fun dp(v: Int): Int = (v * density).roundToInt()
 
-        // Single Full-Screen ScrollView so the menu is never squashed
-        val scrollView = ScrollView(this).apply {
-            setBackgroundColor(Color.parseColor("#0f1e2e"))
-            isFillViewport = true
-            isSmoothScrollingEnabled = true
-        }
-
-        // FOCUS_BEFORE_DESCENDANTS prevents EditText from stealing focus during scroll gestures
-        val configContainer = LinearLayout(this).apply {
+        // Root container (vertical)
+        val rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            descendantFocusability = ViewGroup.FOCUS_BEFORE_DESCENDANTS
-            isFocusable = true
-            isFocusableInTouchMode = true
-            setPadding(dp(18), dp(16), dp(18), dp(42))
+            setBackgroundColor(Color.parseColor("#0a1520"))
+            setPadding(0, dp(12), 0, 0)
         }
 
-        // Top Title & Status Banner
+        // --- TOP HEADER ---
+        val headerContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), 0, dp(16), dp(8))
+        }
+
         activeLocationHeader = TextView(this).apply {
             val curName = prefs.getString("locationName", "Yorktown, VA") ?: "Yorktown, VA"
-            text = "⚙️ Global 3D Isometric Weather\nActive Location: $curName"
+            val curDiorama = prefs.getString("dioramaTheme", "yorktown") ?: "yorktown"
+            text = "⚙️ Global 3D Isometric Weather\nActive: $curName • Diorama: $curDiorama"
             setTextColor(Color.WHITE)
-            textSize = 18f
+            textSize = 15f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            setPadding(0, 0, 0, dp(4))
         }
-        configContainer.addView(activeLocationHeader)
+        headerContainer.addView(activeLocationHeader)
 
         statusLabel = TextView(this).apply {
-            text = "Scroll freely — settings open only when tapped. Your 3D Diorama render is independent of your weather coordinates."
-            setTextColor(Color.parseColor("#8ecae6"))
-            textSize = 12.5f
-            setPadding(0, 0, 0, dp(12))
+            text = "Select any tab below to configure diorama visuals, live weather, or widget display."
+            setTextColor(Color.parseColor("#7ec3ed"))
+            textSize = 11.5f
+            setPadding(0, dp(2), 0, 0)
         }
-        configContainer.addView(statusLabel)
+        headerContainer.addView(statusLabel)
+        rootLayout.addView(headerContainer)
 
-        // Live 16:9 Interactive 3D Isometric Preview Card at Top of ScrollView
+        // --- TAB BAR (Horizontal Scrollable Strip) ---
+        val tabTitles = listOf(
+            "🖼️ 3D Preview",
+            "🏛️ Diorama Scene",
+            "📍 Weather Location",
+            "🪟 HUD Overlay",
+            "☀️ Atmosphere",
+            "⚙️ Units"
+        )
+
+        val tabScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            setPadding(dp(14), dp(4), dp(14), dp(10))
+        }
+        val tabRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        val tabContentContainer = FrameLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1.0f
+            )
+        }
+
+        // --- BUILD EACH TAB'S VIEW ---
+        val tabPages = listOf(
+            buildTab0PreviewAndFraming(),
+            buildTab1DioramaScene(),
+            buildTab2Location(),
+            buildTab3HudOverlay(),
+            buildTab4Atmosphere(),
+            buildTab5Units()
+        )
+
+        fun selectTab(idx: Int) {
+            currentTabIndex = idx
+            tabContentContainer.removeAllViews()
+            tabContentContainer.addView(tabPages[idx])
+
+            for (i in tabButtons.indices) {
+                val btn = tabButtons[i]
+                val isSelected = (i == idx)
+                btn.setTextColor(if (isSelected) Color.WHITE else Color.parseColor("#8da8c4"))
+                btn.typeface = Typeface.create(Typeface.DEFAULT, if (isSelected) Typeface.BOLD else Typeface.NORMAL)
+                btn.background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    cornerRadius = dp(16).toFloat()
+                    setColor(if (isSelected) Color.parseColor("#1f6feb") else Color.parseColor("#132232"))
+                    setStroke(dp(1), if (isSelected) Color.parseColor("#58a6ff") else Color.parseColor("#263d54"))
+                }
+            }
+            prefs.edit().putInt("active_tab", idx).apply()
+        }
+
+        for (i in tabTitles.indices) {
+            val title = tabTitles[i]
+            val tabBtn = Button(this).apply {
+                text = title
+                textSize = 12f
+                isAllCaps = false
+                setPadding(dp(14), dp(6), dp(14), dp(6))
+                val lp = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    dp(36)
+                ).apply {
+                    setMargins(0, 0, dp(8), 0)
+                }
+                layoutParams = lp
+                setOnClickListener { selectTab(i) }
+            }
+            tabButtons.add(tabBtn)
+            tabRow.addView(tabBtn)
+        }
+        tabScroll.addView(tabRow)
+        rootLayout.addView(tabScroll)
+
+        rootLayout.addView(tabContentContainer)
+
+        // --- BOTTOM ACTION BAR ---
+        val bottomBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setBackgroundColor(Color.parseColor("#0c1824"))
+            setPadding(dp(16), dp(10), dp(16), dp(14))
+            gravity = Gravity.CENTER
+        }
+
+        val applyBtn = Button(this).apply {
+            text = "✅ Apply & Update Widget"
+            textSize = 13.5f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            isAllCaps = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(46)
+            )
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dp(10).toFloat()
+                setColor(Color.parseColor("#238636"))
+                setStroke(dp(1), Color.parseColor("#3fb950"))
+            }
+            setOnClickListener {
+                hideKeyboard()
+                applyAndRefreshWidgets("Widget updated! Check your Homescreen.")
+                if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+                    val resultValue = Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                    setResult(RESULT_OK, resultValue)
+                    finish()
+                } else {
+                    Toast.makeText(this@MainActivity, "Widget updated! Check your Homescreen.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        bottomBar.addView(applyBtn)
+        rootLayout.addView(bottomBar)
+
+        setContentView(rootLayout)
+
+        val savedTab = prefs.getInt("active_tab", 0).coerceIn(0, tabTitles.size - 1)
+        selectTab(savedTab)
+    }
+
+    /**
+     * TAB 0: 🖼️ 3D Preview & Framing
+     * Live 16:9 3D diorama canvas + camera zoom and horizontal pan controls.
+     */
+    private fun buildTab0PreviewAndFraming(): View {
+        val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
+
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            descendantFocusability = ViewGroup.FOCUS_BEFORE_DESCENDANTS
+        }
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(8), dp(16), dp(24))
+        }
+
+        // Live 16:9 Interactive 3D Diorama Card
         val previewFrame = FrameLayout(this).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = dp(14).toFloat()
                 setColor(Color.parseColor("#0d1b2a"))
-                setStroke(dp(1), Color.parseColor("#4a7c59"))
+                setStroke(dp(1), Color.parseColor("#3b628a"))
             }
             clipChildren = true
         }
@@ -151,44 +277,52 @@ class MainActivity : Activity() {
             webView,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                dp(205)
+                dp(215)
             )
         )
-        configContainer.addView(
+        layout.addView(
             previewFrame,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(205)
+                dp(215)
             ).apply {
                 setMargins(0, 0, 0, dp(12))
             }
         )
 
-        // --- SECTION 1: Isometric Zoom & Horizontal Centering (Move Left / Center / Right) ---
-        configContainer.addView(makeSectionHeader("1. Isometric Zoom & Horizontal Centering"))
+        layout.addView(makeSectionHeader("Camera Zoom & Horizontal Framing"))
 
         val camHint = TextView(this).apply {
-            text = "Move the 3D isometric island left, center, or right as a whole while leaving the weather HUD overlay stationary."
+            text = "Scale and shift the 3D diorama left or right to frame your town. The homescreen weather overlay stays stationary in its configured position."
             setTextColor(Color.parseColor("#b8d4ec"))
             textSize = 12f
             setPadding(0, 0, 0, dp(8))
         }
-        configContainer.addView(camHint)
+        layout.addView(camHint)
 
+        fun updateFramingStats() {
+            val z = prefs.getFloat("widgetZoom", 1.0f)
+            val o = prefs.getFloat("widgetOffsetX", 0.0f)
+            val sign = if (o > 0) "+" else ""
+            framingStatsText.text = "Zoom: ${(z * 100).toInt()}% • Horizontal Offset: $sign${o.toInt()} px"
+        }
+
+        // Framing Action Buttons
         val camControlRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(2), 0, dp(10))
+            setPadding(0, 0, 0, dp(8))
         }
+
         val camButtons = listOf(
-            "➖ Zoom" to "zoom_out",
-            "➕ Zoom" to "zoom_in",
+            "➖ Zoom Out" to "zoom_out",
+            "➕ Zoom In" to "zoom_in",
             "◀ Left" to "pan_left",
             "🎯 Center" to "center",
             "▶ Right" to "pan_right"
         )
-        for ((lbl, act) in camButtons) {
-            val btn = makeStyledButton(lbl) {
+        for ((label, act) in camButtons) {
+            val btn = makeStyledButton(label) {
                 var zoom = prefs.getFloat("widgetZoom", 1.0f)
                 var offsetX = prefs.getFloat("widgetOffsetX", 0.0f)
                 when (act) {
@@ -207,85 +341,205 @@ class MainActivity : Activity() {
                     .apply()
                 val jsAct = if (act == "center") "reset" else act
                 webView.evaluateJavascript("if (window.isoEngine) window.isoEngine.adjustCamera('$jsAct');", null)
-                val sign = if (offsetX > 0) "+" else ""
-                applyAndRefreshWidgets("Isometric Zoom: ${(zoom * 100).toInt()}%, Horizontal Offset: $sign${offsetX.toInt()} px")
+                updateFramingStats()
+                applyAndRefreshWidgets("Camera framing adjusted")
             }.apply {
                 val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f)
-                lp.setMargins(0, 0, dp(6), 0)
+                lp.setMargins(0, 0, dp(4), 0)
                 layoutParams = lp
-                setPadding(dp(6), dp(10), dp(6), dp(10))
+                setPadding(dp(4), dp(10), dp(4), dp(10))
                 textSize = 11.5f
             }
             camControlRow.addView(btn)
         }
-        configContainer.addView(camControlRow)
+        layout.addView(camControlRow)
 
-        // --- SECTION 2: Pre-Generated 3D Isometric Diorama Dropdown (Independent of Weather Lat/Lon) ---
-        configContainer.addView(makeSectionHeader("2. Pre-Generated 3D Isometric Diorama Scene"))
+        framingStatsText = TextView(this).apply {
+            setTextColor(Color.parseColor("#ffd166"))
+            textSize = 12.5f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            setPadding(0, dp(2), 0, dp(12))
+        }
+        updateFramingStats()
+        layout.addView(framingStatsText)
 
-        val themeEntries = listOf(
-            "🏛️ Historic Yorktown, VA — 1781 Waterfront, Coleman Bridge & Tall Ship (NPS)" to "yorktown",
-            "⛵ Historic Jamestown, VA — 1607 James Fort Palisade, 3 Ships & Turquoise River (NPS)" to "jamestown",
-            "🏛️ Washington, D.C. & Mid-Atlantic — US Capitol, Monument, Lincoln Memorial & Basin" to "washington_dc",
-            "🗽 New York City & Northeast — Statue of Liberty, Brooklyn Bridge & Empire State" to "new_york",
-            "🌉 San Francisco & California Coast — Golden Gate Bridge, Alcatraz & Painted Ladies" to "san_francisco",
-            "🏙️ Chicago & Great Lakes Midwest — Willis Tower, Red Bascule Bridge & Navy Pier" to "chicago_great_lakes",
-            "🏜️ Grand Canyon & Southwest — Red-Rock Buttes, Cliff Dwellings & Colorado River" to "grand_canyon",
-            "🎷 New Orleans & Gulf South — St. Louis Cathedral, French Quarter & Steamboat" to "new_orleans",
-            "🌲 Seattle & Pacific Northwest — Space Needle, Pike Place, Mt. Rainier & Ferry" to "seattle_pnw",
-            "🌴 Miami Beach, Florida Keys & Tropics — Art Deco Ocean Drive & Coral Lagoon" to "miami_caribbean",
-            "⚓ New England & Maritime Atlantic — Lighthouse Point, Schooner & Historic Wharf" to "coastal",
-            "🕰️ London & UK (Europe/London) — Big Ben, Parliament, Tower of London & Thames" to "london_uk",
-            "🏰 Paris & Western Europe (Europe/Paris) — Notre-Dame, Louvre, Arc & Seine Bridge" to "paris_europe",
-            "🏛️ Rome, Athens & Mediterranean — Colosseum, Parthenon, Aqueduct & Harbor" to "rome_mediterranean",
-            "🏺 Cairo, Giza & Middle East — Ancient Citadel, Sacred Temple Pool & Pharos" to "cairo_giza",
-            "⛩️ Tokyo, Kyoto & East Asia (Asia/Tokyo) — 5-Story Pagoda, Imperial Hall & Torii" to "tokyo_east_asia",
-            "🌆 Global Modern Metropolis (Sydney / Singapore / Toronto) — Skyline & Bridge" to "modern",
-            "🏔️ Alpine Mountain & Glacial Lake Village (Rockies / Swiss Alps / Andes)" to "alpine"
+        // Quick zoom preset row
+        val presetRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val zoomPresets = listOf(
+            "Far (85%)" to 0.85f,
+            "Standard (100%)" to 1.00f,
+            "Close-Up (125%)" to 1.25f,
+            "Hero Detail (160%)" to 1.60f
         )
+        for ((pName, pZoom) in zoomPresets) {
+            val chip = makeStyledButton(pName) {
+                prefs.edit().putFloat("widgetZoom", pZoom).apply()
+                webView.evaluateJavascript("if (window.isoEngine) { window.isoEngine.state.cameraZoom = $pZoom; window.isoEngine.refreshAll(); }", null)
+                updateFramingStats()
+                applyAndRefreshWidgets("Zoom set to ${(pZoom * 100).toInt()}%")
+            }.apply {
+                val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f).apply {
+                    setMargins(0, 0, dp(4), 0)
+                }
+                layoutParams = lp
+                setPadding(dp(4), dp(7), dp(4), dp(7))
+                textSize = 11f
+            }
+            presetRow.addView(chip)
+        }
+        layout.addView(presetRow)
+
+        scroll.addView(layout)
+        return scroll
+    }
+
+    /**
+     * TAB 1: 🏛️ 3D Diorama Scene
+     * Auto-Match Closest GPS Diorama + 18 Regional, NPS & UNESCO Pre-Generated Diorama Models.
+     */
+    private fun buildTab1DioramaScene(): View {
+        val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
+
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            descendantFocusability = ViewGroup.FOCUS_BEFORE_DESCENDANTS
+        }
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(8), dp(16), dp(24))
+        }
+
+        layout.addView(makeSectionHeader("1. Auto-Match Closest 3D Diorama to My Location"))
+
+        // GPS Auto-Match Card
+        val gpsCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dp(12).toFloat()
+                setColor(Color.parseColor("#142538"))
+                setStroke(dp(1), Color.parseColor("#2a557c"))
+            }
+            setPadding(dp(14), dp(12), dp(14), dp(14))
+        }
+
+        fun updateClosestDioramaDisplay() {
+            val lat = prefs.getFloat("latitude", 37.2388f).toDouble()
+            val lon = prefs.getFloat("longitude", -76.5097f).toDouble()
+            val closest = DeviceLocationManager.findClosestDiorama(lat, lon)
+            val dName = closest.first.name
+            val miles = String.format(Locale.US, "%.1f", closest.second)
+            closestMatchStatusText.text = "📍 Nearest landmark diorama:\n$dName (~$miles miles from weather location)"
+        }
+
+        autoMatchDioramaCheck = CheckBox(this).apply {
+            text = "Auto-Use Closest Matching 3D Diorama for My Location"
+            setTextColor(Color.WHITE)
+            textSize = 13.5f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            isChecked = prefs.getBoolean("autoMatchDiorama", false)
+            setOnCheckedChangeListener { _, checked ->
+                prefs.edit().putBoolean("autoMatchDiorama", checked).apply()
+                if (checked) {
+                    val lat = prefs.getFloat("latitude", 37.2388f).toDouble()
+                    val lon = prefs.getFloat("longitude", -76.5097f).toDouble()
+                    val closest = DeviceLocationManager.findClosestDiorama(lat, lon)
+                    prefs.edit().putString("dioramaTheme", closest.first.id).apply()
+                    dioramaThemeButton.text = "▼  ${closest.first.name} (Auto-Matched)"
+                    applyAndRefreshWidgets("Auto-matched closest 3D diorama: ${closest.first.name}")
+                } else {
+                    applyAndRefreshWidgets("Auto-match disabled (using manual diorama)")
+                }
+                updateClosestDioramaDisplay()
+            }
+        }
+        gpsCard.addView(autoMatchDioramaCheck)
+
+        closestMatchStatusText = TextView(this).apply {
+            setTextColor(Color.parseColor("#7ec3ed"))
+            textSize = 12f
+            setPadding(dp(4), dp(6), 0, 0)
+        }
+        updateClosestDioramaDisplay()
+        gpsCard.addView(closestMatchStatusText)
+        layout.addView(gpsCard)
+
+        layout.addView(makeSectionHeader("2. Manual 3D Isometric Diorama Model"))
+
+        val themeEntries = DeviceLocationManager.REGIONAL_DIORAMAS.map {
+            "${it.name} — ${it.description}" to it.id
+        }
+
         val themeRow = makePickerRow(
-            label = "Active 3D Isometric Diorama (Independent of Weather Location):",
-            dialogTitle = "Select Pre-Generated 3D Isometric Diorama",
+            label = "Choose Any 3D Diorama (Completely Independent of Weather Coordinates):",
+            dialogTitle = "Select 3D Isometric Diorama",
             entries = themeEntries,
             currentVal = prefs.getString("dioramaTheme", "yorktown") ?: "yorktown"
         ) { newVal ->
             prefs.edit().putString("dioramaTheme", newVal).apply()
-            applyAndRefreshWidgets("3D Diorama theme set to $newVal")
+            if (prefs.getBoolean("autoMatchDiorama", false)) {
+                prefs.edit().putBoolean("autoMatchDiorama", false).apply()
+                autoMatchDioramaCheck.isChecked = false
+            }
+            applyAndRefreshWidgets("3D Diorama set to $newVal")
+            updateClosestDioramaDisplay()
         }
         dioramaThemeButton = themeRow.second
-        configContainer.addView(themeRow.first)
+        layout.addView(themeRow.first)
 
-        // --- SECTION 3: Weather Telemetry Location & Global City Search (Independent of 3D Diorama) ---
-        configContainer.addView(makeSectionHeader("3. Active Weather Location (Independent of 3D Render)"))
+        scroll.addView(layout)
+        return scroll
+    }
+
+    /**
+     * TAB 2: 📍 Weather Location
+     * GPS Auto-Detect, Travel Follow Toggle, City Search, and Presets.
+     */
+    private fun buildTab2Location(): View {
+        val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
+
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            descendantFocusability = ViewGroup.FOCUS_BEFORE_DESCENDANTS
+        }
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(8), dp(16), dp(24))
+        }
+
+        layout.addView(makeSectionHeader("Active Weather Location"))
 
         val locHint = TextView(this).apply {
-            text = "Use your phone's auto-detected current location or search any city/town for live Open-Meteo weather while keeping whichever 3D isometric diorama you like best."
+            text = "Your weather coordinates are completely independent of your selected 3D diorama. Follow your live phone GPS as you travel or lock to any town/city."
             setTextColor(Color.parseColor("#b8d4ec"))
             textSize = 12f
-            setPadding(0, 0, 0, dp(6))
+            setPadding(0, 0, 0, dp(8))
         }
-        configContainer.addView(locHint)
+        layout.addView(locHint)
 
-        val autoLocBtn = makeStyledButton("📍 Auto-Detect My Current Location") {
+        val autoLocBtn = makeStyledButton("📍 Auto-Detect My Current Location (GPS)") {
             detectAndApplyCurrentLocation()
         }.apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                setMargins(0, dp(2), 0, dp(8))
+                setMargins(0, 0, 0, dp(8))
             }
-            setPadding(dp(14), dp(10), dp(14), dp(10))
+            setPadding(dp(14), dp(11), dp(14), dp(11))
             textSize = 13f
         }
-        configContainer.addView(autoLocBtn)
+        layout.addView(autoLocBtn)
 
         autoUpdateLocCheck = CheckBox(this).apply {
             text = "Follow Phone GPS Location (Automatically update weather as you travel)"
             setTextColor(Color.parseColor("#e6f1fa"))
             textSize = 13f
             isChecked = prefs.getBoolean("useCurrentLocation", false)
-            setPadding(dp(4), dp(2), dp(4), dp(8))
+            setPadding(dp(4), dp(2), dp(4), dp(10))
             setOnCheckedChangeListener { _, checked ->
                 prefs.edit().putBoolean("useCurrentLocation", checked).apply()
                 if (checked) {
@@ -295,12 +549,13 @@ class MainActivity : Activity() {
                 }
             }
         }
-        configContainer.addView(autoUpdateLocCheck)
+        layout.addView(autoUpdateLocCheck)
 
+        // Search Row
         val searchRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(4), 0, dp(10))
+            setPadding(0, dp(4), 0, dp(12))
         }
         val cityInput = EditText(this).apply {
             hint = "Search city weather (e.g. Tabb, Yorktown, San Francisco)..."
@@ -328,7 +583,9 @@ class MainActivity : Activity() {
             if (q.length >= 2) geocodeAndApplyCity(q)
         }
         searchRow.addView(searchBtn)
-        configContainer.addView(searchRow)
+        layout.addView(searchRow)
+
+        layout.addView(makeSectionHeader("Quick Location Presets"))
 
         val presetScroll = HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
@@ -359,22 +616,42 @@ class MainActivity : Activity() {
                 val lp = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-                lp.setMargins(0, 0, dp(8), 0)
+                ).apply {
+                    setMargins(0, 0, dp(8), 0)
+                }
                 layoutParams = lp
                 setPadding(dp(12), dp(8), dp(12), dp(8))
             }
             presetRow.addView(chip)
         }
         presetScroll.addView(presetRow)
-        configContainer.addView(presetScroll)
+        layout.addView(presetScroll)
 
-        // --- SECTION 4: Extrapolated Widget HUD Overlay Layout & Size ---
-        configContainer.addView(makeSectionHeader("4. Widget HUD Overlay Layout & Readability"))
+        scroll.addView(layout)
+        return scroll
+    }
 
-        configContainer.addView(
+    /**
+     * TAB 3: 🪟 HUD Overlay
+     * Top-Sky vs Corner Card, Scaling, Transparent Cutout Mode, and Extended Telemetry.
+     */
+    private fun buildTab3HudOverlay(): View {
+        val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
+
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            descendantFocusability = ViewGroup.FOCUS_BEFORE_DESCENDANTS
+        }
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(8), dp(16), dp(24))
+        }
+
+        layout.addView(makeSectionHeader("Widget HUD Overlay Layout & Readability"))
+
+        layout.addView(
             makePickerRow(
-                label = "Widget Overlay Position (Stays Fixed While Isometric Moves):",
+                label = "Widget Overlay Position (Stationary Sky Header):",
                 dialogTitle = "Select Widget Overlay Layout",
                 entries = listOf(
                     "Top-Sky Split Banner (Large Text in Upper Sky, 0% Island Overlap — Recommended)" to "top-sky",
@@ -387,9 +664,9 @@ class MainActivity : Activity() {
             }.first
         )
 
-        configContainer.addView(
+        layout.addView(
             makePickerRow(
-                label = "Widget Overlay Text Size (Extrapolated Readability):",
+                label = "Widget Overlay Text Size Scale:",
                 dialogTitle = "Select Overlay Text Size",
                 entries = listOf(
                     "Standard Size (100%)" to "1.00",
@@ -405,7 +682,7 @@ class MainActivity : Activity() {
         )
 
         val transparentCheck = CheckBox(this).apply {
-            text = "Transparent Cutout Mode (Float 3D island directly over OnePlus wallpaper)"
+            text = "Transparent Cutout Mode (Float 3D island directly over phone wallpaper)"
             setTextColor(Color.parseColor("#e6f1fa"))
             textSize = 13.5f
             isChecked = prefs.getBoolean("transparentBackground", false)
@@ -415,10 +692,10 @@ class MainActivity : Activity() {
                 applyAndRefreshWidgets(if (checked) "Transparent Cutout Mode enabled" else "Sky Backdrop Card enabled")
             }
         }
-        configContainer.addView(transparentCheck)
+        layout.addView(transparentCheck)
 
         val expandedHudCheck = CheckBox(this).apply {
-            text = "Show Extended Telemetry on Widget (AQI, UV, Moon Phase & Feels Like)"
+            text = "Show Extended Telemetry (AQI, UV Index, Moon Phase & Feels Like)"
             setTextColor(Color.parseColor("#e6f1fa"))
             textSize = 13.5f
             isChecked = prefs.getBoolean("showExtendedHud", true)
@@ -428,12 +705,31 @@ class MainActivity : Activity() {
                 applyAndRefreshWidgets("Widget HUD telemetry updated")
             }
         }
-        configContainer.addView(expandedHudCheck)
+        layout.addView(expandedHudCheck)
 
-        // --- SECTION 5: Atmosphere, Time of Day & Weather Simulation ---
-        configContainer.addView(makeSectionHeader("5. Time of Day & Weather Simulation"))
+        scroll.addView(layout)
+        return scroll
+    }
 
-        configContainer.addView(
+    /**
+     * TAB 4: ☀️ Atmosphere & Weather
+     * Solar cycle, condition overrides, and weather particle intensity.
+     */
+    private fun buildTab4Atmosphere(): View {
+        val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
+
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            descendantFocusability = ViewGroup.FOCUS_BEFORE_DESCENDANTS
+        }
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(8), dp(16), dp(24))
+        }
+
+        layout.addView(makeSectionHeader("Atmosphere, Lighting & Weather Simulation"))
+
+        layout.addView(
             makePickerRow(
                 label = "Time of Day / Sky Lighting:",
                 dialogTitle = "Select Time of Day Lighting",
@@ -450,17 +746,17 @@ class MainActivity : Activity() {
             }.first
         )
 
-        configContainer.addView(
+        layout.addView(
             makePickerRow(
-                label = "Weather Condition:",
+                label = "Weather Condition Simulation:",
                 dialogTitle = "Select Weather Condition",
                 entries = listOf(
                     "Live Real-Time Open-Meteo Weather" to "realtime",
                     "Preview: Clear Weather (Sunny / Starry)" to "clear",
                     "Preview: Partly Cloudy (3D Volumetric Clouds)" to "partly_cloudy",
-                    "Preview: Rain Shower (Rain Streaks & Ripples)" to "rain",
+                    "Preview: Rain Shower (Rain Across Canvas & Ripples)" to "rain",
                     "Preview: Thunderstorm (Heavy Rain & Lightning)" to "thunderstorm",
-                    "Preview: Snowfall (Snowflakes & Frost)" to "snow",
+                    "Preview: Snowfall (Snowflakes Across Canvas)" to "snow",
                     "Preview: Coastal Fog" to "fog"
                 ),
                 currentVal = prefs.getString("weatherOverride", "realtime") ?: "realtime"
@@ -470,7 +766,7 @@ class MainActivity : Activity() {
             }.first
         )
 
-        configContainer.addView(
+        layout.addView(
             makePickerRow(
                 label = "Weather Effect Intensity & Speed:",
                 dialogTitle = "Select Weather FX Intensity",
@@ -487,12 +783,31 @@ class MainActivity : Activity() {
             }.first
         )
 
-        // --- SECTION 6: Temperature & Wind Units ---
-        configContainer.addView(makeSectionHeader("6. Temperature & Wind Units"))
+        scroll.addView(layout)
+        return scroll
+    }
 
-        configContainer.addView(
+    /**
+     * TAB 5: ⚙️ Units & Preferences
+     * Temperature and wind unit formatting.
+     */
+    private fun buildTab5Units(): View {
+        val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
+
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            descendantFocusability = ViewGroup.FOCUS_BEFORE_DESCENDANTS
+        }
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(8), dp(16), dp(24))
+        }
+
+        layout.addView(makeSectionHeader("Temperature & Wind Units"))
+
+        layout.addView(
             makePickerRow(
-                label = "Temperature Display:",
+                label = "Temperature Display Format:",
                 dialogTitle = "Select Temperature Unit",
                 entries = listOf(
                     "Dual: °F (°C) — Reference Style (e.g. 68°F (20°C))" to "BOTH",
@@ -506,7 +821,7 @@ class MainActivity : Activity() {
             }.first
         )
 
-        configContainer.addView(
+        layout.addView(
             makePickerRow(
                 label = "Wind Speed Unit:",
                 dialogTitle = "Select Wind Speed Unit",
@@ -523,35 +838,8 @@ class MainActivity : Activity() {
             }.first
         )
 
-        // Save & Update Button
-        val applyBtn = makeStyledButton("✅ Save & Update Homescreen / Lockscreen Widget") {
-            hideKeyboard()
-            applyAndRefreshWidgets("All widget settings saved & applied!")
-            if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                val resultValue = Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                setResult(RESULT_OK, resultValue)
-                finish()
-            } else {
-                Toast.makeText(this, "Widget updated! Check your Homescreen.", Toast.LENGTH_SHORT).show()
-            }
-        }.apply {
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            lp.setMargins(0, dp(22), 0, dp(16))
-            layoutParams = lp
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(12).toFloat()
-                setColor(Color.parseColor("#1f6f54"))
-                setStroke(dp(1), Color.parseColor("#6ee7b7"))
-            }
-        }
-        configContainer.addView(applyBtn)
-
-        scrollView.addView(configContainer)
-        setContentView(scrollView)
+        scroll.addView(layout)
+        return scroll
     }
 
     private fun hideKeyboard() {
@@ -569,7 +857,7 @@ class MainActivity : Activity() {
             setTextColor(Color.parseColor("#ffd166"))
             textSize = 12.5f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            setPadding(0, (16 * density).roundToInt(), 0, (6 * density).roundToInt())
+            setPadding(0, (14 * density).roundToInt(), 0, (6 * density).roundToInt())
         }
     }
 
@@ -589,17 +877,13 @@ class MainActivity : Activity() {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = 10f * density
-                setColor(Color.parseColor("#213a52"))
-                setStroke((1 * density).roundToInt(), Color.parseColor("#5b8db8"))
+                setColor(Color.parseColor("#1b3044"))
+                setStroke((1 * density).roundToInt(), Color.parseColor("#446f96"))
             }
             setOnClickListener { onClick() }
         }
     }
 
-    /**
-     * Scroll-safe replacement for Android Spinner: renders a clean labeled Button that opens
-     * a native AlertDialog single-choice modal ONLY on deliberate tap, never during vertical scrolling.
-     */
     private fun makePickerRow(
         label: String,
         dialogTitle: String,
@@ -692,8 +976,6 @@ class MainActivity : Activity() {
             }
             if (result != null) {
                 val (disp, lat, lon) = result
-                val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putBoolean("useCurrentLocation", false).apply()
                 saveLocation(disp, lat, lon)
             } else {
                 statusLabel.text = "No matching location found for '$query'."
@@ -738,6 +1020,15 @@ class MainActivity : Activity() {
                     autoUpdateLocCheck.isChecked = true
                 }
                 saveLocation(disp, lat.toFloat(), lon.toFloat(), keepAutoUpdate = true)
+
+                // If auto-match diorama is active, update diorama too
+                if (prefs.getBoolean("autoMatchDiorama", false)) {
+                    val closest = DeviceLocationManager.findClosestDiorama(lat, lon)
+                    prefs.edit().putString("dioramaTheme", closest.first.id).apply()
+                    if (::dioramaThemeButton.isInitialized) {
+                        dioramaThemeButton.text = "▼  ${closest.first.name} (Auto-Matched)"
+                    }
+                }
                 statusLabel.text = "📍 Auto-detected GPS location: $disp"
             } else {
                 statusLabel.text = "Could not resolve GPS location. Please ensure Location is enabled in Settings."
@@ -745,10 +1036,6 @@ class MainActivity : Activity() {
         }
     }
 
-    /**
-     * Saves the active weather telemetry coordinates (`name`, `lat`, `lon`) independently of
-     * the user's selected 3D Isometric Diorama (`dioramaTheme`).
-     */
     private fun saveLocation(name: String, lat: Float, lon: Float, keepAutoUpdate: Boolean = false) {
         val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
         prefs.edit()
@@ -760,11 +1047,24 @@ class MainActivity : Activity() {
         if (!keepAutoUpdate && ::autoUpdateLocCheck.isInitialized) {
             autoUpdateLocCheck.isChecked = false
         }
-        activeLocationHeader.text = "⚙️ Global 3D Isometric Weather\nActive Location: $name"
-        applyAndRefreshWidgets("Weather location set to $name (3D Diorama render unchanged)")
+
+        // If autoMatchDiorama is enabled, also update diorama theme
+        var dTheme = prefs.getString("dioramaTheme", "yorktown") ?: "yorktown"
+        if (prefs.getBoolean("autoMatchDiorama", false)) {
+            val closest = DeviceLocationManager.findClosestDiorama(lat.toDouble(), lon.toDouble())
+            dTheme = closest.first.id
+            prefs.edit().putString("dioramaTheme", dTheme).apply()
+            if (::dioramaThemeButton.isInitialized) {
+                dioramaThemeButton.text = "▼  ${closest.first.name} (Auto-Matched)"
+            }
+        }
+
+        activeLocationHeader.text = "⚙️ Global 3D Isometric Weather\nActive: $name • Diorama: $dTheme"
+        applyAndRefreshWidgets("Weather location set to $name")
     }
 
     private fun syncSettingsToWebView() {
+        if (!::webView.isInitialized) return
         val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
         val name = (prefs.getString("locationName", "Yorktown, VA") ?: "Yorktown, VA").replace("'", "\\'")
         val lat = prefs.getFloat("latitude", 37.2388f)
@@ -796,7 +1096,11 @@ class MainActivity : Activity() {
     }
 
     private fun applyAndRefreshWidgets(msg: String) {
-        statusLabel.text = "✓ $msg — Homescreen & Lockscreen widgets updated."
+        statusLabel.text = "✓ $msg"
+        val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
+        val curName = prefs.getString("locationName", "Yorktown, VA") ?: "Yorktown, VA"
+        val curDiorama = prefs.getString("dioramaTheme", "yorktown") ?: "yorktown"
+        activeLocationHeader.text = "⚙️ Global 3D Isometric Weather\nActive: $curName • Diorama: $curDiorama"
         syncSettingsToWebView()
 
         val mgr = AppWidgetManager.getInstance(this)

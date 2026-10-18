@@ -105,9 +105,10 @@ All 18 pre-generated 3D isometric floating-island dioramas feature **Jamestown-s
 ├── android/                                # Android Homescreen & Lockscreen AppWidget (OnePlus 13 / Android 12+)
 │   └── app/src/main/
 │       ├── java/com/antigravity/yorktownweather/
-│       │   ├── IsometricWeatherWidgetProvider.kt          # 4-frame live ViewFlipper + native extrapolated HUD + zoom/pan
-│       │   └── MainActivity.kt                            # Scroll-safe full-screen config app + 18-diorama dropdown
-│       ├── res/layout/widget_isometric_weather.xml        # ViewFlipper + Top-Sky/Corner HUD + ➖ ➕ ◀ 🎯 ▶ ⚙️ bar
+│       │   ├── DeviceLocationManager.kt                   # Hardware GPS/Network provider + Haversine nearest-diorama auto-matcher
+│       │   ├── IsometricWeatherWidgetProvider.kt          # Full-canvas weather rendering + extrapolated HUD + auto-matching
+│       │   └── MainActivity.kt                            # 6-Tab configuration UI + live 3D preview & camera framing tab
+│       ├── res/layout/widget_isometric_weather.xml        # ViewFlipper + Top-Sky/Corner HUD
 │       └── res/xml/isometric_weather_widget_info.xml      # 4x3 default grid, horizontal|vertical resizable
 ├── scripts/
 │   ├── build_all_pregenerated_dioramas.py  # Offline 3D diorama cutout & Day/Sunset/Night generator script

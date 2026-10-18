@@ -155,12 +155,18 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                     }
                 }
 
+                var dioramaTheme = prefs.getString("dioramaTheme", "yorktown") ?: "yorktown"
+                if (prefs.getBoolean("autoMatchDiorama", false)) {
+                    val closest = DeviceLocationManager.findClosestDiorama(lat, lon)
+                    dioramaTheme = closest.first.id
+                }
+
                 val cfg = WidgetConfig(
                     locationName = locName,
                     lat = lat,
                     lon = lon,
                     renderMode = prefs.getString("renderMode", "hybrid") ?: "hybrid",
-                    dioramaTheme = prefs.getString("dioramaTheme", "yorktown") ?: "yorktown",
+                    dioramaTheme = dioramaTheme,
                     hudPosition = prefs.getString("hudPosition", "top-sky") ?: "top-sky",
                     hudScale = prefs.getFloat("hudScale", 1.15f),
                     transparentBg = prefs.getBoolean("transparentBackground", false),
@@ -607,50 +613,47 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
 
         canvas.restore()
 
-        // 4. Weather Particles (Rain / Thunderstorm / Snow) & Splash Ripples directly over the 3D Island & Land/Water Areas
+        // 4. Weather Particles (Rain / Thunderstorm / Snow) across the WHOLE rendered area
         val density = cfg.particleDensity.coerceIn(0.15f, 1.5f)
-        val islandLeft = ix + 0.08f * iw
-        val islandRight = ix + 0.92f * iw
-        val islandSpanX = islandRight - islandLeft
-        val islandTop = iy - 0.08f * ih
-        val islandBottom = iy + 0.88f * ih
-        val islandSpanY = islandBottom - islandTop
+        val fullWidth = width.toFloat()
+        val fullHeight = height.toFloat()
 
         if (effectiveCat == "rain" || effectiveCat == "thunderstorm") {
-            val dropCount = max(6, ((if (effectiveCat == "thunderstorm") 32 else 20) * density).roundToInt())
-            paint.color = Color.argb(145, 210, 238, 255)
-            paint.strokeWidth = 1.4f * sI
+            val dropCount = max(14, ((if (effectiveCat == "thunderstorm") 48 else 28) * density).roundToInt())
+            paint.color = Color.argb(150, 215, 240, 255)
+            paint.strokeWidth = 1.4f * s
             for (i in 0 until dropCount) {
-                val prog = ((i * 0.173f) + phase * 0.30f) % 1.0f
+                val prog = ((i * 0.173f) + phase * 0.32f) % 1.0f
                 val seedX = ((i * 0.6180339f + 0.12f) % 1.0f)
-                val rx = islandLeft + seedX * islandSpanX - prog * 0.06f * iw
-                val ry = islandTop + prog * islandSpanY
-                canvas.drawLine(rx, ry, rx - 4.5f * sI, ry + 14f * sI, paint)
+                val rx = seedX * fullWidth - prog * 0.08f * fullWidth
+                val ry = prog * (fullHeight + 20f) - 10f
+                canvas.drawLine(rx, ry, rx - 4.5f * s, ry + 16f * s, paint)
             }
 
-            // Animated water / ground splash ripples on the island's land & water surfaces
-            val splashCount = max(3, (6 * density).roundToInt())
+            // Animated water / ground splash ripples on the island's land & cutaway water surfaces
+            val splashCount = max(4, (8 * density).roundToInt())
             paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 1.1f * sI
-            paint.color = Color.argb(120, 225, 245, 255)
+            paint.strokeWidth = 1.1f * s
+            paint.color = Color.argb(130, 225, 245, 255)
             for (j in 0 until splashCount) {
                 val spProg = ((j * 0.283f) + phase * 0.50f) % 1.0f
-                val spX = ix + (0.28f + ((j * 0.19f) % 0.46f)) * iw
-                val spY = iy + (0.36f + ((j * 0.17f) % 0.38f)) * ih
-                val radX = (4.0f + spProg * 8.0f) * sI
+                val spX = ix + (0.22f + ((j * 0.17f) % 0.56f)) * iw
+                val spY = iy + (0.32f + ((j * 0.15f) % 0.44f)) * ih
+                val radX = (4.0f + spProg * 8.0f) * s
                 val radY = radX * 0.48f // isometric elliptical perspective
                 canvas.drawOval(RectF(spX - radX, spY - radY, spX + radX, spY + radY), paint)
             }
             paint.style = Paint.Style.FILL
         } else if (effectiveCat == "snow") {
-            val flakeCount = max(6, (26 * density).roundToInt())
-            paint.color = Color.argb(220, 255, 255, 255)
+            val flakeCount = max(12, (38 * density).roundToInt())
+            paint.color = Color.argb(230, 255, 255, 255)
             for (i in 0 until flakeCount) {
                 val prog = ((i * 0.137f) + phase * 0.22f) % 1.0f
                 val seedX = ((i * 0.6180339f + 0.08f) % 1.0f)
-                val sx = islandLeft + seedX * islandSpanX + 0.015f * iw * sin((phase * 2 * Math.PI + i).toFloat())
-                val sy = islandTop + prog * islandSpanY
-                canvas.drawCircle(sx, sy, 2.4f * sI, paint)
+                val rx = seedX * fullWidth + sin((phase * 2.0 * Math.PI + i).toFloat()) * 8f * s
+                val ry = prog * (fullHeight + 20f) - 10f
+                val r = (1.8f + (i % 3) * 1.0f) * s
+                canvas.drawCircle(rx, ry, r, paint)
             }
         }
 

@@ -53,9 +53,18 @@ Every pre-generated diorama features **Jamestown-style translucent turquoise cut
 - **Distraction-Free Visuals (Hidden Camera Buttons & Settings Gear)**:
   - On-screen zoom and camera movement buttons (`➖` `➕` `◀` `🎯` `▶`) and the settings gear (`⚙️`) are cleanly hidden from the widget canvas across Android, KDE Plasma 6 Desktop, and Web.
   - Tapping the 3D diorama canvas directly opens the configuration settings dialog.
-- **Precipitation & Weather Events Centered Over 3D Island**:
-  - Rain streaks, thunderstorm rain, and snowflakes are now mathematically calculated to fall strictly over the bounds of the 3D diorama island (`islandLeft..islandRight` and `islandTop..islandBottom`).
-  - Animated ground and water splash ripples render directly on the island surfaces rather than floating off to the bottom-right.
+- **Full-Area Weather Precipitation & Water Splash Ripples**:
+  - Rain streaks, thunderstorm rain, and snowflakes now span the entire frame dimensions (`0..width`, `0..height`), falling naturally across the full sky and blanketing the landscape with animated cutaway water splash ripples on the diorama surfaces.
+- **Auto-Match Closest 3D Diorama to Physical GPS Location (`DeviceLocationManager.kt`)**:
+  - Added an intelligent GPS diorama auto-matcher: using high-precision Haversine distance calculations from the device coordinates to the 18 landmark reference points, the app automatically selects the nearest regional 3D diorama for your location (e.g. automatically matching Historic Yorktown for Yorktown, Poquoson, Newport News, and Tabb, VA).
+- **Modern Tabular Configuration View (`MainActivity.kt`)**:
+  - Redesigned the configuration page into a clean, responsive 6-tab interface with zero scrolling conflicts:
+    - **Tab 0 (`🖼️ 3D Preview & Framing`)**: Houses a live 16:9 interactive 3D preview with camera zoom (`➖` / `➕`) and horizontal framing (`◀` / `🎯` / `▶`) controls, live readout, and 4 quick zoom presets (Far 85%, Standard 100%, Close-Up 125%, Hero Detail 160%), completely replacing the old top-level framing section.
+    - **Tab 1 (`🏛️ Diorama Scene`)**: GPS diorama auto-match toggle and live landmark distance indicator, plus manual picker for all 18 world landmark dioramas.
+    - **Tab 2 (`📍 Weather Location`)**: GPS Auto-detect button, travel follow toggle, live reverse-geocoding city search bar, and quick preset chips.
+    - **Tab 3 (`🪟 HUD Overlay`)**: Top-sky banner vs corner card position, text scale (`100% / 115% / 130%`), transparent cutout mode, and telemetry toggles.
+    - **Tab 4 (`☀️ Atmosphere & Weather`)**: Solar cycle / sky lighting, live weather simulation overrides (Clear, Clouds, Rain, Thunderstorm, Snow, Fog), and particle intensity.
+    - **Tab 5 (`⚙️ Units & Preferences`)**: Temperature (°F/°C) and wind speed (MPH/km/h) formatting.
 - **Interactive 7-Day & Hourly Weather Forecast Link**:
   - Tapping the Weather HUD Overlay (banner or corner card) opens the official 7-day and hourly weather forecast in the browser (`forecast.weather.gov` for US locations or `weather.com` worldwide).
 - **True Hardware GPS & Network Location Acquisition (`DeviceLocationManager.kt`)**:
@@ -66,8 +75,6 @@ Every pre-generated diorama features **Jamestown-style translucent turquoise cut
   - Live digital clock embedded in the HUD banner and corner card across all platforms (`TextClock` in Android `RemoteViews`, 1-second live `Timer` in KDE Plasma 6 `WeatherHudCard.qml`, and `setInterval` in Web HTML5), designed to sit elegantly in the upper sky without obstructing the 3D island.
 - **Extrapolated High-Readability Android HUD (`widget_isometric_weather.xml` & `IsometricWeatherWidgetProvider.kt`)**:
   - Uses native high-DPI `RemoteViews` typography (`Top-Sky Split Banner` or `Corner Card`) with `100% / 115% / 130%` text scaling and auto-fitting text sizes so words and icons never clip or run off screen.
-- **Spacious, Scroll-Safe Android Config Menu (`MainActivity.kt`)**:
-  - Single full-screen `ScrollView` with `FOCUS_BEFORE_DESCENDANTS` and scroll-safe `AlertDialog` modal pickers.
 
 ---
 

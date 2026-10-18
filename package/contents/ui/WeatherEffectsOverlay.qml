@@ -274,18 +274,13 @@ Item {
                 var windSlant = Math.min(11.0, 3.0 + fxRoot.windSpeedMph * 0.25) * s
                 var dropLen = 16.0 * s
 
-                // Bounded directly over the 3D isometric island
-                var islandX0 = width * 0.14
-                var islandX1 = width * 0.86
-                var islandW = islandX1 - islandX0
-                var islandY0 = height * 0.12
-                var islandY1 = height * 0.88
-                var islandH = islandY1 - islandY0
-
+                // Rain streaks falling across the WHOLE rendered area
+                var fullW = width
+                var fullH = height
                 for (var r = 0; r < dropCount; r++) {
                     var rSeed = ((r * 0.6180339 - t * 0.14 * ((r % 3) * 0.12 + 0.88) + 100.0) % 1.0)
-                    var rx = islandX0 + rSeed * islandW
-                    var ry = islandY0 + (((r * 0.381966 + t * 0.58 * ((r % 4) * 0.08 + 0.92)) % 1.0) * islandH)
+                    var rx = rSeed * fullW
+                    var ry = (((r * 0.381966 + t * 0.58 * ((r % 4) * 0.08 + 0.92)) % 1.0) * (fullH + 20)) - 10
                     ctx.beginPath()
                     ctx.moveTo(rx, ry)
                     ctx.lineTo(rx - windSlant, ry + dropLen)
@@ -295,6 +290,10 @@ Item {
                 var splashCount = Math.max(3, Math.round(8 * fxRoot.particleDensity))
                 ctx.strokeStyle = "rgba(225, 245, 255, 0.42)"
                 ctx.lineWidth = 1.1 * s
+                var islandX0 = width * 0.14
+                var islandY0 = height * 0.12
+                var islandW = width * 0.72
+                var islandH = height * 0.76
                 for (var rp = 0; rp < splashCount; rp++) {
                     var prog = (t * 0.55 + rp * 0.21) % 1.0
                     // Distribute splashes on the island land and water
@@ -306,18 +305,16 @@ Item {
                 }
             }
 
-            // Snowfall particles (calm drifting flakes over the island)
+            // Snowfall particles (drifting flakes across the whole rendered area)
             if (cat === "snow") {
-                var snowCount = Math.max(4, Math.round(28 * fxRoot.particleDensity))
-                var snX0 = width * 0.14
-                var snW = width * 0.72
-                var snY0 = height * 0.10
-                var snH = height * 0.88
+                var snowCount = Math.max(4, Math.round(32 * fxRoot.particleDensity))
+                var fullW = width
+                var fullH = height
 
                 for (var sn = 0; sn < snowCount; sn++) {
                     var snProg = (sn * 0.273 + t * 0.19 * ((sn % 3) * 0.15 + 0.8)) % 1.0
-                    var snX = snX0 + (((sn * 0.618 + Math.sin(t * 0.9 + sn) * 0.025 + t * 0.05) % 1.0) * snW)
-                    var snY = snY0 + snProg * snH
+                    var snX = ((sn * 0.618 + Math.sin(t * 0.9 + sn) * 0.025 + t * 0.05) % 1.0) * fullW
+                    var snY = (snProg * (fullH + 20)) - 10
                     var flakeR = (1.8 + (sn % 3) * 1.0) * s
                     ctx.fillStyle = "rgba(255, 255, 255, 0.85)"
                     ctx.beginPath()
