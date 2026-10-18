@@ -5,6 +5,18 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.SHOW_ALARMS" />
+        </intent>
+        <package android:name="com.google.android.deskclock" />
+        <package android:name="com.oneplus.deskclock" />
+        <package android:name="com.coloros.alarmclock" />
+        <package android:name="com.sec.android.app.clockpackage" />
+        <package android:name="com.android.deskclock" />
+    </queries>
 
     <application
         android:allowBackup="true"

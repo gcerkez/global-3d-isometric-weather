@@ -10,6 +10,7 @@ import android.content.Intent
 import android.graphics.*
 import android.os.Bundle
 import android.os.SystemClock
+import android.provider.AlarmClock
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
@@ -51,6 +52,77 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         const val ACTION_PAN_LEFT = "com.antigravity.yorktownweather.ACTION_PAN_LEFT"
         const val ACTION_PAN_RIGHT = "com.antigravity.yorktownweather.ACTION_PAN_RIGHT"
         const val ACTION_CAM_RESET = "com.antigravity.yorktownweather.ACTION_CAM_RESET"
+
+        fun aqiLabel(aqi: Int): String = when {
+            aqi <= 50 -> "GOOD"
+            aqi <= 100 -> "MODERATE"
+            aqi <= 150 -> "SENSITIVE"
+            aqi <= 200 -> "UNHEALTHY"
+            aqi <= 300 -> "V.UNHEALTHY"
+            else -> "HAZARDOUS"
+        }
+
+        fun wmoToCategory(code: Int): String = when (code) {
+            0 -> "clear"
+            1, 2 -> "partly_cloudy"
+            3 -> "overcast"
+            45, 48 -> "fog"
+            in 51..67, in 80..82 -> "rain"
+            in 71..77, 85, 86 -> "snow"
+            in 95..99 -> "thunderstorm"
+            else -> "clear"
+        }
+
+        fun categoryToHeadline(cat: String): String = when (cat) {
+            "clear" -> "CLEAR"
+            "partly_cloudy" -> "PARTLY CLOUDY"
+            "overcast" -> "OVERCAST"
+            "fog" -> "COASTAL FOG"
+            "rain" -> "RAIN SHOWER"
+            "snow" -> "SNOWFALL"
+            "thunderstorm" -> "THUNDERSTORM"
+            else -> "CLEAR"
+        }
+
+        fun categoryToEmoji(cat: String, isNight: Boolean): String = when (cat) {
+            "clear" -> if (isNight) "🌙" else "☀️"
+            "partly_cloudy" -> if (isNight) "☁️" else "⛅"
+            "overcast" -> "☁️"
+            "fog" -> "🌫️"
+            "rain" -> "🌧️"
+            "snow" -> "❄️"
+            "thunderstorm" -> "⛈️"
+            else -> if (isNight) "🌙" else "☀️"
+        }
+
+        fun windDegreesToCompass(deg: Int): String {
+            val dirs = arrayOf("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")
+            return dirs[((deg % 360 + 360) % 360 / 22.5).roundToInt() % 16]
+        }
+
+        fun getAlarmClockIntent(context: Context): Intent {
+            val pm = context.packageManager
+            val clockPackages = listOf(
+                "com.google.android.deskclock",
+                "com.oneplus.deskclock",
+                "com.coloros.alarmclock",
+                "com.sec.android.app.clockpackage",
+                "com.android.deskclock",
+                "com.xiaomi.alarm"
+            )
+            for (pkg in clockPackages) {
+                try {
+                    val launch = pm.getLaunchIntentForPackage(pkg)
+                    if (launch != null) {
+                        launch.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        return launch
+                    }
+                } catch (_: Exception) {}
+            }
+            return Intent(AlarmClock.ACTION_SHOW_ALARMS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+        }
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -167,7 +239,6 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                     lon = lon,
                     renderMode = prefs.getString("renderMode", "hybrid") ?: "hybrid",
                     dioramaTheme = dioramaTheme,
-                    hudPosition = prefs.getString("hudPosition", "top-sky") ?: "top-sky",
                     hudScale = prefs.getFloat("hudScale", 1.15f),
                     transparentBg = prefs.getBoolean("transparentBackground", false),
                     showExtendedHud = prefs.getBoolean("showExtendedHud", true),
@@ -231,8 +302,7 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                     else -> "${telemetry.feelsLikeF.roundToInt()}°F"
                 }
 
-                val dirs = arrayOf("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")
-                val compass = dirs[((telemetry.windDeg % 360 + 360) % 360 / 22.5).roundToInt() % 16]
+                val compass = windDegreesToCompass(telemetry.windDeg)
                 val windFormatted = when (cfg.windUnit) {
                     "kmh" -> "${(telemetry.windMph * 1.60934).roundToInt()} KM/H $compass"
                     "kn" -> "${(telemetry.windMph * 0.868976).roundToInt()} KN $compass"
@@ -272,11 +342,8 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                     val scale = cfg.hudScale.coerceIn(0.90f, 1.45f)
 
                     // Upper-bound HUD height (dp) for the stacked top bar so the island is drawn below it:
-                    // root padding + margin + vertical padding + each row's line height (~1.3x text size)
-                    val hudHeightDp = if (cfg.hudPosition == "top-sky") {
-                        2f + 6f + 11f + 17f * scale * 1.22f + 2f + 2f * 11.5f * scale * 1.3f + 1f +
-                            (if (cfg.showExtendedHud) 1f + 11f * scale * 1.3f else 0f)
-                    } else 0f
+                    val hudHeightDp = 2f + 6f + 11f + 17f * scale * 1.22f + 2f + 2f * 11.5f * scale * 1.3f + 1f +
+                        (if (cfg.showExtendedHud) 1f + 11f * scale * 1.3f else 0f)
 
                     for (i in frameIds.indices) {
                         val frame = renderIsometricWidgetFrame(
@@ -289,60 +356,31 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                     val metaLine = "💧 ${telemetry.humidity}% • 💨 $windFormatted"
                     val badgeLine = "AQI ${telemetry.usAqi} ${aqiLabel(telemetry.usAqi)} • UV ${String.format("%.1f", telemetry.uvIndex)} • 🌔"
 
-                    if (cfg.hudPosition == "top-sky") {
-                        views.setViewVisibility(R.id.widget_hud_top_bar, View.VISIBLE)
-                        views.setViewVisibility(R.id.widget_hud_corner, View.GONE)
+                    views.setViewVisibility(R.id.widget_hud_top_bar, View.VISIBLE)
 
-                        // Bar spans the widget: 2dp root padding + 6dp margins + 10dp padding per side
-                        val rowWidthDp = widgetWidthDp - 2 * (2f + 6f + 10f)
-                        val tempLine = "$wxEmoji $tempFormatted"
+                    // Bar spans the widget: 2dp root padding + 6dp margins + 10dp padding per side
+                    val rowWidthDp = widgetWidthDp - 2 * (2f + 6f + 10f)
+                    val tempLine = "$wxEmoji $tempFormatted"
 
-                        views.setTextViewText(R.id.hud_bar_temp, tempLine)
-                        views.setTextViewText(R.id.hud_bar_condition, headline)
-                        views.setTextViewText(R.id.hud_bar_condition_loc, feelsLine)
-                        views.setTextViewText(R.id.hud_bar_wind_hum, metaLine)
-                        views.setTextViewText(R.id.hud_bar_badges, badgeLine)
-                        views.setViewVisibility(R.id.hud_bar_badges, if (cfg.showExtendedHud) View.VISIBLE else View.GONE)
+                    views.setTextViewText(R.id.hud_bar_temp, tempLine)
+                    views.setTextViewText(R.id.hud_bar_condition, headline)
+                    views.setTextViewText(R.id.hud_bar_condition_loc, feelsLine)
+                    views.setTextViewText(R.id.hud_bar_wind_hum, metaLine)
+                    views.setTextViewText(R.id.hud_bar_badges, badgeLine)
+                    views.setViewVisibility(R.id.hud_bar_badges, if (cfg.showExtendedHud) View.VISIBLE else View.GONE)
 
-                        // Row 1 shares its width: temperature gets ~58%, the clock and headline the rest
-                        views.setTextViewTextSize(R.id.hud_bar_temp, TypedValue.COMPLEX_UNIT_DIP,
-                            fitTextSp(tempLine, 17f * scale, rowWidthDp * 0.58f, bold = true))
-                        views.setTextViewTextSize(R.id.hud_bar_clock, TypedValue.COMPLEX_UNIT_DIP, 11.5f * scale)
-                        views.setTextViewTextSize(R.id.hud_bar_condition, TypedValue.COMPLEX_UNIT_DIP,
-                            fitTextSp(headline, 12f * scale, rowWidthDp * 0.40f - 55f, bold = true))
-                        views.setTextViewTextSize(R.id.hud_bar_condition_loc, TypedValue.COMPLEX_UNIT_DIP,
-                            fitTextSp(feelsLine, 11.5f * scale, rowWidthDp, bold = true))
-                        views.setTextViewTextSize(R.id.hud_bar_wind_hum, TypedValue.COMPLEX_UNIT_DIP,
-                            fitTextSp(metaLine, 11.5f * scale, rowWidthDp, bold = false))
-                        views.setTextViewTextSize(R.id.hud_bar_badges, TypedValue.COMPLEX_UNIT_DIP,
-                            fitTextSp(badgeLine, 11f * scale, rowWidthDp, bold = true))
-                    } else {
-                        views.setViewVisibility(R.id.widget_hud_top_bar, View.GONE)
-                        views.setViewVisibility(R.id.widget_hud_corner, View.VISIBLE)
-
-                        // Corner card may use up to ~65% of the widget width (12dp padding each side)
-                        val cardWidthDp = widgetWidthDp * 0.65f - 24f
-                        val condLine = "$wxEmoji $headline"
-
-                        views.setTextViewText(R.id.hud_corner_condition, condLine)
-                        views.setTextViewText(R.id.hud_corner_temp, tempFormatted)
-                        views.setTextViewText(R.id.hud_corner_meta, metaLine)
-                        views.setTextViewText(R.id.hud_corner_loc, feelsLine)
-                        views.setTextViewText(R.id.hud_corner_badges, badgeLine)
-                        views.setViewVisibility(R.id.hud_corner_badges, if (cfg.showExtendedHud) View.VISIBLE else View.GONE)
-
-                        views.setTextViewTextSize(R.id.hud_corner_clock, TypedValue.COMPLEX_UNIT_DIP, 11.5f * scale)
-                        views.setTextViewTextSize(R.id.hud_corner_condition, TypedValue.COMPLEX_UNIT_DIP,
-                            fitTextSp(condLine, 11.2f * scale, cardWidthDp - 55f, bold = true))
-                        views.setTextViewTextSize(R.id.hud_corner_temp, TypedValue.COMPLEX_UNIT_DIP,
-                            fitTextSp(tempFormatted, 17f * scale, cardWidthDp, bold = true))
-                        views.setTextViewTextSize(R.id.hud_corner_meta, TypedValue.COMPLEX_UNIT_DIP,
-                            fitTextSp(metaLine, 11.2f * scale, cardWidthDp, bold = false))
-                        views.setTextViewTextSize(R.id.hud_corner_loc, TypedValue.COMPLEX_UNIT_DIP,
-                            fitTextSp(feelsLine, 10.8f * scale, cardWidthDp, bold = true))
-                        views.setTextViewTextSize(R.id.hud_corner_badges, TypedValue.COMPLEX_UNIT_DIP,
-                            fitTextSp(badgeLine, 10.2f * scale, cardWidthDp, bold = true))
-                    }
+                    // Row 1 shares its width: temperature gets ~58%, the clock and headline the rest
+                    views.setTextViewTextSize(R.id.hud_bar_temp, TypedValue.COMPLEX_UNIT_DIP,
+                        fitTextSp(tempLine, 17f * scale, rowWidthDp * 0.58f, bold = true))
+                    views.setTextViewTextSize(R.id.hud_bar_clock, TypedValue.COMPLEX_UNIT_DIP, 11.5f * scale)
+                    views.setTextViewTextSize(R.id.hud_bar_condition, TypedValue.COMPLEX_UNIT_DIP,
+                        fitTextSp(headline, 12f * scale, rowWidthDp * 0.40f - 55f, bold = true))
+                    views.setTextViewTextSize(R.id.hud_bar_condition_loc, TypedValue.COMPLEX_UNIT_DIP,
+                        fitTextSp(feelsLine, 11.5f * scale, rowWidthDp, bold = true))
+                    views.setTextViewTextSize(R.id.hud_bar_wind_hum, TypedValue.COMPLEX_UNIT_DIP,
+                        fitTextSp(metaLine, 11.5f * scale, rowWidthDp, bold = false))
+                    views.setTextViewTextSize(R.id.hud_bar_badges, TypedValue.COMPLEX_UNIT_DIP,
+                        fitTextSp(badgeLine, 11f * scale, rowWidthDp, bold = true))
 
                     // Bottom-right theme badge: only shown when there's room beside the ~190dp
                     // control bar, and fitted to the remaining space so the two never overlap.
@@ -356,13 +394,26 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                         views.setViewVisibility(R.id.widget_bottom_badge, View.GONE)
                     }
 
-                    // Tapping the 3D scene opens the customization & settings app
+                    // Interactive tap targets:
+                    // 1. Clock tap opens system Alarm / Clock app
+                    val clockIntent = getAlarmClockIntent(context)
+                    val pendingClock = PendingIntent.getActivity(
+                        context, 102, clockIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    views.setOnClickPendingIntent(R.id.hud_bar_clock, pendingClock)
+                    views.setOnClickPendingIntent(R.id.hud_bar_clock_container, pendingClock)
+
+                    // 2. HUD weather elements / rows tap opens detailed 7-day forecast
+                    views.setOnClickPendingIntent(R.id.hud_bar_temp, pendingOpenForecast)
+                    views.setOnClickPendingIntent(R.id.hud_bar_condition, pendingOpenForecast)
+                    views.setOnClickPendingIntent(R.id.hud_bar_condition_loc, pendingOpenForecast)
+                    views.setOnClickPendingIntent(R.id.hud_bar_wind_hum, pendingOpenForecast)
+                    views.setOnClickPendingIntent(R.id.hud_bar_badges, pendingOpenForecast)
+
+                    // 3. Tapping the 3D scene opens the customization & settings app
                     views.setOnClickPendingIntent(R.id.widget_flipper, pendingOpenApp)
                     views.setOnClickPendingIntent(R.id.widget_bottom_badge, pendingOpenApp)
-
-                    // Tapping the HUD overlay directly launches the 7-day / hourly forecast URL for the location!
-                    views.setOnClickPendingIntent(R.id.widget_hud_top_bar, pendingOpenForecast)
-                    views.setOnClickPendingIntent(R.id.widget_hud_corner, pendingOpenForecast)
 
                     appWidgetManager.updateAppWidget(widgetId, views)
                 }
@@ -718,50 +769,11 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         return (desired * availDp / measured).coerceAtLeast(minSp)
     }
 
-    /** US EPA AQI category label. */
-    private fun aqiLabel(aqi: Int): String = when {
-        aqi <= 50 -> "GOOD"
-        aqi <= 100 -> "MODERATE"
-        aqi <= 150 -> "SENSITIVE"
-        aqi <= 200 -> "UNHEALTHY"
-        aqi <= 300 -> "V.UNHEALTHY"
-        else -> "HAZARDOUS"
-    }
-
-    private fun wmoToCategory(code: Int): String = when (code) {
-        0 -> "clear"
-        1, 2 -> "partly_cloudy"
-        3 -> "overcast"
-        45, 48 -> "fog"
-        in 51..67, in 80..82 -> "rain"
-        in 71..77, 85, 86 -> "snow"
-        in 95..99 -> "thunderstorm"
-        else -> "clear"
-    }
-
-    private fun categoryToHeadline(cat: String): String = when (cat) {
-        "clear" -> "CLEAR"
-        "partly_cloudy" -> "PARTLY CLOUDY"
-        "overcast" -> "OVERCAST"
-        "fog" -> "COASTAL FOG"
-        "rain" -> "RAIN SHOWER"
-        "snow" -> "SNOWFALL"
-        "thunderstorm" -> "THUNDERSTORM"
-        else -> "CLEAR"
-    }
-
-    private fun categoryToEmoji(cat: String, isNight: Boolean): String = when (cat) {
-        "clear" -> if (isNight) "🌙" else "☀️"
-        "partly_cloudy" -> if (isNight) "☁️" else "⛅"
-        "overcast" -> "☁️"
-        "fog" -> "🌫️"
-        "rain" -> "🌧️"
-        "snow" -> "❄️"
-        "thunderstorm" -> "⛈️"
-        else -> if (isNight) "🌙" else "☀️"
-    }
-
     private fun schedulePeriodicUpdates(context: Context) {
+        val prefs = context.getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
+        val intervalMin = prefs.getInt("refreshIntervalMinutes", 15)
+        if (intervalMin <= 0) return // Manual refresh only
+
         val intent = Intent(context, IsometricWeatherWidgetProvider::class.java).apply {
             action = ACTION_REFRESH_WIDGET
         }
@@ -773,10 +785,11 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         )
         val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
         try {
+            val intervalMs = intervalMin * 60 * 1000L
             am?.setInexactRepeating(
                 AlarmManager.ELAPSED_REALTIME,
-                SystemClock.elapsedRealtime() + 15 * 60 * 1000L,
-                15 * 60 * 1000L,
+                SystemClock.elapsedRealtime() + intervalMs,
+                intervalMs,
                 pi
             )
         } catch (_: Exception) {}
@@ -804,7 +817,6 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         val lon: Double,
         val renderMode: String,
         val dioramaTheme: String,
-        val hudPosition: String,
         val hudScale: Float,
         val transparentBg: Boolean,
         val showExtendedHud: Boolean,

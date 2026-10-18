@@ -1,6 +1,6 @@
-# Global 3D Isometric Weather Widget (`v0.0.1`)
+# Global 3D Isometric Weather Widget (`v0.0.2`)
 
-A **Global 3D Isometric Real-Time Weather Widget** built for **KDE Plasma 6 (Bazzite / Linux Desktop)**, **Web / PWA**, and **Android Homescreen & Lockscreen (OnePlus 13 / Android 12+)**.
+A **Global 3D Isometric Real-Time Weather Widget** built for **KDE Plasma 6 (Bazzite / Linux Desktop)**, **Web / PWA**, and **Android Homescreen & Lockscreen (OnePlus 13 / OxygenOS 15 & Android 8.0+)**.
 
 Inspired by tilt-shift isometric architectural dioramas with **Jamestown-style translucent turquoise cutaway water blocks**, the widget includes **18 Pre-Generated High-Resolution 3D Isometric Diorama Cutout Sets** (`Day`, `Sunset / Golden Hour`, and `Starry Night` variants = **54 bundled PNG cutouts**) covering major US regions, populated global timezones, **National Park Service (NPS) / National Register of Historic Places** landmarks, and **UNESCO World Heritage** icons.
 
@@ -155,23 +155,31 @@ cd global-3d-isometric-weather
 
 ### Option B: Android Homescreen & Lockscreen Widget (OnePlus 13 / OxygenOS 15 & Android 8.0+)
 
-The Android app & widget are packaged as a signed `.apk` (`global-3d-isometric-weather-v0.0.1.apk`):
+The Android app & widget are packaged as a signed `.apk` (`global-3d-isometric-weather-v0.0.2.apk`):
 - **4×3 Resizable Homescreen & Lockscreen AppWidget (`IsometricWeatherWidgetProvider.kt`)**:
-  - Features the **Extrapolated Top-Sky Split HUD Banner** (large, crisp native text in the upper sky with 0% overlap on the 3D island) or **Corner HUD Card** with adjustable text scaling (`100%`, `115%`, `130%`).
-  - Uses an auto-animating 4-frame `<ViewFlipper>` so gentle rain/snow and water ripples animate live on your Homescreen.
-  - Bottom-left on-widget toolbar (`➖` `➕` `◀` `🎯` `▶` `⚙️`) lets you zoom in/out and move the isometric island left, center, or right directly on your Homescreen while the HUD stays fixed.
-- **Spacious, Scroll-Safe Configuration App (`MainActivity.kt`)**:
-  - Includes the **18-Scene Pre-Generated 3D Isometric Diorama Dropdown** and decoupled **Active Weather Location** search & presets (`Yorktown, VA`, `Tabb, VA`, `Jamestown, VA`, `Williamsburg, VA`, `Washington, D.C.`, `New York`, `San Francisco`, `Chicago`, `London`, `Paris`, `Rome`, `Cairo`, `Tokyo`).
+  - **Clean Top-Sky Split HUD Banner**: Lightweight native text in the upper sky with 0% overlap on the floating 3D diorama (corner card removed for optimal diorama visibility).
+  - **Interactive Multi-Target Actions**:
+    - Tap the **TextClock** to launch your native Alarm / Clock app (Google Clock, OnePlus Deskclock, Samsung Clock, Xiaomi Alarm).
+    - Tap the **Weather Conditions / Temp** to open the 7-day detailed weather forecast in your browser.
+    - Tap the **3D Diorama Island** to open the settings configurator.
+  - **Live Weather Animation**: Uses an auto-animating 4-frame `<ViewFlipper>` with smooth rain streaks, snowfall, and water splash ripples directly over the diorama.
+  - **Configurable Background Refresh**: Set periodic updates to 15m, 30m, 1h, 2h, or manual refresh to optimize battery consumption.
+- **Modern 5-Tab Configuration App (`MainActivity.kt`)**:
+  - **Tab 0 (`🖼️ 3D Preview`)**: Taller 330dp diorama canvas with minimalist icon-only buttons (`➖`, `➕`, `◀`, `🎯`, `▶`) and quick zoom presets.
+  - **Tab 1 (`🏛️ Diorama Scene`)**: GPS auto-matcher and dropdown picker for all 18 world landmark dioramas.
+  - **Tab 2 (`📍 Weather Location`)**: GPS auto-detection, travel follow toggle, and geocoding city search.
+  - **Tab 3 (`☀️ Atmosphere`)**: Sun cycle, weather simulation overrides, and particle density.
+  - **Tab 4 (`⚙️ Settings`)**: Top HUD scale, transparent cutout mode, extended telemetry, and refresh intervals.
 
 #### 1. Install via Direct `.apk` Download or USB Cable (`adb`)
-Download `global-3d-isometric-weather-v0.0.1.apk` from [GitHub Releases](../../releases) directly onto your phone and tap to install, or when connected via USB run:
+Download `global-3d-isometric-weather-v0.0.2.apk` from [GitHub Releases](../../releases) directly onto your phone and tap to install, or when connected via USB run:
 ```bash
 ./scripts/install_android_usb.sh
 ```
 
-#### 2. Build `.apk` from Source
+#### 2. Build `.apk` & Run Tests from Source
 ```bash
-gradle -p android assembleRelease
+gradle -p android test assembleRelease
 # Output APK: android/app/build/outputs/apk/release/app-release.apk
 ```
 
@@ -199,7 +207,7 @@ systemctl --user restart plasma-plasmashell.service
 ### 2. Android Launcher & AppWidget Cache (OnePlus OxygenOS 15 / Android 12+)
 To force the Android launcher to re-inflate `RemoteViews` layouts and clear cached widget views:
 ```bash
-adb install -r dist/global-3d-isometric-weather-v0.0.1.apk
+adb install -r dist/global-3d-isometric-weather-v0.0.2.apk
 adb shell am broadcast -a com.antigravity.yorktownweather.ACTION_REFRESH_WIDGET \
   -n com.antigravity.yorktownweather/.IsometricWeatherWidgetProvider
 ```

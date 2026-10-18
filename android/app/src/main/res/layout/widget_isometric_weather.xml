@@ -86,21 +86,31 @@
                 android:gravity="end|center_vertical"
                 android:orientation="horizontal">
 
-                <TextClock
-                    android:id="@+id/hud_bar_clock"
+                <FrameLayout
+                    android:id="@+id/hud_bar_clock_container"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:format12Hour="h:mm a"
-                    android:format24Hour="HH:mm"
-                    android:textColor="#E0F2FE"
-                    android:textSize="11.5sp"
-                    android:textStyle="bold"
-                    android:background="#38000000"
-                    android:paddingStart="6dp"
-                    android:paddingEnd="6dp"
-                    android:paddingTop="1dp"
-                    android:paddingBottom="1dp"
-                    android:layout_marginEnd="6dp" />
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextClock
+                        android:id="@+id/hud_bar_clock"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:format12Hour="h:mm a"
+                        android:format24Hour="HH:mm"
+                        android:textColor="#E0F2FE"
+                        android:textSize="11.5sp"
+                        android:textStyle="bold"
+                        android:background="#38000000"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
+                        android:paddingTop="1dp"
+                        android:paddingBottom="1dp"
+                        android:layout_marginEnd="6dp"
+                        android:clickable="true"
+                        android:focusable="true" />
+                </FrameLayout>
 
                 <TextView
                     android:id="@+id/hud_bar_condition"
@@ -152,98 +162,6 @@
             android:textStyle="bold"
             android:maxLines="1"
             android:ellipsize="end" />
-    </LinearLayout>
-
-    <!-- 2B. Extrapolated Corner HUD Card (Top-Right or Top-Left Reference Card Option, Stationary While Isometric Moves) -->
-    <LinearLayout
-        android:id="@+id/widget_hud_corner"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|end"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginStart="8dp"
-        android:orientation="vertical"
-        android:background="@drawable/hud_background"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
-        android:visibility="gone">
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextClock
-                android:id="@+id/hud_corner_clock"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:format12Hour="h:mm a"
-                android:format24Hour="HH:mm"
-                android:textColor="#E0F2FE"
-                android:textSize="11.5sp"
-                android:textStyle="bold"
-                android:background="#38000000"
-                android:paddingStart="6dp"
-                android:paddingEnd="6dp"
-                android:paddingTop="1dp"
-                android:paddingBottom="1dp"
-                android:layout_marginEnd="6dp" />
-
-            <TextView
-                android:id="@+id/hud_corner_condition"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="☀️ CLEAR WEATHER"
-                android:textColor="#FFD166"
-                android:textSize="11.5sp"
-                android:textStyle="bold"
-                android:singleLine="true" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/hud_corner_temp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="68°F (20°C)"
-            android:textColor="#FFFFFF"
-            android:textSize="17.5sp"
-            android:textStyle="bold"
-            android:singleLine="true" />
-
-        <TextView
-            android:id="@+id/hud_corner_meta"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="💧 64% • 💨 8 MPH NNE"
-            android:textColor="#EEF6FC"
-            android:textSize="11.5sp"
-            android:singleLine="true" />
-
-        <TextView
-            android:id="@+id/hud_corner_loc"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="📍 YORKTOWN, VA • FEELS 67°F"
-            android:textColor="#D9ECFF"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:singleLine="true" />
-
-        <TextView
-            android:id="@+id/hud_corner_badges"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="AQI 24 • UV 3.2 • 🌔"
-            android:textColor="#86EFAC"
-            android:textSize="10.5sp"
-            android:textStyle="bold"
-            android:singleLine="true" />
     </LinearLayout>
 
     <!-- 3. Interactive On-Widget Zoom, Horizontal Centering & Settings Control Bar (Hidden per user request for photographic diorama clean look) -->

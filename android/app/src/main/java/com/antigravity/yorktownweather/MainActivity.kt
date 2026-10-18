@@ -108,9 +108,8 @@ class MainActivity : Activity() {
             "🖼️ 3D Preview",
             "🏛️ Diorama Scene",
             "📍 Weather Location",
-            "🪟 HUD Overlay",
             "☀️ Atmosphere",
-            "⚙️ Units"
+            "⚙️ Settings"
         )
 
         val tabScroll = HorizontalScrollView(this).apply {
@@ -134,9 +133,8 @@ class MainActivity : Activity() {
             buildTab0PreviewAndFraming(),
             buildTab1DioramaScene(),
             buildTab2Location(),
-            buildTab3HudOverlay(),
-            buildTab4Atmosphere(),
-            buildTab5Units()
+            buildTab3Atmosphere(),
+            buildTab4Settings()
         )
 
         fun selectTab(idx: Int) {
@@ -277,14 +275,14 @@ class MainActivity : Activity() {
             webView,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                dp(215)
+                dp(330)
             )
         )
         layout.addView(
             previewFrame,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(215)
+                dp(330)
             ).apply {
                 setMargins(0, 0, 0, dp(12))
             }
@@ -307,7 +305,7 @@ class MainActivity : Activity() {
             framingStatsText.text = "Zoom: ${(z * 100).toInt()}% • Horizontal Offset: $sign${o.toInt()} px"
         }
 
-        // Framing Action Buttons
+        // Framing Action Buttons (Icon-Only)
         val camControlRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -315,14 +313,14 @@ class MainActivity : Activity() {
         }
 
         val camButtons = listOf(
-            "➖ Zoom Out" to "zoom_out",
-            "➕ Zoom In" to "zoom_in",
-            "◀ Left" to "pan_left",
-            "🎯 Center" to "center",
-            "▶ Right" to "pan_right"
+            Triple("➖", "zoom_out", "Zoom Out"),
+            Triple("➕", "zoom_in", "Zoom In"),
+            Triple("◀", "pan_left", "Pan Left"),
+            Triple("🎯", "center", "Center Island"),
+            Triple("▶", "pan_right", "Pan Right")
         )
-        for ((label, act) in camButtons) {
-            val btn = makeStyledButton(label) {
+        for ((icon, act, desc) in camButtons) {
+            val btn = makeStyledButton(icon) {
                 var zoom = prefs.getFloat("widgetZoom", 1.0f)
                 var offsetX = prefs.getFloat("widgetOffsetX", 0.0f)
                 when (act) {
@@ -344,11 +342,12 @@ class MainActivity : Activity() {
                 updateFramingStats()
                 applyAndRefreshWidgets("Camera framing adjusted")
             }.apply {
+                contentDescription = desc
                 val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f)
-                lp.setMargins(0, 0, dp(4), 0)
+                lp.setMargins(0, 0, dp(6), 0)
                 layoutParams = lp
-                setPadding(dp(4), dp(10), dp(4), dp(10))
-                textSize = 11.5f
+                setPadding(dp(2), dp(8), dp(2), dp(8))
+                textSize = 17f
             }
             camControlRow.addView(btn)
         }
@@ -632,90 +631,10 @@ class MainActivity : Activity() {
     }
 
     /**
-     * TAB 3: 🪟 HUD Overlay
-     * Top-Sky vs Corner Card, Scaling, Transparent Cutout Mode, and Extended Telemetry.
-     */
-    private fun buildTab3HudOverlay(): View {
-        val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
-
-        val scroll = ScrollView(this).apply {
-            isFillViewport = true
-            descendantFocusability = ViewGroup.FOCUS_BEFORE_DESCENDANTS
-        }
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(8), dp(16), dp(24))
-        }
-
-        layout.addView(makeSectionHeader("Widget HUD Overlay Layout & Readability"))
-
-        layout.addView(
-            makePickerRow(
-                label = "Widget Overlay Position (Stationary Sky Header):",
-                dialogTitle = "Select Widget Overlay Layout",
-                entries = listOf(
-                    "Top-Sky Split Banner (Large Text in Upper Sky, 0% Island Overlap — Recommended)" to "top-sky",
-                    "Top-Right Corner Card (Reference Style)" to "top-right"
-                ),
-                currentVal = prefs.getString("hudPosition", "top-sky") ?: "top-sky"
-            ) { newVal ->
-                prefs.edit().putString("hudPosition", newVal).apply()
-                applyAndRefreshWidgets("Widget HUD layout set to $newVal")
-            }.first
-        )
-
-        layout.addView(
-            makePickerRow(
-                label = "Widget Overlay Text Size Scale:",
-                dialogTitle = "Select Overlay Text Size",
-                entries = listOf(
-                    "Standard Size (100%)" to "1.00",
-                    "Extrapolated Large (115% — Recommended for Phone Homescreen)" to "1.15",
-                    "Extrapolated Extra-Large (130% — Maximum Readability)" to "1.30"
-                ),
-                currentVal = String.format("%.2f", prefs.getFloat("hudScale", 1.15f))
-            ) { newVal ->
-                val f = newVal.toFloatOrNull() ?: 1.15f
-                prefs.edit().putFloat("hudScale", f).apply()
-                applyAndRefreshWidgets("Overlay text scale set to ${(f * 100).toInt()}%")
-            }.first
-        )
-
-        val transparentCheck = CheckBox(this).apply {
-            text = "Transparent Cutout Mode (Float 3D island directly over phone wallpaper)"
-            setTextColor(Color.parseColor("#e6f1fa"))
-            textSize = 13.5f
-            isChecked = prefs.getBoolean("transparentBackground", false)
-            setPadding(dp(4), dp(8), dp(4), dp(8))
-            setOnCheckedChangeListener { _, checked ->
-                prefs.edit().putBoolean("transparentBackground", checked).apply()
-                applyAndRefreshWidgets(if (checked) "Transparent Cutout Mode enabled" else "Sky Backdrop Card enabled")
-            }
-        }
-        layout.addView(transparentCheck)
-
-        val expandedHudCheck = CheckBox(this).apply {
-            text = "Show Extended Telemetry (AQI, UV Index, Moon Phase & Feels Like)"
-            setTextColor(Color.parseColor("#e6f1fa"))
-            textSize = 13.5f
-            isChecked = prefs.getBoolean("showExtendedHud", true)
-            setPadding(dp(4), dp(4), dp(4), dp(10))
-            setOnCheckedChangeListener { _, checked ->
-                prefs.edit().putBoolean("showExtendedHud", checked).apply()
-                applyAndRefreshWidgets("Widget HUD telemetry updated")
-            }
-        }
-        layout.addView(expandedHudCheck)
-
-        scroll.addView(layout)
-        return scroll
-    }
-
-    /**
-     * TAB 4: ☀️ Atmosphere & Weather
+     * TAB 3: ☀️ Atmosphere & Weather
      * Solar cycle, condition overrides, and weather particle intensity.
      */
-    private fun buildTab4Atmosphere(): View {
+    private fun buildTab3Atmosphere(): View {
         val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
 
         val scroll = ScrollView(this).apply {
@@ -788,10 +707,10 @@ class MainActivity : Activity() {
     }
 
     /**
-     * TAB 5: ⚙️ Units & Preferences
-     * Temperature and wind unit formatting.
+     * TAB 4: ⚙️ Settings, Display & Units
+     * HUD text scale, transparent cutout mode, extended telemetry, refresh intervals, and units.
      */
-    private fun buildTab5Units(): View {
+    private fun buildTab4Settings(): View {
         val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
 
         val scroll = ScrollView(this).apply {
@@ -803,6 +722,75 @@ class MainActivity : Activity() {
             setPadding(dp(16), dp(8), dp(16), dp(24))
         }
 
+        // --- HUD DISPLAY & READABILITY ---
+        layout.addView(makeSectionHeader("Widget Top HUD & Readability"))
+
+        layout.addView(
+            makePickerRow(
+                label = "Top Overlay Text Size Scale:",
+                dialogTitle = "Select Overlay Text Size",
+                entries = listOf(
+                    "Standard Size (100%)" to "1.00",
+                    "Extrapolated Large (115% — Recommended for Phone Homescreen)" to "1.15",
+                    "Extrapolated Extra-Large (130% — Maximum Readability)" to "1.30"
+                ),
+                currentVal = String.format("%.2f", prefs.getFloat("hudScale", 1.15f))
+            ) { newVal ->
+                val f = newVal.toFloatOrNull() ?: 1.15f
+                prefs.edit().putFloat("hudScale", f).apply()
+                applyAndRefreshWidgets("Overlay text scale set to ${(f * 100).toInt()}%")
+            }.first
+        )
+
+        val transparentCheck = CheckBox(this).apply {
+            text = "Transparent Cutout Mode (Float 3D island directly over phone wallpaper)"
+            setTextColor(Color.parseColor("#e6f1fa"))
+            textSize = 13.5f
+            isChecked = prefs.getBoolean("transparentBackground", false)
+            setPadding(dp(4), dp(8), dp(4), dp(8))
+            setOnCheckedChangeListener { _, checked ->
+                prefs.edit().putBoolean("transparentBackground", checked).apply()
+                applyAndRefreshWidgets(if (checked) "Transparent Cutout Mode enabled" else "Sky Backdrop Card enabled")
+            }
+        }
+        layout.addView(transparentCheck)
+
+        val expandedHudCheck = CheckBox(this).apply {
+            text = "Show Extended Telemetry (AQI, UV Index, Moon Phase & Feels Like)"
+            setTextColor(Color.parseColor("#e6f1fa"))
+            textSize = 13.5f
+            isChecked = prefs.getBoolean("showExtendedHud", true)
+            setPadding(dp(4), dp(4), dp(4), dp(10))
+            setOnCheckedChangeListener { _, checked ->
+                prefs.edit().putBoolean("showExtendedHud", checked).apply()
+                applyAndRefreshWidgets("Widget HUD telemetry updated")
+            }
+        }
+        layout.addView(expandedHudCheck)
+
+        // --- BACKGROUND SYNC & BATTERY ---
+        layout.addView(makeSectionHeader("Background Sync & Battery"))
+
+        layout.addView(
+            makePickerRow(
+                label = "Background Refresh Interval:",
+                dialogTitle = "Select Refresh Interval",
+                entries = listOf(
+                    "15 Minutes (Default — Live sync)" to "15",
+                    "30 Minutes (Balanced)" to "30",
+                    "1 Hour (Battery friendly)" to "60",
+                    "2 Hours (Low battery usage)" to "120",
+                    "Manual Refresh Only (Battery Saver)" to "0"
+                ),
+                currentVal = prefs.getInt("refreshIntervalMinutes", 15).toString()
+            ) { newVal ->
+                val min = newVal.toIntOrNull() ?: 15
+                prefs.edit().putInt("refreshIntervalMinutes", min).apply()
+                applyAndRefreshWidgets(if (min > 0) "Refresh interval set to $min mins" else "Manual refresh only enabled")
+            }.first
+        )
+
+        // --- TEMPERATURE & WIND UNITS ---
         layout.addView(makeSectionHeader("Temperature & Wind Units"))
 
         layout.addView(
@@ -1078,6 +1066,10 @@ class MainActivity : Activity() {
         val offsetX = prefs.getFloat("widgetOffsetX", 0.0f)
 
         val js = """
+            const hud = document.getElementById('hudCard');
+            if (hud) hud.style.display = 'none';
+            const cam = document.querySelector('.camera-pill');
+            if (cam) cam.style.display = 'none';
             if (window.isoEngine) {
                 window.isoEngine.state.locationName = '$name';
                 window.isoEngine.state.latitude = $lat;
