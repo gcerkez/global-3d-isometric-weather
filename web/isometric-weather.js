@@ -360,8 +360,69 @@ export class IsometricWeatherEngine {
 
         ctx.restore();
 
-        // 3. Gentle Weather Particles (Rain / Thunderstorm / Snow) across the WHOLE rendered area
+        // 3. Atmospheric Weather Effects (Lightning, Fog, Cloud Shadows, Rain & Snow)
         const pScale = Math.max(0.15, this.state.particleIntensity ?? 1.0);
+
+        // Atmospheric drifting cloud shadows for overcast / partly cloudy weather
+        if (cat === "overcast" || cat === "partly_cloudy") {
+            ctx.fillStyle = tState === "night" ? "rgba(0, 0, 0, 0.08)" : "rgba(15, 35, 60, 0.10)";
+            for (let ci = 0; ci < 3; ci++) {
+                const cProg = ((ci * 0.37 + t * 0.03) % 1.0);
+                const cx = dx + (0.15 + cProg * 0.70) * dw;
+                const cy = dy + (0.32 + (ci * 0.18) % 0.40) * dh;
+                const cw = (70 + ci * 25) * s;
+                const ch = cw * 0.38;
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, cw, ch, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Volumetric rolling fog / mist banks across the lower island and water
+        if (cat === "fog") {
+            for (let fg = 0; fg < 4; fg++) {
+                const fogProg = ((fg * 0.28 + t * 0.04) % 1.0);
+                const fogX = (fogProg * 1.3 - 0.15) * w;
+                const fogY = dy + (0.35 + (fg * 0.14) % 0.45) * dh;
+                const fogW = (120 + fg * 30) * s;
+                const fogH = (26 + fg * 8) * s;
+                const grad = ctx.createRadialGradient(fogX, fogY, 4 * s, fogX, fogY, fogW);
+                grad.addColorStop(0, "rgba(225, 238, 248, 0.32)");
+                grad.addColorStop(1, "rgba(225, 238, 248, 0.0)");
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.ellipse(fogX, fogY, fogW, fogH, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Thunderstorm lightning bolt & ambient sky flash
+        if (cat === "thunderstorm") {
+            const isFlash = Math.sin(t * 7.5) > 0.94;
+            if (isFlash) {
+                ctx.fillStyle = "rgba(240, 248, 255, 0.28)";
+                ctx.fillRect(0, 0, w, h);
+
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+                ctx.lineWidth = 2.4 * s;
+                ctx.lineCap = "round";
+                ctx.beginPath();
+                const bx = dx + 0.38 * dw;
+                const by = dy + 0.10 * dh;
+                ctx.moveTo(bx, by);
+                ctx.lineTo(bx + 16 * s, by + 32 * s);
+                ctx.lineTo(bx - 8 * s, by + 60 * s);
+                ctx.lineTo(bx + 20 * s, by + 98 * s);
+                ctx.lineTo(bx + 4 * s, by + 130 * s);
+                ctx.moveTo(bx - 8 * s, by + 60 * s);
+                ctx.lineTo(bx - 26 * s, by + 88 * s);
+                ctx.stroke();
+
+                ctx.strokeStyle = "rgba(180, 220, 255, 0.40)";
+                ctx.lineWidth = 4.8 * s;
+                ctx.stroke();
+            }
+        }
 
         if (cat === "rain" || cat === "thunderstorm") {
             const dropCount = Math.max(6, Math.round((cat === "thunderstorm" ? 36 : 24) * pScale));

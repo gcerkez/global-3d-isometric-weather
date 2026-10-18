@@ -341,6 +341,30 @@ Item {
             if (fxRoot.lightningFlash > 0.01) {
                 ctx.fillStyle = "rgba(235, 245, 255, " + (fxRoot.lightningFlash * 0.45).toFixed(3) + ")"
                 ctx.fillRect(0, 0, width, height)
+
+                if (fxRoot.lightningFlash > 0.20) {
+                    var bx = width * 0.38
+                    var by = height * 0.08
+                    ctx.save()
+                    ctx.strokeStyle = "rgba(255, 255, 255, 0.95)"
+                    ctx.lineWidth = 2.4 * s
+                    ctx.lineCap = "round"
+                    ctx.beginPath()
+                    ctx.moveTo(bx, by)
+                    ctx.lineTo(bx + 14 * s, by + 34 * s)
+                    ctx.lineTo(bx - 6 * s, by + 64 * s)
+                    ctx.lineTo(bx + 18 * s, by + 102 * s)
+                    ctx.lineTo(bx + 4 * s, by + 140 * s)
+                    ctx.moveTo(bx - 6 * s, by + 64 * s)
+                    ctx.lineTo(bx - 24 * s, by + 92 * s)
+                    ctx.stroke()
+
+                    // Glow halo
+                    ctx.strokeStyle = "rgba(185, 225, 255, 0.38)"
+                    ctx.lineWidth = 4.8 * s
+                    ctx.stroke()
+                    ctx.restore()
+                }
             }
         }
     }

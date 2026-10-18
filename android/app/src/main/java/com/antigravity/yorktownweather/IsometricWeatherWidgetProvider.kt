@@ -631,10 +631,66 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
 
         canvas.restore()
 
-        // 4. Weather Particles (Rain / Thunderstorm / Snow) across the WHOLE rendered area
+        // 4. Atmospheric Weather FX (Lightning, Fog, Cloud Shadows, Rain & Snow) across the WHOLE rendered area
         val density = cfg.particleDensity.coerceIn(0.15f, 1.5f)
         val fullWidth = width.toFloat()
         val fullHeight = height.toFloat()
+
+        // Atmospheric drifting cloud shadows for overcast / partly cloudy weather
+        if (effectiveCat == "overcast" || effectiveCat == "partly_cloudy") {
+            paint.style = Paint.Style.FILL
+            paint.color = if (isNight) Color.argb(16, 0, 0, 0) else Color.argb(22, 15, 35, 60)
+            for (ci in 0 until 3) {
+                val cProg = ((ci * 0.37f + phase * 0.25f) % 1.0f)
+                val cx = ix + (0.15f + cProg * 0.70f) * iw
+                val cy = iy + (0.30f + (ci * 0.18f) % 0.40f) * ih
+                val cw = (65f + ci * 20f) * s
+                val ch = cw * 0.38f
+                canvas.drawOval(RectF(cx - cw, cy - ch, cx + cw, cy + ch), paint)
+            }
+        }
+
+        // Volumetric rolling fog / mist banks across the lower island and water
+        if (effectiveCat == "fog") {
+            paint.style = Paint.Style.FILL
+            for (fg in 0 until 4) {
+                val fogProg = ((fg * 0.28f + phase * 0.35f) % 1.0f)
+                val fogX = (fogProg * 1.3f - 0.15f) * fullWidth
+                val fogY = iy + (0.35f + (fg * 0.14f) % 0.45f) * ih
+                val fogW = (110f + fg * 25f) * s
+                val fogH = (22f + fg * 6f) * s
+                paint.color = Color.argb((45 + fg * 8), 225, 238, 248)
+                canvas.drawOval(RectF(fogX - fogW, fogY - fogH, fogX + fogW, fogY + fogH), paint)
+            }
+        }
+
+        // Thunderstorm lightning bolt & ambient sky flash (fires on frame 2 of 4)
+        if (effectiveCat == "thunderstorm" && (phase * 4.0f).roundToInt() % 4 == 2) {
+            paint.style = Paint.Style.FILL
+            paint.color = Color.argb(55, 235, 245, 255)
+            canvas.drawRect(0f, 0f, fullWidth, fullHeight, paint)
+
+            paint.style = Paint.Style.STROKE
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.strokeWidth = 2.4f * s
+            paint.color = Color.argb(245, 255, 255, 255)
+            val bolt = Path().apply {
+                val bx = ix + 0.36f * iw
+                val by = areaTop + 10f * s
+                moveTo(bx, by)
+                lineTo(bx + 14f * s, by + 30f * s)
+                lineTo(bx - 6f * s, by + 56f * s)
+                lineTo(bx + 18f * s, by + 88f * s)
+                lineTo(bx + 4f * s, by + 122f * s)
+                moveTo(bx - 6f * s, by + 56f * s)
+                lineTo(bx - 22f * s, by + 80f * s)
+            }
+            canvas.drawPath(bolt, paint)
+            paint.strokeWidth = 4.5f * s
+            paint.color = Color.argb(85, 185, 225, 255) // soft electric blue halo
+            canvas.drawPath(bolt, paint)
+            paint.style = Paint.Style.FILL
+        }
 
         if (effectiveCat == "rain" || effectiveCat == "thunderstorm") {
             val dropCount = max(14, ((if (effectiveCat == "thunderstorm") 48 else 28) * density).roundToInt())
