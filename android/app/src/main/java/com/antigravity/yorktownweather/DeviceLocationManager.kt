@@ -1,6 +1,7 @@
 package com.antigravity.yorktownweather
 
 import android.Manifest
+import android.app.KeyguardManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Geocoder
@@ -35,22 +36,25 @@ object DeviceLocationManager {
     /**
      * Resolves the best available device location.
      * 1. Checks GPS and Network providers via Android LocationManager.
-     * 2. If no recent location (< 15 mins) is available, requests a fresh one-shot fix.
-     * 3. Falls back to IP geolocation only if permissions or hardware GPS are unavailable.
+     * 2. If no recent location (< 15 mins) is available and screen is unlocked, requests a fresh one-shot fix.
+     * 3. When screen is locked, immediately returns the best cached physical location to avoid timeout.
+     * 4. Falls back to IP geolocation ONLY if explicitly allowed and no GPS fix is available.
+     *    Background widget updates MUST NOT fall back to IP to prevent cellular gateways in Washington D.C.
+     *    from overwriting the phone's true physical location.
      */
-    suspend fun getBestDeviceLocation(context: Context): Pair<Double, Double>? {
+    suspend fun getBestDeviceLocation(context: Context, allowIpFallback: Boolean = false): Pair<Double, Double>? {
         if (hasLocationPermission(context)) {
             val gpsLoc = getGpsOrNetworkLocation(context)
             if (gpsLoc != null) {
                 return Pair(gpsLoc.latitude, gpsLoc.longitude)
             }
         }
-        // Fallback to IP geolocation if GPS is unavailable
-        return fetchIpLocation()
+        return if (allowIpFallback) fetchIpLocation() else null
     }
 
     private suspend fun getGpsOrNetworkLocation(context: Context): Location? {
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
+        val km = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
 
         val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER)
         var bestLast: Location? = null
@@ -67,9 +71,15 @@ object DeviceLocationManager {
             } catch (_: SecurityException) {}
         }
 
+        // When screen is locked, Android limits GPS hardware power.
+        // Return best last known physical location immediately to prevent timeout.
+        if (km?.isDeviceLocked == true && bestLast != null) {
+            return bestLast
+        }
+
         val now = System.currentTimeMillis()
-        // If last known location is less than 10 minutes old, return it immediately
-        if (bestLast != null && (now - bestLast.time) < 10 * 60 * 1000L) {
+        // If last known location is less than 15 minutes old, return it immediately
+        if (bestLast != null && (now - bestLast.time) < 15 * 60 * 1000L) {
             return bestLast
         }
 
@@ -193,6 +203,7 @@ object DeviceLocationManager {
         DioramaLocation("yorktown", "Historic Yorktown, VA", 37.2388, -76.5097, "1781 Colonial Waterfront, Victory Monument & Coleman Bridge"),
         DioramaLocation("jamestown", "Historic Jamestown, VA", 37.2085, -76.7741, "1607 James Fort Wooden Palisade & 3 Tall Ships on James River"),
         DioramaLocation("virginia_beach", "Virginia Beach, VA", 36.8529, -75.9780, "Oceanfront Boardwalk, Cape Henry Lighthouse & Fishing Pier"),
+        DioramaLocation("norfolk", "Norfolk & Hampton Roads, VA", 36.8508, -76.2859, "Waterside District, Nauticus Battleship & Downtown Harborfront"),
         DioramaLocation("chesapeake_bay", "Chesapeake Bay, VA", 37.1667, -76.0833, "Chesapeake Bay Bridge-Tunnel, Oyster/Crab Docks & Harbor Light"),
         DioramaLocation("washington_dc", "Washington, D.C. & Mid-Atlantic", 38.8951, -77.0364, "U.S. Capitol Dome, Washington Monument & Tidal Basin"),
         DioramaLocation("new_york", "New York City & Northeast", 40.7128, -74.0060, "Statue of Liberty, Brooklyn Bridge & Empire State Building"),

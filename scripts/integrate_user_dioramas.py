@@ -58,6 +58,12 @@ DIORAMAS = [
         "clean_badge": False,
         "step_d": 6.5,
     },
+    {
+        "keys": ["norfolk", "chesapeake_bay"],
+        "src": "/home/gcerkez/.gemini/antigravity/brain/9d13020f-0e3a-4e92-8852-af20399e39f1/norfolk_va_diorama_1792413979536.jpg",
+        "clean_badge": False,
+        "step_d": 6.5,
+    },
 ]
 
 

@@ -43,7 +43,7 @@
  */
 
 export const VALID_DIORAMA_THEMES = [
-    "yorktown", "jamestown", "virginia_beach", "chesapeake_bay",
+    "yorktown", "jamestown", "virginia_beach", "norfolk", "chesapeake_bay",
     "washington_dc", "new_york", "myrtle_beach", "atlanta", "orlando",
     "miami_caribbean", "new_orleans", "texas", "chicago_great_lakes",
     "denver", "colorado_springs", "arizona", "grand_canyon", "las_vegas",

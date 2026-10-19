@@ -1,6 +1,7 @@
 package com.antigravity.yorktownweather
 
 import android.app.AlarmManager
+import android.app.KeyguardManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -14,6 +15,7 @@ import android.provider.AlarmClock
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
+import android.widget.Toast
 import kotlinx.coroutines.*
 import org.json.JSONObject
 import java.io.File
@@ -141,6 +143,10 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
             var zoom = prefs.getFloat("widgetZoom", 1.0f)
             var offsetX = prefs.getFloat("widgetOffsetX", 0.0f)
             when (act) {
+                ACTION_REFRESH_WIDGET -> {
+                    Toast.makeText(context, "Refreshing weather & location...", Toast.LENGTH_SHORT).show()
+                    prefs.edit().putLong("lastLocationCheckTime", 0L).apply()
+                }
                 ACTION_ZOOM_IN -> zoom = (zoom * 1.15f).coerceIn(0.65f, 2.40f)
                 ACTION_ZOOM_OUT -> zoom = (zoom / 1.15f).coerceIn(0.65f, 2.40f)
                 ACTION_PAN_LEFT -> offsetX = (offsetX - 28.0f).coerceIn(-180.0f, 180.0f)
@@ -201,7 +207,14 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                 var lon = prefs.getFloat("longitude", -76.5097f).toDouble()
 
                 if (prefs.getBoolean("useCurrentLocation", false)) {
-                    val coords = DeviceLocationManager.getBestDeviceLocation(context)
+                    val km = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+                    val isLocked = km?.isDeviceLocked == true
+                    // When device is locked, Android throttles/suspends background GPS hardware.
+                    // Never fall back to cellular IP gateway (which points to Washington D.C.) while locked.
+                    val coords = if (!isLocked) {
+                        DeviceLocationManager.getBestDeviceLocation(context, allowIpFallback = false)
+                    } else null
+
                     if (coords != null) {
                         val newLat = coords.first
                         val newLon = coords.second
@@ -313,6 +326,7 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                 val themeLabel = when (cfg.dioramaTheme) {
                     "jamestown" -> "Historic Jamestown 3D"
                     "virginia_beach" -> "Virginia Beach 3D"
+                    "norfolk" -> "Norfolk, VA 3D"
                     "chesapeake_bay" -> "Chesapeake Bay 3D"
                     "washington_dc" -> "Washington, D.C. 3D"
                     "new_york" -> "New York City 3D"
@@ -425,6 +439,16 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                     views.setOnClickPendingIntent(R.id.widget_flipper, pendingOpenApp)
                     views.setOnClickPendingIntent(R.id.widget_bottom_badge, pendingOpenApp)
 
+                    // 4. Subtle bottom-right transparent reload/refresh button triggers immediate manual refresh
+                    val refreshIntent = Intent(context, IsometricWeatherWidgetProvider::class.java).apply {
+                        action = ACTION_REFRESH_WIDGET
+                    }
+                    val pendingRefresh = PendingIntent.getBroadcast(
+                        context, 103, refreshIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    views.setOnClickPendingIntent(R.id.btn_widget_refresh, pendingRefresh)
+
                     appWidgetManager.updateAppWidget(widgetId, views)
                 }
             } finally {
@@ -443,7 +467,7 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         val isSunset = effectiveTime == "sunset"
 
         val validThemes = setOf(
-            "yorktown", "jamestown", "virginia_beach", "chesapeake_bay",
+            "yorktown", "jamestown", "virginia_beach", "norfolk", "chesapeake_bay",
             "washington_dc", "new_york", "myrtle_beach", "atlanta", "orlando",
             "miami_caribbean", "new_orleans", "texas", "chicago_great_lakes",
             "denver", "colorado_springs", "arizona", "grand_canyon", "las_vegas",

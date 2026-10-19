@@ -235,21 +235,42 @@
             android:textSize="12sp" />
     </LinearLayout>
 
-    <!-- 4. Subtle Bottom-Right Theme & Location Badge -->
-    <TextView
-        android:id="@+id/widget_bottom_badge"
+    <!-- 4. Subtle Bottom-Right Theme & Location Badge + Transparent Reload/Refresh Button -->
+    <LinearLayout
+        android:id="@+id/widget_bottom_bar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_marginEnd="10dp"
+        android:layout_marginEnd="8dp"
         android:layout_marginBottom="8dp"
-        android:background="#B81C2C3C"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="3dp"
-        android:paddingBottom="3dp"
-        android:text="Yorktown, VA • 3D Isometric"
-        android:textColor="#EEF6FC"
-        android:textSize="10.5sp"
-        android:singleLine="true" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_bottom_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="#B81C2C3C"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="Yorktown, VA • 3D Isometric"
+            android:textColor="#EEF6FC"
+            android:textSize="10.5sp"
+            android:singleLine="true" />
+
+        <TextView
+            android:id="@+id/btn_widget_refresh"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_marginStart="6dp"
+            android:gravity="center"
+            android:text="⟳"
+            android:textColor="#DDF0FF"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:background="@drawable/hud_background"
+            android:contentDescription="Refresh Weather and Location" />
+    </LinearLayout>
 </FrameLayout>
