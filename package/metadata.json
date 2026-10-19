@@ -20,7 +20,7 @@
         "Id": "com.antigravity.yorktownweather",
         "License": "GPL-3.0-or-later",
         "Name": "Global 3D Isometric Weather",
-        "Version": "0.0.2",
+        "Version": "0.0.3",
         "Website": "https://github.com/gcerkez/global-3d-isometric-weather"
     },
     "X-Plasma-API-Minimum-Version": "6.0",
