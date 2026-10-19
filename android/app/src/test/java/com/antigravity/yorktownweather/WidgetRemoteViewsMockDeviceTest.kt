@@ -122,4 +122,81 @@ class WidgetRemoteViewsMockDeviceTest {
         assertTrue("Rendered bitmap width should be positive", rendered.width > 0)
         assertTrue("Rendered bitmap height should be positive", rendered.height > 0)
     }
+
+    @Test
+    fun testMockDevice3DCloudRenderingInCloudyAndStormyConditions() {
+        val baseBmp = Bitmap.createBitmap(400, 300, Bitmap.Config.ARGB_8888)
+        val provider = IsometricWeatherWidgetProvider()
+        val conditions = listOf("partly_cloudy", "overcast", "rain", "thunderstorm", "snow")
+        val zoomLevels = listOf(0.85f, 1.0f, 1.25f, 1.60f)
+
+        for (cond in conditions) {
+            for (zoom in zoomLevels) {
+                val cfg = IsometricWeatherWidgetProvider.WidgetConfig(
+                    locationName = "Norfolk, VA",
+                    lat = 36.8508,
+                    lon = -76.2859,
+                    renderMode = "hybrid",
+                    dioramaTheme = "norfolk",
+                    hudScale = 1.0f,
+                    transparentBg = false,
+                    showExtendedHud = true,
+                    timeMode = "day",
+                    weatherOverride = cond,
+                    tempUnit = "F",
+                    windUnit = "MPH",
+                    widgetZoom = zoom,
+                    widgetOffsetX = 0.0f,
+                    particleDensity = 0.50f
+                )
+                val wx = IsometricWeatherWidgetProvider.WeatherTelemetry(
+                    tempF = 56.0,
+                    feelsLikeF = 50.0,
+                    humidity = 74,
+                    windMph = 14.0,
+                    windDeg = 20,
+                    weatherCode = when (cond) {
+                        "partly_cloudy" -> 2
+                        "overcast" -> 3
+                        "rain" -> 61
+                        "thunderstorm" -> 95
+                        "snow" -> 71
+                        else -> 0
+                    },
+                    isDay = true,
+                    usAqi = 36,
+                    uvIndex = 3.0,
+                    hourlyTemps = listOf(52, 54, 56, 55)
+                )
+
+                val frame = provider.renderIsometricWidgetFrame(cfg, wx, baseBmp, 0.25f, 320f, 250f, 75f)
+                assertNotNull("Rendered bitmap must not be null for $cond at zoom $zoom", frame)
+                assertEquals(640, frame.width)
+                assertTrue("Frame height must be positive", frame.height > 0)
+            }
+        }
+    }
+
+    @Test
+    fun testDrawIsometricPuffyCloudDirectRendering() {
+        val bmp = Bitmap.createBitmap(200, 100, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bmp)
+        val provider = IsometricWeatherWidgetProvider()
+
+        // Test day clear cloud
+        provider.drawIsometricPuffyCloud(canvas, 100f, 50f, 1.0f, 1.0f, isStormy = false, isSunset = false, isNight = false)
+
+        // Test sunset cloud
+        provider.drawIsometricPuffyCloud(canvas, 100f, 50f, 1.0f, 1.0f, isStormy = false, isSunset = true, isNight = false)
+
+        // Test night cloud
+        provider.drawIsometricPuffyCloud(canvas, 100f, 50f, 1.0f, 1.0f, isStormy = false, isSunset = false, isNight = true)
+
+        // Test stormy thunderstorm cloud
+        provider.drawIsometricPuffyCloud(canvas, 100f, 50f, 1.0f, 1.0f, isStormy = true, isSunset = false, isNight = false)
+
+        assertNotNull("Bitmap must not be null after drawing clouds", bmp)
+        assertEquals(200, bmp.width)
+        assertEquals(100, bmp.height)
+    }
 }

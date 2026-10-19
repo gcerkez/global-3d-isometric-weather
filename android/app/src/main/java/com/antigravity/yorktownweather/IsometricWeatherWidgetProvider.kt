@@ -660,17 +660,39 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         val fullWidth = width.toFloat()
         val fullHeight = height.toFloat()
 
-        // Atmospheric drifting cloud shadows for overcast / partly cloudy weather
-        if (effectiveCat == "overcast" || effectiveCat == "partly_cloudy") {
+        // 3D Drifting Volumetric Puffy Clouds & Ground Shadows for cloudy/rain/storm/snow weather
+        val isCloudy = (effectiveCat == "partly_cloudy" || effectiveCat == "overcast" ||
+                effectiveCat == "rain" || effectiveCat == "thunderstorm" || effectiveCat == "snow")
+        if (isCloudy) {
+            val cloudCount = if (effectiveCat == "partly_cloudy" || effectiveCat == "snow") 3 else 4
+            val isStormy = (effectiveCat == "rain" || effectiveCat == "thunderstorm" || effectiveCat == "overcast")
+            val sUnit = width / 640f
+
+            // 4A. Ground shadows cast by clouds onto the island terrain/water
             paint.style = Paint.Style.FILL
-            paint.color = if (isNight) Color.argb(16, 0, 0, 0) else Color.argb(22, 15, 35, 60)
-            for (ci in 0 until 3) {
-                val cProg = ((ci * 0.37f + phase * 0.25f) % 1.0f)
-                val cx = ix + (0.15f + cProg * 0.70f) * iw
-                val cy = iy + (0.30f + (ci * 0.18f) % 0.40f) * ih
-                val cw = (65f + ci * 20f) * s
-                val ch = cw * 0.38f
-                canvas.drawOval(RectF(cx - cw, cy - ch, cx + cw, cy + ch), paint)
+            paint.color = if (isNight) Color.argb(16, 0, 0, 0) else Color.argb(24, 15, 35, 60)
+            for (ci in 0 until cloudCount) {
+                val cProg = ((ci * 0.31f + phase * 0.18f) % 1.0f)
+                val cloudX = (cProg * 1.30f - 0.15f) * fullWidth
+                // Ground shadow tracks under the cloud when positioned across island
+                if (cloudX >= ix + 0.05f * iw && cloudX <= ix + 0.95f * iw) {
+                    val shadowX = cloudX - 10f * s
+                    val shadowY = iy + (0.28f + (ci * 0.15f) % 0.38f) * ih
+                    val cw = (65f + ci * 20f) * s
+                    val ch = cw * 0.38f
+                    canvas.drawOval(RectF(shadowX - cw, shadowY - ch, shadowX + cw, shadowY + ch), paint)
+                }
+            }
+
+            // 4B. 3D Volumetric Puffy Clouds in the sky render area
+            // Guaranteed placement in visible sky region between HUD and island peaks so they are ALWAYS visible
+            for (ci in 0 until cloudCount) {
+                val cProg = ((ci * 0.31f + phase * 0.18f) % 1.0f)
+                val cloudX = (cProg * 1.30f - 0.15f) * fullWidth
+                // Float below HUD card: areaTop + 10..46dp * k, guaranteed visible in standard/farthest-out view
+                val cloudY = areaTop + (10f + (ci * 16f) % 36f) * k
+                val cloudScale = (0.80f + (ci % 3) * 0.18f) * (if (isStormy) 1.15f else 1.0f)
+                drawIsometricPuffyCloud(canvas, cloudX, cloudY, cloudScale, sUnit, isStormy, isSunset, isNight)
             }
         }
 
@@ -756,6 +778,82 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         }
 
         return bmp
+    }
+
+    /**
+     * Renders a multi-puff 3D shaded volumetric cloud with ambient underside,
+     * mid-tone body, and sunlit top highlights matching the diorama clay/voxel style.
+     */
+    internal fun drawIsometricPuffyCloud(
+        canvas: Canvas,
+        cx: Float,
+        cy: Float,
+        cloudScale: Float,
+        s: Float,
+        isStormy: Boolean,
+        isSunset: Boolean,
+        isNight: Boolean
+    ) {
+        val baseColor = when {
+            isStormy -> if (isNight) Color.parseColor("#243242") else Color.parseColor("#5b7083")
+            isSunset -> Color.parseColor("#9e7b96")
+            isNight -> Color.parseColor("#334860")
+            else -> Color.parseColor("#c2d4e6")
+        }
+        val midColor = when {
+            isStormy -> if (isNight) Color.parseColor("#334559") else Color.parseColor("#7b90a5")
+            isSunset -> Color.parseColor("#e6a58e")
+            isNight -> Color.parseColor("#4d6782")
+            else -> Color.parseColor("#e4eef7")
+        }
+        val topColor = when {
+            isStormy -> if (isNight) Color.parseColor("#485e75") else Color.parseColor("#9cb0c4")
+            isSunset -> Color.parseColor("#ffe0b5")
+            isNight -> Color.parseColor("#6c89a8")
+            else -> Color.parseColor("#ffffff")
+        }
+
+        val puffs = arrayOf(
+            Triple(-38f, 8f, 22f),
+            Triple(-16f, -6f, 30f),
+            Triple(14f, -3f, 27f),
+            Triple(38f, 9f, 20f),
+            Triple(-4f, 10f, 25f),
+            Triple(20f, 11f, 22f)
+        )
+
+        val cPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+        }
+
+        val totalScale = cloudScale * s
+
+        // Layer 1: Ambient underside / base shadow
+        cPaint.color = baseColor
+        for (p in puffs) {
+            val px = cx + p.first * totalScale
+            val py = cy + (p.second + 6f) * totalScale
+            val r = p.third * totalScale
+            canvas.drawCircle(px, py, r, cPaint)
+        }
+
+        // Layer 2: Mid-tone volume body
+        cPaint.color = midColor
+        for (p in puffs) {
+            val px = cx + p.first * totalScale
+            val py = cy + (p.second + 2f) * totalScale
+            val r = p.third * 0.96f * totalScale
+            canvas.drawCircle(px, py, r, cPaint)
+        }
+
+        // Layer 3: Sunlit top highlight domes
+        cPaint.color = topColor
+        for (p in puffs) {
+            val px = cx + (p.first - 3f) * totalScale
+            val py = cy + (p.second - 2f) * totalScale
+            val r = p.third * 0.86f * totalScale
+            canvas.drawCircle(px, py, r, cPaint)
+        }
     }
 
     /**

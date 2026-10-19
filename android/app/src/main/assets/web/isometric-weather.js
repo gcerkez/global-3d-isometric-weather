@@ -363,18 +363,35 @@ export class IsometricWeatherEngine {
         // 3. Atmospheric Weather Effects (Lightning, Fog, Cloud Shadows, Rain & Snow)
         const pScale = Math.max(0.15, this.state.particleIntensity ?? 1.0);
 
-        // Atmospheric drifting cloud shadows for overcast / partly cloudy weather
-        if (cat === "overcast" || cat === "partly_cloudy") {
-            ctx.fillStyle = tState === "night" ? "rgba(0, 0, 0, 0.08)" : "rgba(15, 35, 60, 0.10)";
-            for (let ci = 0; ci < 3; ci++) {
-                const cProg = ((ci * 0.37 + t * 0.03) % 1.0);
-                const cx = dx + (0.15 + cProg * 0.70) * dw;
-                const cy = dy + (0.32 + (ci * 0.18) % 0.40) * dh;
-                const cw = (70 + ci * 25) * s;
-                const ch = cw * 0.38;
-                ctx.beginPath();
-                ctx.ellipse(cx, cy, cw, ch, 0, 0, Math.PI * 2);
-                ctx.fill();
+        // 3D Drifting Volumetric Puffy Clouds & Ground Shadows for cloudy/rain/storm/snow weather
+        const isCloudy = (cat === "partly_cloudy" || cat === "overcast" || cat === "rain" || cat === "thunderstorm" || cat === "snow");
+        if (isCloudy) {
+            const cloudCount = (cat === "partly_cloudy" || cat === "snow") ? 3 : 4;
+            const isStormy = (cat === "rain" || cat === "thunderstorm" || cat === "overcast");
+
+            // First pass: Ground shadows on the island terrain
+            ctx.fillStyle = tState === "night" ? "rgba(0, 0, 0, 0.08)" : "rgba(15, 35, 60, 0.11)";
+            for (let ci = 0; ci < cloudCount; ci++) {
+                const cProg = ((ci * 0.31 + t * 0.025) % 1.0);
+                const cloudX = (cProg * 1.30 - 0.15) * w;
+                if (cloudX >= dx + 0.05 * dw && cloudX <= dx + 0.95 * dw) {
+                    const shadowX = cloudX - 12 * s;
+                    const shadowY = dy + (0.28 + (ci * 0.15) % 0.38) * dh;
+                    const cw = (70 + ci * 22) * s;
+                    const ch = cw * 0.38;
+                    ctx.beginPath();
+                    ctx.ellipse(shadowX, shadowY, cw, ch, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // Second pass: 3D volumetric puffy clouds floating in the sky render area
+            for (let ci = 0; ci < cloudCount; ci++) {
+                const cProg = ((ci * 0.31 + t * 0.025) % 1.0);
+                const cloudX = (cProg * 1.30 - 0.15) * w;
+                const cloudY = 36 * s + (24 + (ci * 38) % 76) * s;
+                const cloudScale = (0.75 + (ci % 3) * 0.18) * (isStormy ? 1.15 : 1.0);
+                this.drawIsometricPuffyCloud(ctx, cloudX, cloudY, cloudScale, s, isStormy, tState === "sunset", tState === "night");
             }
         }
 
@@ -463,6 +480,54 @@ export class IsometricWeatherEngine {
                 ctx.fill();
             }
         }
+    }
+
+    /**
+     * Renders a multi-puff 3D shaded volumetric cloud with ambient underside,
+     * mid-tone body, and sunlit top highlights matching the diorama clay/voxel style.
+     */
+    drawIsometricPuffyCloud(ctx, cx, cy, cScale, s, isStormy, isSunset, isNight) {
+        ctx.save();
+        const baseColor = isStormy ? (isNight ? "#243242" : "#5b7083") : (isSunset ? "#9e7b96" : (isNight ? "#334860" : "#c2d4e6"));
+        const midColor  = isStormy ? (isNight ? "#334559" : "#7b90a5") : (isSunset ? "#e6a58e" : (isNight ? "#4d6782" : "#e4eef7"));
+        const topColor  = isStormy ? (isNight ? "#485e75" : "#9cb0c4") : (isSunset ? "#ffe0b5" : (isNight ? "#6c89a8" : "#ffffff"));
+
+        const puffs = [
+            { dx: -38, dy: 8,  r: 22 },
+            { dx: -16, dy: -6, r: 30 },
+            { dx: 14,  dy: -3, r: 27 },
+            { dx: 38,  dy: 9,  r: 20 },
+            { dx: -4,  dy: 10, r: 25 },
+            { dx: 20,  dy: 11, r: 22 }
+        ];
+
+        const totalScale = cScale * s;
+
+        // Layer 1: Ambient underside / base shadow
+        ctx.fillStyle = baseColor;
+        for (const p of puffs) {
+            ctx.beginPath();
+            ctx.arc(cx + p.dx * totalScale, cy + (p.dy + 6) * totalScale, p.r * totalScale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Layer 2: Mid-tone volume body
+        ctx.fillStyle = midColor;
+        for (const p of puffs) {
+            ctx.beginPath();
+            ctx.arc(cx + p.dx * totalScale, cy + (p.dy + 2) * totalScale, p.r * 0.96 * totalScale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Layer 3: Sunlit top highlight domes
+        ctx.fillStyle = topColor;
+        for (const p of puffs) {
+            ctx.beginPath();
+            ctx.arc(cx + (p.dx - 3) * totalScale, cy + (p.dy - 2) * totalScale, p.r * 0.86 * totalScale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.restore();
     }
 }
 

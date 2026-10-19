@@ -34,11 +34,23 @@ Release **v0.0.3** brings major stability fixes for Android background location 
   4. **Orlando** (fairytale castle spire, central turquoise fountain lagoon, roller coaster with concrete footings)
   5. **Atlanta** (Piedmont Park pond, elevated MARTA-style transit rail line on concrete pillars, glass skyscrapers)
 
-#### 5. Atmospheric Weather FX Across All Platforms
-* Procedural branching lightning bolts and screen illumination flashes during thunderstorms (WMO 95, 96, 99).
-* Volumetric rolling fog banks across water channels for fog conditions (WMO 45, 48).
-* Drifting cloud shadows across diorama terrain during overcast / partly cloudy days.
-* Full-canvas dynamic precipitation (rain/snow) coverage with perspective splash ripples on water surfaces.
+#### 5. Immediate GPS Location Permission Prompt & Safe Defaults
+* **Immediate Permission Request**: On app startup (`MainActivity.onCreate()`), if location permissions (`ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`) have not yet been granted, the app immediately presents the system runtime permission dialog rather than waiting for the user to manually toggle options.
+* **Safe Checkbox Default**: "Follow Phone GPS Location" is unchecked by default if permission has not been granted. Denying the permission keeps the checkbox unchecked and cleanly defaults to the user's saved city without crashing or showing corrupted states.
+* **Seamless Granting Flow**: When permission is granted, the app automatically enables follow GPS, checks the box, and resolves true device GPS location.
+
+#### 6. 3D Volumetric Puffy Clouds in Android Render View
+* **Volumetric Puffy Clouds**: Ported multi-layered 3D shaded cloud rendering (ambient underside shadow, mid-tone volume body, and sunlit highlight domes) directly to the Android widget canvas and web engine.
+* **Guaranteed Visibility in Sky View**: Positioned in the visible sky zone between the top HUD banner and the upper island peaks (`areaTop + 10..46dp`), ensuring clouds are prominently visible across all zoom levels—especially at the standard 100% farthest-out view—without requiring vertical panning.
+* **Synchronized Ground Shadows**: Soft elliptical shadows drift across island terrain and water directly tracking beneath clouds floating overhead.
+* **Palette Responsive**: Clouds dynamically adapt color palettes for daytime, sunset/golden-hour, starry night, and stormy rain/thunderstorm conditions.
+
+#### 7. Comprehensive Mock Device UI & Robolectric Test Suite
+* Added Robolectric mock device test suite verifying:
+  - Immediate location permission request on startup and default unchecked state.
+  - Permission grant / denial handling and preference synchronization.
+  - 3D volumetric puffy cloud rendering across cloudy, overcast, rain, thunderstorm, and snowfall conditions across zoom levels (0.85x, 1.0x, 1.25x, 1.60x).
+  - Direct canvas multi-layer puffy cloud rendering without crashes or memory leaks.
 
 ---
 

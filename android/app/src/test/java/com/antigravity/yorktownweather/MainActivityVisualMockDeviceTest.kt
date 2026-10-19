@@ -247,4 +247,72 @@ class MainActivityVisualMockDeviceTest {
             }
         }
     }
+
+    @Test
+    fun testMockDeviceLocationPermissionPromptAndCheckboxDefault() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                // Without permissions granted, follow GPS must be unchecked by default in preferences
+                assertFalse(
+                    "useCurrentLocation should be false when location permission is not granted",
+                    prefs.getBoolean("useCurrentLocation", false)
+                )
+
+                // Navigate to Tab 2 (Location)
+                val contentView = activity.findViewById<ViewGroup>(android.R.id.content)
+                var tab2Btn: Button? = null
+                fun findLocTab(view: ViewGroup) {
+                    for (i in 0 until view.childCount) {
+                        val child = view.getChildAt(i)
+                        if (child is Button && child.text.toString().contains("Location")) {
+                            tab2Btn = child
+                        } else if (child is ViewGroup) {
+                            findLocTab(child)
+                        }
+                    }
+                }
+                findLocTab(contentView)
+                assertNotNull("Location tab button must exist", tab2Btn)
+                tab2Btn?.performClick()
+
+                // Find the autoUpdateLocCheck checkbox
+                var gpsCheck: CheckBox? = null
+                fun findGpsCheck(view: ViewGroup) {
+                    for (i in 0 until view.childCount) {
+                        val child = view.getChildAt(i)
+                        if (child is CheckBox && child.text.toString().contains("Follow Phone GPS")) {
+                            gpsCheck = child
+                        } else if (child is ViewGroup) {
+                            findGpsCheck(child)
+                        }
+                    }
+                }
+                findGpsCheck(contentView)
+                assertNotNull("Follow Phone GPS checkbox must exist", gpsCheck)
+                assertFalse("Follow Phone GPS checkbox must be unchecked by default without permission", gpsCheck!!.isChecked)
+
+                // Simulate onRequestPermissionsResult with DENIED
+                activity.onRequestPermissionsResult(
+                    1001,
+                    arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
+                    intArrayOf(android.content.pm.PackageManager.PERMISSION_DENIED)
+                )
+                assertFalse("Follow Phone GPS must remain false when permission denied", prefs.getBoolean("useCurrentLocation", false))
+                assertFalse("Follow Phone GPS checkbox must be unchecked when permission denied", gpsCheck!!.isChecked)
+
+                // Simulate granting permission in Robolectric application shadow
+                val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+                org.robolectric.Shadows.shadowOf(app).grantPermissions(android.Manifest.permission.ACCESS_FINE_LOCATION)
+
+                // Simulate onRequestPermissionsResult with GRANTED
+                activity.onRequestPermissionsResult(
+                    1001,
+                    arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
+                    intArrayOf(android.content.pm.PackageManager.PERMISSION_GRANTED)
+                )
+                assertTrue("Follow Phone GPS must become true when permission granted", prefs.getBoolean("useCurrentLocation", false))
+                assertTrue("Follow Phone GPS checkbox must become checked when permission granted", gpsCheck!!.isChecked)
+            }
+        }
+    }
 }

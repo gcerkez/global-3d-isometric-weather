@@ -71,6 +71,20 @@ class MainActivity : Activity() {
 
         val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
 
+        // Check GPS / location permissions immediately on launch
+        if (!DeviceLocationManager.hasLocationPermission(this)) {
+            // Uncheck follow GPS by default until user grants permission
+            if (prefs.getBoolean("useCurrentLocation", false)) {
+                prefs.edit().putBoolean("useCurrentLocation", false).apply()
+            }
+            requestPermissions(
+                arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION),
+                RC_LOCATION_PERM
+            )
+        } else if (prefs.getBoolean("useCurrentLocation", false)) {
+            detectAndApplyCurrentLocation()
+        }
+
         // Root container (vertical)
         val rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -533,13 +547,27 @@ class MainActivity : Activity() {
         }
         layout.addView(autoLocBtn)
 
+        val hasPerm = DeviceLocationManager.hasLocationPermission(this)
+        val shouldFollowGps = hasPerm && prefs.getBoolean("useCurrentLocation", false)
+        if (!hasPerm && prefs.getBoolean("useCurrentLocation", false)) {
+            prefs.edit().putBoolean("useCurrentLocation", false).apply()
+        }
+
         autoUpdateLocCheck = CheckBox(this).apply {
             text = "Follow Phone GPS Location (Automatically update weather as you travel)"
             setTextColor(Color.parseColor("#e6f1fa"))
             textSize = 13f
-            isChecked = prefs.getBoolean("useCurrentLocation", false)
+            isChecked = shouldFollowGps
             setPadding(dp(4), dp(2), dp(4), dp(10))
-            setOnCheckedChangeListener { _, checked ->
+            setOnCheckedChangeListener { buttonView, checked ->
+                if (checked && !DeviceLocationManager.hasLocationPermission(this@MainActivity)) {
+                    buttonView.isChecked = false
+                    requestPermissions(
+                        arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION),
+                        RC_LOCATION_PERM
+                    )
+                    return@setOnCheckedChangeListener
+                }
                 prefs.edit().putBoolean("useCurrentLocation", checked).apply()
                 if (checked) {
                     detectAndApplyCurrentLocation()
@@ -974,17 +1002,31 @@ class MainActivity : Activity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == RC_LOCATION_PERM) {
+            val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
             if (grantResults.isNotEmpty() && grantResults.any { it == android.content.pm.PackageManager.PERMISSION_GRANTED }) {
                 statusLabel.text = "GPS permission granted. Resolving exact device location..."
+                prefs.edit().putBoolean("useCurrentLocation", true).apply()
+                if (::autoUpdateLocCheck.isInitialized) {
+                    autoUpdateLocCheck.isChecked = true
+                }
                 detectAndApplyCurrentLocation()
             } else {
-                statusLabel.text = "⚠️ Location permission was denied. You can search any city manually."
+                prefs.edit().putBoolean("useCurrentLocation", false).apply()
+                if (::autoUpdateLocCheck.isInitialized) {
+                    autoUpdateLocCheck.isChecked = false
+                }
+                statusLabel.text = "⚠️ Location permission was denied. Defaulting to saved city."
             }
         }
     }
 
     private fun detectAndApplyCurrentLocation() {
         if (!DeviceLocationManager.hasLocationPermission(this)) {
+            val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("useCurrentLocation", false).apply()
+            if (::autoUpdateLocCheck.isInitialized) {
+                autoUpdateLocCheck.isChecked = false
+            }
             requestPermissions(
                 arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION),
                 RC_LOCATION_PERM
