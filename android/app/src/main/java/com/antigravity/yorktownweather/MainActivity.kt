@@ -71,20 +71,6 @@ class MainActivity : Activity() {
 
         val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
 
-        // Check GPS / location permissions immediately on launch
-        if (!DeviceLocationManager.hasLocationPermission(this)) {
-            // Uncheck follow GPS by default until user grants permission
-            if (prefs.getBoolean("useCurrentLocation", false)) {
-                prefs.edit().putBoolean("useCurrentLocation", false).apply()
-            }
-            requestPermissions(
-                arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION),
-                RC_LOCATION_PERM
-            )
-        } else if (prefs.getBoolean("useCurrentLocation", false)) {
-            detectAndApplyCurrentLocation()
-        }
-
         // Root container (vertical)
         val rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -238,6 +224,24 @@ class MainActivity : Activity() {
 
         val savedTab = prefs.getInt("active_tab", 0).coerceIn(0, tabTitles.size - 1)
         selectTab(savedTab)
+
+        // Request location permissions or auto-detect on startup after all UI is initialized
+        if (!DeviceLocationManager.hasLocationPermission(this)) {
+            if (prefs.getBoolean("useCurrentLocation", false)) {
+                prefs.edit().putBoolean("useCurrentLocation", false).apply()
+            }
+            requestPermissions(
+                arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION),
+                RC_LOCATION_PERM
+            )
+        } else if (prefs.getBoolean("useCurrentLocation", false)) {
+            detectAndApplyCurrentLocation()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        scope.cancel()
     }
 
     /**
@@ -962,8 +966,20 @@ class MainActivity : Activity() {
         return row to pickerBtn
     }
 
+    private fun setStatus(msg: String) {
+        if (::statusLabel.isInitialized) {
+            statusLabel.text = msg
+        }
+    }
+
+    private fun updateHeader(name: String, diorama: String) {
+        if (::activeLocationHeader.isInitialized) {
+            activeLocationHeader.text = "⚙️ Global 3D Isometric Weather\nActive: $name • Diorama: $diorama"
+        }
+    }
+
     private fun geocodeAndApplyCity(query: String) {
-        statusLabel.text = "Searching Open-Meteo directory for '$query'..."
+        setStatus("Searching Open-Meteo directory for '$query'...")
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
@@ -994,7 +1010,7 @@ class MainActivity : Activity() {
                 val (disp, lat, lon) = result
                 saveLocation(disp, lat, lon)
             } else {
-                statusLabel.text = "No matching location found for '$query'."
+                setStatus("No matching location found for '$query'.")
             }
         }
     }
@@ -1004,7 +1020,7 @@ class MainActivity : Activity() {
         if (requestCode == RC_LOCATION_PERM) {
             val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
             if (grantResults.isNotEmpty() && grantResults.any { it == android.content.pm.PackageManager.PERMISSION_GRANTED }) {
-                statusLabel.text = "GPS permission granted. Resolving exact device location..."
+                setStatus("GPS permission granted. Resolving exact device location...")
                 prefs.edit().putBoolean("useCurrentLocation", true).apply()
                 if (::autoUpdateLocCheck.isInitialized) {
                     autoUpdateLocCheck.isChecked = true
@@ -1015,7 +1031,7 @@ class MainActivity : Activity() {
                 if (::autoUpdateLocCheck.isInitialized) {
                     autoUpdateLocCheck.isChecked = false
                 }
-                statusLabel.text = "⚠️ Location permission was denied. Defaulting to saved city."
+                setStatus("⚠️ Location permission was denied. Defaulting to saved city.")
             }
         }
     }
@@ -1034,12 +1050,12 @@ class MainActivity : Activity() {
             return
         }
 
-        statusLabel.text = "Acquiring true GPS/device location..."
+        setStatus("Acquiring true GPS/device location...")
         scope.launch {
             val coords = DeviceLocationManager.getBestDeviceLocation(this@MainActivity)
             if (coords != null) {
                 val (lat, lon) = coords
-                statusLabel.text = "Reverse geocoding ($lat, $lon)..."
+                setStatus("Reverse geocoding ($lat, $lon)...")
                 val disp = DeviceLocationManager.reverseGeocode(this@MainActivity, lat, lon)
                 val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
                 prefs.edit()
@@ -1059,9 +1075,9 @@ class MainActivity : Activity() {
                         dioramaThemeButton.text = "▼  ${closest.first.name} (Auto-Matched)"
                     }
                 }
-                statusLabel.text = "📍 Auto-detected GPS location: $disp"
+                setStatus("📍 Auto-detected GPS location: $disp")
             } else {
-                statusLabel.text = "Could not resolve GPS location. Please ensure Location is enabled in Settings."
+                setStatus("Could not resolve GPS location. Please ensure Location is enabled in Settings.")
             }
         }
     }
@@ -1089,7 +1105,7 @@ class MainActivity : Activity() {
             }
         }
 
-        activeLocationHeader.text = "⚙️ Global 3D Isometric Weather\nActive: $name • Diorama: $dTheme"
+        updateHeader(name, dTheme)
         applyAndRefreshWidgets("Weather location set to $name")
     }
 
@@ -1130,11 +1146,11 @@ class MainActivity : Activity() {
     }
 
     private fun applyAndRefreshWidgets(msg: String) {
-        statusLabel.text = "✓ $msg"
+        setStatus("✓ $msg")
         val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
         val curName = prefs.getString("locationName", "Yorktown, VA") ?: "Yorktown, VA"
         val curDiorama = prefs.getString("dioramaTheme", "yorktown") ?: "yorktown"
-        activeLocationHeader.text = "⚙️ Global 3D Isometric Weather\nActive: $curName • Diorama: $curDiorama"
+        updateHeader(curName, curDiorama)
         syncSettingsToWebView()
 
         val mgr = AppWidgetManager.getInstance(this)

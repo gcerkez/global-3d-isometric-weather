@@ -315,4 +315,74 @@ class MainActivityVisualMockDeviceTest {
             }
         }
     }
+
+    @Test
+    fun testMockDeviceRelaunchWithGrantedLocationPermissionDoesNotCrash() {
+        val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+        org.robolectric.Shadows.shadowOf(app).grantPermissions(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        prefs.edit().putBoolean("useCurrentLocation", true).commit()
+
+        // Launch activity when permission is already granted and useCurrentLocation is true (subsequent launch)
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                assertNotNull("Activity must launch successfully on subsequent launch", activity)
+                assertFalse("Activity must not be finishing", activity.isFinishing)
+            }
+        }
+    }
+
+    @Test
+    fun testMockDeviceActivityRecreateLifecycle() {
+        val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+        org.robolectric.Shadows.shadowOf(app).grantPermissions(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        prefs.edit().putBoolean("useCurrentLocation", true).commit()
+
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.recreate()
+            scenario.onActivity { activity ->
+                assertNotNull("Activity must survive lifecycle recreate without crashing", activity)
+                assertFalse(activity.isFinishing)
+            }
+        }
+    }
+
+    @Test
+    fun testMockDeviceRelaunchOnEachSavedTab() {
+        for (tabIdx in 0..4) {
+            prefs.edit().putInt("active_tab", tabIdx).commit()
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.onActivity { activity ->
+                    assertNotNull("Activity must launch cleanly on tab $tabIdx", activity)
+                    assertFalse(activity.isFinishing)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun testMockDeviceRelaunchWithCustomCitiesAndDioramas() {
+        val testConfigs = listOf(
+            Triple("Norfolk, VA", "norfolk", 36.8508f to -76.2859f),
+            Triple("Virginia Beach, VA", "virginia_beach", 36.8529f to -75.9780f),
+            Triple("Orlando, FL", "orlando", 28.5383f to -81.3792f),
+            Triple("Las Vegas, NV", "las_vegas", 36.1699f to -115.1398f),
+            Triple("Denver, CO", "denver", 39.7392f to -104.9903f)
+        )
+
+        for ((city, diorama, coords) in testConfigs) {
+            prefs.edit()
+                .putString("locationName", city)
+                .putString("dioramaTheme", diorama)
+                .putFloat("latitude", coords.first)
+                .putFloat("longitude", coords.second)
+                .commit()
+
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.onActivity { activity ->
+                    assertNotNull("Activity must load cleanly with $city ($diorama)", activity)
+                    assertFalse(activity.isFinishing)
+                }
+            }
+        }
+    }
 }

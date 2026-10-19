@@ -52,6 +52,14 @@ Release **v0.0.3** brings major stability fixes for Android background location 
   - 3D volumetric puffy cloud rendering across cloudy, overcast, rain, thunderstorm, and snowfall conditions across zoom levels (0.85x, 1.0x, 1.25x, 1.60x).
   - Direct canvas multi-layer puffy cloud rendering without crashes or memory leaks.
 
+#### 8. Fixed: Immediate Crash on Subsequent App Launches
+* **Root Cause**: On the initial app launch, location permissions were not yet granted, so `requestPermissions()` was called asynchronously and the view hierarchy finished inflating before the user granted permission. Once permission was granted, `useCurrentLocation = true` was stored in preferences. On subsequent launches, `hasLocationPermission` was immediately `true`, triggering `detectAndApplyCurrentLocation()` at the top of `onCreate()` before `statusLabel` or `activeLocationHeader` were instantiated. This caused an immediate `UninitializedPropertyAccessException` and instant crash on every launch after the first.
+* **Resolution**:
+  - Moved the startup location & permission check to the very end of `onCreate()`, ensuring all view hierarchies and tab pages are fully created and mounted first.
+  - Added `setStatus(...)` and `updateHeader(...)` helper guards ensuring `::statusLabel.isInitialized` and `::activeLocationHeader.isInitialized` are strictly validated before any view modifications.
+  - Added `onDestroy()` lifecycle handler canceling active coroutine scopes.
+  - Added comprehensive Robolectric mock device tests verifying subsequent launches with permission granted, activity lifecycle recreations (`scenario.recreate()`), all 5 tab states, and multiple saved regional diorama locations.
+
 ---
 
 ### 📦 Distributable Packages
