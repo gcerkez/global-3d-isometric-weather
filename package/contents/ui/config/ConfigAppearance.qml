@@ -14,6 +14,7 @@ KCM.SimpleKCM {
     property string cfg_dioramaTheme
     property double cfg_dioramaZoom
     property int cfg_dioramaOffsetX
+    property int cfg_dioramaOffsetY
     property string cfg_timeOfDayMode
     property string cfg_weatherOverride
     property string cfg_hudPosition
@@ -145,6 +146,36 @@ KCM.SimpleKCM {
             }
             QQC2.Label {
                 text: (root.cfg_dioramaOffsetX > 0 ? "+" : "") + root.cfg_dioramaOffsetX + " px"
+                Layout.minimumWidth: 52
+            }
+        }
+
+        RowLayout {
+            Kirigami.FormData.label: i18n("Vertical Position:")
+            spacing: 8
+            QQC2.Button {
+                text: i18n("▲ Up")
+                onClicked: root.cfg_dioramaOffsetY = Math.max(-180, root.cfg_dioramaOffsetY - 24)
+            }
+            QQC2.Slider {
+                id: offsetYSlider
+                from: -180
+                to: 180
+                stepSize: 4
+                value: root.cfg_dioramaOffsetY
+                onMoved: root.cfg_dioramaOffsetY = Math.round(value)
+                Layout.preferredWidth: 150
+            }
+            QQC2.Button {
+                text: i18n("▼ Down")
+                onClicked: root.cfg_dioramaOffsetY = Math.min(180, root.cfg_dioramaOffsetY + 24)
+            }
+            QQC2.Button {
+                text: i18n("🎯 Center (0 px)")
+                onClicked: root.cfg_dioramaOffsetY = 0
+            }
+            QQC2.Label {
+                text: (root.cfg_dioramaOffsetY > 0 ? "+" : "") + root.cfg_dioramaOffsetY + " px"
                 Layout.minimumWidth: 52
             }
         }

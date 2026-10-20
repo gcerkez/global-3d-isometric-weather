@@ -50,6 +50,10 @@
             <label>Isometric Horizontal Offset in Pixels (-260 to +260)</label>
             <default>0</default>
         </entry>
+        <entry name="dioramaOffsetY" type="Int">
+            <label>Isometric Vertical Offset in Pixels (-220 to +220)</label>
+            <default>0</default>
+        </entry>
         <entry name="timeOfDayMode" type="String">
             <label>Time of Day Mode (realtime, day, sunset, night)</label>
             <default>realtime</default>

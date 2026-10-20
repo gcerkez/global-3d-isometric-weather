@@ -29,6 +29,7 @@ Item {
 
     signal zoomEdited(real newZoom)
     signal panXEdited(int newPanX)
+    signal panYEdited(int newPanY)
 
     readonly property var validDioramaThemes: [
         "yorktown", "jamestown", "virginia_beach", "norfolk", "chesapeake_bay",
@@ -116,8 +117,9 @@ Item {
                 var dx = mouse.x - lastX
                 var dy = mouse.y - lastY
                 hybridScene.cameraPanX = Math.max(-260, Math.min(260, hybridScene.cameraPanX + dx))
-                hybridScene.cameraPanY = Math.max(-90, Math.min(90, hybridScene.cameraPanY + dy * 0.5))
+                hybridScene.cameraPanY = Math.max(-180, Math.min(180, hybridScene.cameraPanY + dy * 0.75))
                 hybridScene.panXEdited(Math.round(hybridScene.cameraPanX))
+                hybridScene.panYEdited(Math.round(hybridScene.cameraPanY))
                 lastX = mouse.x
                 lastY = mouse.y
             }
@@ -133,6 +135,7 @@ Item {
             hybridScene.cameraPanY = 0.0
             hybridScene.zoomEdited(1.0)
             hybridScene.panXEdited(0)
+            hybridScene.panYEdited(0)
         }
     }
 

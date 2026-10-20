@@ -34,6 +34,7 @@ Item {
 
     signal zoomEdited(real newZoom)
     signal panXEdited(int newPanX)
+    signal panYEdited(int newPanY)
 
     Timer {
         interval: 33
@@ -469,8 +470,9 @@ Item {
                 var dx = mouse.x - lastX
                 var dy = mouse.y - lastY
                 proc3dRoot.cameraPanX = Math.max(-260, Math.min(260, proc3dRoot.cameraPanX + dx))
-                proc3dRoot.cameraPanY = Math.max(-90, Math.min(90, proc3dRoot.cameraPanY + dy * 0.5))
+                proc3dRoot.cameraPanY = Math.max(-180, Math.min(180, proc3dRoot.cameraPanY + dy * 0.75))
                 proc3dRoot.panXEdited(Math.round(proc3dRoot.cameraPanX))
+                proc3dRoot.panYEdited(Math.round(proc3dRoot.cameraPanY))
                 lastX = mouse.x
                 lastY = mouse.y
                 scene3dCanvas.requestPaint()
@@ -488,6 +490,7 @@ Item {
             proc3dRoot.cameraPanY = 0.0
             proc3dRoot.zoomEdited(1.0)
             proc3dRoot.panXEdited(0)
+            proc3dRoot.panYEdited(0)
             scene3dCanvas.requestPaint()
         }
     }

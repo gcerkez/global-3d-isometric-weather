@@ -49,6 +49,7 @@ PlasmoidItem {
     readonly property string cfgDioramaTheme: Plasmoid.configuration.dioramaTheme || "yorktown"
     readonly property double cfgDioramaZoom: Plasmoid.configuration.dioramaZoom !== undefined ? Plasmoid.configuration.dioramaZoom : 1.0
     readonly property int cfgDioramaOffsetX: Plasmoid.configuration.dioramaOffsetX !== undefined ? Plasmoid.configuration.dioramaOffsetX : 0
+    readonly property int cfgDioramaOffsetY: Plasmoid.configuration.dioramaOffsetY !== undefined ? Plasmoid.configuration.dioramaOffsetY : 0
     readonly property string cfgTimeMode: Plasmoid.configuration.timeOfDayMode || "realtime"
     readonly property string cfgWeatherOverride: Plasmoid.configuration.weatherOverride || "realtime"
     readonly property string cfgHudPosition: Plasmoid.configuration.hudPosition || "top-right"
@@ -463,11 +464,15 @@ PlasmoidItem {
             dioramaTheme: root.cfgDioramaTheme
             cameraZoom: root.cfgDioramaZoom
             cameraPanX: root.cfgDioramaOffsetX
+            cameraPanY: root.cfgDioramaOffsetY
             onZoomEdited: function(newZoom) {
                 Plasmoid.configuration.dioramaZoom = Math.round(newZoom * 100) / 100
             }
             onPanXEdited: function(newPanX) {
                 Plasmoid.configuration.dioramaOffsetX = Math.round(newPanX)
+            }
+            onPanYEdited: function(newPanY) {
+                Plasmoid.configuration.dioramaOffsetY = Math.round(newPanY)
             }
         }
 
@@ -483,11 +488,15 @@ PlasmoidItem {
             osmBuildings: root.dynamicOsmBuildings
             cameraZoom: root.cfgDioramaZoom
             cameraPanX: root.cfgDioramaOffsetX
+            cameraPanY: root.cfgDioramaOffsetY
             onZoomEdited: function(newZoom) {
                 Plasmoid.configuration.dioramaZoom = Math.round(newZoom * 100) / 100
             }
             onPanXEdited: function(newPanX) {
                 Plasmoid.configuration.dioramaOffsetX = Math.round(newPanX)
+            }
+            onPanYEdited: function(newPanY) {
+                Plasmoid.configuration.dioramaOffsetY = Math.round(newPanY)
             }
         }
 

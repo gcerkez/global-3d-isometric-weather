@@ -102,9 +102,14 @@
       padding: 2px 6px;
       border-radius: 10px;
       cursor: pointer;
+      transition: transform 0.08s ease, background 0.08s ease;
     }
     .camera-pill button:hover {
       background: rgba(59, 105, 144, 0.75);
+    }
+    button:active, .camera-pill button:active {
+      transform: scale(0.86) !important;
+      background: rgba(110, 168, 215, 0.70) !important;
     }
   </style>
 </head>
@@ -178,9 +183,11 @@
     <div class="camera-pill">
       <button id="camZoomOut" title="Zoom Out">➖</button>
       <button id="camZoomIn" title="Zoom In">➕</button>
-      <button id="camPanLeft" title="Move Isometric Left">◀</button>
-      <button id="camCenter" title="Center Isometric">🎯</button>
-      <button id="camPanRight" title="Move Isometric Right">▶</button>
+      <button id="camPanLeft" title="Move View Left">◀</button>
+      <button id="camPanUp" title="Move View Up">▲</button>
+      <button id="camCenter" title="Center View (Reset)">🎯</button>
+      <button id="camPanDown" title="Move View Down">▼</button>
+      <button id="camPanRight" title="Move View Right">▶</button>
     </div>
 
     <div class="location-badge" id="locBadge">Yorktown, VA • 3D Isometric</div>
@@ -274,6 +281,14 @@
         console.error("Auto-detect failed:", e);
       }
     });
+
+    document.getElementById("camZoomOut")?.addEventListener("click", () => engine.adjustCamera("zoom_out"));
+    document.getElementById("camZoomIn")?.addEventListener("click", () => engine.adjustCamera("zoom_in"));
+    document.getElementById("camPanLeft")?.addEventListener("click", () => engine.adjustCamera("pan_left"));
+    document.getElementById("camPanUp")?.addEventListener("click", () => engine.adjustCamera("pan_up"));
+    document.getElementById("camCenter")?.addEventListener("click", () => engine.adjustCamera("reset"));
+    document.getElementById("camPanDown")?.addEventListener("click", () => engine.adjustCamera("pan_down"));
+    document.getElementById("camPanRight")?.addEventListener("click", () => engine.adjustCamera("pan_right"));
   </script>
 </body>
 </html>

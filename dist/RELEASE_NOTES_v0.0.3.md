@@ -60,6 +60,30 @@ Release **v0.0.3** brings major stability fixes for Android background location 
   - Added `onDestroy()` lifecycle handler canceling active coroutine scopes.
   - Added comprehensive Robolectric mock device tests verifying subsequent launches with permission granted, activity lifecycle recreations (`scenario.recreate()`), all 5 tab states, and multiple saved regional diorama locations.
 
+#### 9. Upgraded Denver & Colorado 3D Isometric Dioramas
+* **Denver, CO (`denver_island*.png`)**:
+  - Replaced the Seattle mashup with a dedicated 3D isometric miniature city diorama of Denver, CO (The Mile High City).
+  - Features the Colorado State Capitol with its 24-karat gold-gilded dome, historic red-brick Denver Union Station with train tracks, modern downtown skyline (including the Wells Fargo Center Cash Register tower), Confluence Park with the turquoise South Platte River and footbridges, and snow-capped Rocky Mountain peaks rising in the background.
+* **Colorado Springs & Pikes Peak, CO (`colorado_springs_island*.png`)**:
+  - Replaced the corrupted, artifact-speckled render with a clean 3D isometric diorama.
+  - Features the towering summit of Pikes Peak with the red Pikes Peak Cog Railway train ascending toward a mountain tunnel, vertical red-sandstone rock spires of Garden of the Gods, the historic Italianate Broadmoor resort hotel by an alpine lake, cascading waterfalls through a rocky gorge, and evergreen pine forests on a rich red-sandstone and granite strata slab.
+* **Triple Lighting Variants**: Clean transparent-background PNG cutouts with soft contact drop shadows and built all 3 lighting variants (**Daylight**, **Golden Hour Sunset**, and **Starry Night with glowing windows**) across Android assets, Web, and KDE Plasma 6.
+
+#### 10. Vertical Camera View Movement (Pan Up / Pan Down)
+* **Android Config App**: Added `▲` (**Pan Up**) and `▼` (**Pan Down**) buttons in Tab 0 framing controls alongside `◀` (Left), `▶` (Right), and `🎯` (Center Island / Reset). Live readout displays both horizontal and vertical offsets: `Zoom: 100% • Offset: X +0 px, Y +0 px`.
+* **Android Widget Provider**: Added `ACTION_PAN_UP` and `ACTION_PAN_DOWN` intents, persisting `widgetOffsetY` in preferences. The diorama bitmap shifts vertically along `widgetOffsetY` while the weather HUD overlay remains stationary.
+* **Web & Android WebView**: Implemented `cameraPanY` with `adjustCamera("pan_up")` and `adjustCamera("pan_down")`. Two-axis mouse and touch pointer dragging lets users pan the island freely in any direction.
+* **KDE Plasma 6 Widget**: Added `dioramaOffsetY` in `main.xml`, a Vertical Position slider and `▲`/`▼` buttons in `ConfigAppearance.qml`, and interactive two-axis dragging in `YorktownHybridScene.qml` and `YorktownProcedural3D.qml`.
+
+#### 11. Flexible Widget Grid Resizing (4x2 to 4x4 and 5x2 to 5x4)
+* **Launcher Grid Metadata**: Updated `isometric_weather_widget_info.xml` with `minResizeHeight="95dp"`, `minHeight="110dp"`, `maxResizeWidth="800dp"`, and `maxResizeHeight="700dp"`. This enables home screen launchers across all DPI ratios to resize the widget down to **2 rows** (`4x2` and `5x2`), while expanding up to 4+ rows (`4x4` and `5x4`) and 5+ columns on high-DPI screens, foldables, and tablets.
+* **Adaptive Compact Height Layout**: In `IsometricWeatherWidgetProvider.kt`, widgets smaller than 165dp height dynamically collapse secondary telemetry lines (wind/humidity and AQI/UV badges) into a compact top bar so the 3D diorama island always has full vertical space to render cleanly.
+
+#### 12. Reset Button Depress Animation & Tactile Haptic Feedback
+* **Android App UI**: Enhanced `makeStyledButton` with a `StateListDrawable` (dark navy to highlighted `#2a4e70` navy fill with a glowing `#ffd166` gold border) and an active touch depress animation (`scale(0.88)` on press with `HapticFeedbackConstants.KEYBOARD_TAP`, smoothly rebounding to `1.0` on release).
+* **Android Widget RemoteViews**: Created `widget_btn_selector.xml` with pressed-state highlighting and stroke animation for `btn_cam_reset` (`🎯`) and `btn_widget_refresh` (`⟳`).
+* **Web UI**: Added CSS `:active` animation (`transform: scale(0.86)` with background color highlight) to `#camCenter` and all control buttons.
+
 ---
 
 ### 📦 Distributable Packages

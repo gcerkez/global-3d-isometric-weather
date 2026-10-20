@@ -87,6 +87,8 @@ class MainActivityVisualMockDeviceTest {
                 var zoomOutBtn: Button? = null
                 var panLeftBtn: Button? = null
                 var panRightBtn: Button? = null
+                var panUpBtn: Button? = null
+                var panDownBtn: Button? = null
                 var centerBtn: Button? = null
 
                 fun findButtons(view: ViewGroup) {
@@ -98,6 +100,8 @@ class MainActivityVisualMockDeviceTest {
                                 "Zoom Out" -> zoomOutBtn = child
                                 "Pan Left" -> panLeftBtn = child
                                 "Pan Right" -> panRightBtn = child
+                                "Pan Up" -> panUpBtn = child
+                                "Pan Down" -> panDownBtn = child
                                 "Center Island" -> centerBtn = child
                             }
                         } else if (child is ViewGroup) {
@@ -111,6 +115,8 @@ class MainActivityVisualMockDeviceTest {
                 assertNotNull("Zoom Out button should be present", zoomOutBtn)
                 assertNotNull("Pan Left button should be present", panLeftBtn)
                 assertNotNull("Pan Right button should be present", panRightBtn)
+                assertNotNull("Pan Up button should be present", panUpBtn)
+                assertNotNull("Pan Down button should be present", panDownBtn)
                 assertNotNull("Center Island button should be present", centerBtn)
 
                 // Test clicking Zoom In
@@ -125,10 +131,17 @@ class MainActivityVisualMockDeviceTest {
                 val offsetRight = prefs.getFloat("widgetOffsetX", 0.0f)
                 assertTrue("Offset should increase after clicking Pan Right", offsetRight > initialOffset)
 
+                // Test clicking Pan Down
+                val initialOffsetY = prefs.getFloat("widgetOffsetY", 0.0f)
+                panDownBtn?.performClick()
+                val offsetDown = prefs.getFloat("widgetOffsetY", 0.0f)
+                assertTrue("OffsetY should increase after clicking Pan Down", offsetDown > initialOffsetY)
+
                 // Test clicking Center Reset
                 centerBtn?.performClick()
                 assertEquals("Zoom should reset to 1.0 after Center", 1.0f, prefs.getFloat("widgetZoom", 1.0f), 0.001f)
-                assertEquals("Offset should reset to 0.0 after Center", 0.0f, prefs.getFloat("widgetOffsetX", 0.0f), 0.001f)
+                assertEquals("Offset X should reset to 0.0 after Center", 0.0f, prefs.getFloat("widgetOffsetX", 0.0f), 0.001f)
+                assertEquals("Offset Y should reset to 0.0 after Center", 0.0f, prefs.getFloat("widgetOffsetY", 0.0f), 0.001f)
             }
         }
     }

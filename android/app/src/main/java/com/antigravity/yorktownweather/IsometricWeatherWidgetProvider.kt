@@ -53,6 +53,8 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         const val ACTION_ZOOM_OUT = "com.antigravity.yorktownweather.ACTION_ZOOM_OUT"
         const val ACTION_PAN_LEFT = "com.antigravity.yorktownweather.ACTION_PAN_LEFT"
         const val ACTION_PAN_RIGHT = "com.antigravity.yorktownweather.ACTION_PAN_RIGHT"
+        const val ACTION_PAN_UP = "com.antigravity.yorktownweather.ACTION_PAN_UP"
+        const val ACTION_PAN_DOWN = "com.antigravity.yorktownweather.ACTION_PAN_DOWN"
         const val ACTION_CAM_RESET = "com.antigravity.yorktownweather.ACTION_CAM_RESET"
 
         fun aqiLabel(aqi: Int): String = when {
@@ -136,12 +138,15 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                 ACTION_ZOOM_OUT,
                 ACTION_PAN_LEFT,
                 ACTION_PAN_RIGHT,
+                ACTION_PAN_UP,
+                ACTION_PAN_DOWN,
                 ACTION_CAM_RESET
             )
         ) {
             val prefs = context.getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
             var zoom = prefs.getFloat("widgetZoom", 1.0f)
             var offsetX = prefs.getFloat("widgetOffsetX", 0.0f)
+            var offsetY = prefs.getFloat("widgetOffsetY", 0.0f)
             when (act) {
                 ACTION_REFRESH_WIDGET -> {
                     Toast.makeText(context, "Refreshing weather & location...", Toast.LENGTH_SHORT).show()
@@ -151,15 +156,19 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                 ACTION_ZOOM_OUT -> zoom = (zoom / 1.15f).coerceIn(0.65f, 2.40f)
                 ACTION_PAN_LEFT -> offsetX = (offsetX - 28.0f).coerceIn(-180.0f, 180.0f)
                 ACTION_PAN_RIGHT -> offsetX = (offsetX + 28.0f).coerceIn(-180.0f, 180.0f)
+                ACTION_PAN_UP -> offsetY = (offsetY - 24.0f).coerceIn(-180.0f, 180.0f)
+                ACTION_PAN_DOWN -> offsetY = (offsetY + 24.0f).coerceIn(-180.0f, 180.0f)
                 ACTION_CAM_RESET -> {
                     zoom = 1.0f
                     offsetX = 0.0f
+                    offsetY = 0.0f
                 }
             }
             if (act != ACTION_REFRESH_WIDGET) {
                 prefs.edit()
                     .putFloat("widgetZoom", zoom)
                     .putFloat("widgetOffsetX", offsetX)
+                    .putFloat("widgetOffsetY", offsetY)
                     .apply()
             }
             val mgr = AppWidgetManager.getInstance(context)
@@ -261,6 +270,7 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                     windUnit = prefs.getString("windSpeedUnit", "mph") ?: "mph",
                     widgetZoom = prefs.getFloat("widgetZoom", 1.0f),
                     widgetOffsetX = prefs.getFloat("widgetOffsetX", 0.0f),
+                    widgetOffsetY = prefs.getFloat("widgetOffsetY", 0.0f),
                     particleDensity = prefs.getFloat("particleDensity", 0.50f)
                 )
 
@@ -361,13 +371,18 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                     // Real on-screen widget size (dp). Portrait launchers lay out at MIN_WIDTH x MAX_HEIGHT.
                     val widgetWidthDp = widgetWidthDp(appWidgetManager, widgetId)
                     val widgetHeightDp = widgetHeightDp(appWidgetManager, widgetId)
+                    val isCompactHeight = widgetHeightDp < 165f
 
                     // Populate & auto-fit the native RemoteViews HUD
-                    val scale = cfg.hudScale.coerceIn(0.90f, 1.45f)
+                    val scale = (if (isCompactHeight) cfg.hudScale * 0.95f else cfg.hudScale).coerceIn(0.85f, 1.45f)
 
                     // Upper-bound HUD height (dp) for the stacked top bar so the island is drawn below it:
-                    val hudHeightDp = 2f + 6f + 11f + 17f * scale * 1.22f + 2f + 2f * 11.5f * scale * 1.3f + 1f +
-                        (if (cfg.showExtendedHud) 1f + 11f * scale * 1.3f else 0f)
+                    val hudHeightDp = if (isCompactHeight) {
+                        (2f + 4f + 8f + 16f * scale * 1.15f + 11.5f * scale * 1.2f)
+                    } else {
+                        (2f + 6f + 11f + 17f * scale * 1.22f + 2f + 2f * 11.5f * scale * 1.3f + 1f +
+                            (if (cfg.showExtendedHud) 1f + 11f * scale * 1.3f else 0f))
+                    }
 
                     for (i in frameIds.indices) {
                         val frame = renderIsometricWidgetFrame(
@@ -389,9 +404,16 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                     views.setTextViewText(R.id.hud_bar_temp, tempLine)
                     views.setTextViewText(R.id.hud_bar_condition, headline)
                     views.setTextViewText(R.id.hud_bar_condition_loc, feelsLine)
-                    views.setTextViewText(R.id.hud_bar_wind_hum, metaLine)
-                    views.setTextViewText(R.id.hud_bar_badges, badgeLine)
-                    views.setViewVisibility(R.id.hud_bar_badges, if (cfg.showExtendedHud) View.VISIBLE else View.GONE)
+
+                    if (isCompactHeight) {
+                        views.setViewVisibility(R.id.hud_bar_wind_hum, View.GONE)
+                        views.setViewVisibility(R.id.hud_bar_badges, View.GONE)
+                    } else {
+                        views.setViewVisibility(R.id.hud_bar_wind_hum, View.VISIBLE)
+                        views.setTextViewText(R.id.hud_bar_wind_hum, metaLine)
+                        views.setViewVisibility(R.id.hud_bar_badges, if (cfg.showExtendedHud) View.VISIBLE else View.GONE)
+                        views.setTextViewText(R.id.hud_bar_badges, badgeLine)
+                    }
 
                     // Row 1 shares its width: temperature gets ~58%, the clock and headline the rest
                     views.setTextViewTextSize(R.id.hud_bar_temp, TypedValue.COMPLEX_UNIT_DIP,
@@ -627,7 +649,7 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         }
         // widgetOffsetX is stored in legacy 688px-frame units (±180), so scale to this frame width
         val ix = (width - iw) / 2f + cfg.widgetOffsetX / 688f * width
-        val iy = areaTop + (areaH - ih) / 2f
+        val iy = areaTop + (areaH - ih) / 2f + cfg.widgetOffsetY / 384f * height
         val sI = iw / 1376f                            // sprite scale relative to island art
 
         // Moon crescent in the night sky, just above-left of the island
@@ -886,7 +908,7 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
             minH > 0 -> minH
             else -> 250
         }
-        return h.toFloat().coerceAtLeast(120f)
+        return h.toFloat().coerceAtLeast(80f)
     }
 
     /**
@@ -971,6 +993,7 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
         val windUnit: String,
         val widgetZoom: Float,
         val widgetOffsetX: Float,
+        val widgetOffsetY: Float = 0.0f,
         val particleDensity: Float
     )
 

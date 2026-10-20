@@ -9,8 +9,11 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
 import android.os.Bundle
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
@@ -318,9 +321,11 @@ class MainActivity : Activity() {
 
         fun updateFramingStats() {
             val z = prefs.getFloat("widgetZoom", 1.0f)
-            val o = prefs.getFloat("widgetOffsetX", 0.0f)
-            val sign = if (o > 0) "+" else ""
-            framingStatsText.text = "Zoom: ${(z * 100).toInt()}% • Horizontal Offset: $sign${o.toInt()} px"
+            val oX = prefs.getFloat("widgetOffsetX", 0.0f)
+            val oY = prefs.getFloat("widgetOffsetY", 0.0f)
+            val signX = if (oX > 0) "+" else ""
+            val signY = if (oY > 0) "+" else ""
+            framingStatsText.text = "Zoom: ${(z * 100).toInt()}% • Offset: X $signX${oX.toInt()} px, Y $signY${oY.toInt()} px"
         }
 
         // Framing Action Buttons (Icon-Only)
@@ -334,26 +339,33 @@ class MainActivity : Activity() {
             Triple("➖", "zoom_out", "Zoom Out"),
             Triple("➕", "zoom_in", "Zoom In"),
             Triple("◀", "pan_left", "Pan Left"),
+            Triple("▲", "pan_up", "Pan Up"),
             Triple("🎯", "center", "Center Island"),
+            Triple("▼", "pan_down", "Pan Down"),
             Triple("▶", "pan_right", "Pan Right")
         )
         for ((icon, act, desc) in camButtons) {
             val btn = makeStyledButton(icon) {
                 var zoom = prefs.getFloat("widgetZoom", 1.0f)
                 var offsetX = prefs.getFloat("widgetOffsetX", 0.0f)
+                var offsetY = prefs.getFloat("widgetOffsetY", 0.0f)
                 when (act) {
                     "zoom_in" -> zoom = (zoom * 1.15f).coerceIn(0.65f, 2.40f)
                     "zoom_out" -> zoom = (zoom / 1.15f).coerceIn(0.65f, 2.40f)
                     "pan_left" -> offsetX = (offsetX - 28.0f).coerceIn(-180.0f, 180.0f)
                     "pan_right" -> offsetX = (offsetX + 28.0f).coerceIn(-180.0f, 180.0f)
+                    "pan_up" -> offsetY = (offsetY - 24.0f).coerceIn(-180.0f, 180.0f)
+                    "pan_down" -> offsetY = (offsetY + 24.0f).coerceIn(-180.0f, 180.0f)
                     "center" -> {
                         zoom = 1.0f
                         offsetX = 0.0f
+                        offsetY = 0.0f
                     }
                 }
                 prefs.edit()
                     .putFloat("widgetZoom", zoom)
                     .putFloat("widgetOffsetX", offsetX)
+                    .putFloat("widgetOffsetY", offsetY)
                     .apply()
                 val jsAct = if (act == "center") "reset" else act
                 webView.evaluateJavascript("if (window.isoEngine) window.isoEngine.adjustCamera('$jsAct');", null)
@@ -362,10 +374,10 @@ class MainActivity : Activity() {
             }.apply {
                 contentDescription = desc
                 val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f)
-                lp.setMargins(0, 0, dp(6), 0)
+                lp.setMargins(0, 0, dp(4), 0)
                 layoutParams = lp
-                setPadding(dp(2), dp(8), dp(2), dp(8))
-                textSize = 17f
+                setPadding(dp(1), dp(8), dp(1), dp(8))
+                textSize = 16f
             }
             camControlRow.addView(btn)
         }
@@ -894,11 +906,33 @@ class MainActivity : Activity() {
                 (14 * density).roundToInt(),
                 (10 * density).roundToInt()
             )
-            background = GradientDrawable().apply {
+            val normalBg = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = 10f * density
                 setColor(Color.parseColor("#1b3044"))
                 setStroke((1 * density).roundToInt(), Color.parseColor("#446f96"))
+            }
+            val pressedBg = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 10f * density
+                setColor(Color.parseColor("#2a4e70"))
+                setStroke((1.5f * density).roundToInt(), Color.parseColor("#ffd166"))
+            }
+            background = StateListDrawable().apply {
+                addState(intArrayOf(android.R.attr.state_pressed), pressedBg)
+                addState(intArrayOf(), normalBg)
+            }
+            setOnTouchListener { v, event ->
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        v.animate().scaleX(0.88f).scaleY(0.88f).setDuration(60).start()
+                        v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(90).start()
+                    }
+                }
+                false
             }
             setOnClickListener { onClick() }
         }
@@ -1122,6 +1156,7 @@ class MainActivity : Activity() {
         val pDensity = prefs.getFloat("particleDensity", 0.50f)
         val zoom = prefs.getFloat("widgetZoom", 1.0f)
         val offsetX = prefs.getFloat("widgetOffsetX", 0.0f)
+        val offsetY = prefs.getFloat("widgetOffsetY", 0.0f)
 
         val js = """
             const hud = document.getElementById('hudCard');
@@ -1139,6 +1174,7 @@ class MainActivity : Activity() {
                 window.isoEngine.state.particleIntensity = $pDensity;
                 window.isoEngine.state.cameraZoom = $zoom;
                 window.isoEngine.state.cameraPanX = $offsetX;
+                window.isoEngine.state.cameraPanY = $offsetY;
                 window.isoEngine.refreshAll();
             }
         """.trimIndent()

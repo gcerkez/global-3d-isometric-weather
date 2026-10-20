@@ -91,9 +91,10 @@ export class IsometricWeatherEngine {
                 { dayName: "DAY 3", tempRange: "67° / 54°F" }
             ],
 
-            // Isometric Zoom & Horizontal Offset (rotation intentionally disabled)
+            // Isometric Zoom & Offset (horizontal and vertical pan)
             cameraZoom: options.cameraZoom ?? 1.0,
             cameraPanX: options.cameraPanX ?? 0.0,
+            cameraPanY: options.cameraPanY ?? 0.0,
             particleIntensity: options.particleIntensity ?? 0.5,
             animTime: 0
         };
@@ -232,8 +233,8 @@ export class IsometricWeatherEngine {
     }
 
     /**
-     * Adjusts isometric zoom or horizontal centering/offset programmatically (rotation removed).
-     * @param {"zoom_in"|"zoom_out"|"pan_left"|"pan_right"|"center"|"reset"} action
+     * Adjusts isometric zoom or view movement (pan horizontal and vertical) programmatically.
+     * @param {"zoom_in"|"zoom_out"|"pan_left"|"pan_right"|"pan_up"|"pan_down"|"center"|"reset"} action
      */
     adjustCamera(action) {
         if (action === "zoom_in") {
@@ -244,31 +245,41 @@ export class IsometricWeatherEngine {
             this.state.cameraPanX = Math.max(-220, this.state.cameraPanX - 24);
         } else if (action === "pan_right") {
             this.state.cameraPanX = Math.min(220, this.state.cameraPanX + 24);
+        } else if (action === "pan_up") {
+            this.state.cameraPanY = Math.max(-180, this.state.cameraPanY - 24);
+        } else if (action === "pan_down") {
+            this.state.cameraPanY = Math.min(180, this.state.cameraPanY + 24);
         } else if (action === "center") {
             this.state.cameraPanX = 0;
+            this.state.cameraPanY = 0;
         } else if (action === "reset") {
             this.state.cameraZoom = 1.0;
             this.state.cameraPanX = 0;
+            this.state.cameraPanY = 0;
         }
     }
 
     /**
-     * Binds horizontal drag (to center/move the isometric left or right), pinch-to-zoom, wheel zoom, and double-click reset.
+     * Binds view drag (to center/move the isometric island), pinch-to-zoom, wheel zoom, and double-click reset.
      */
     _bindInteraction() {
-        let dragging = false, lastX = 0;
+        let dragging = false, lastX = 0, lastY = 0;
         let lastPinchDist = 0;
 
         this.canvas.addEventListener("pointerdown", e => {
             dragging = true;
             lastX = e.clientX;
+            lastY = e.clientY;
         });
         window.addEventListener("pointerup", () => { dragging = false; });
         window.addEventListener("pointermove", e => {
             if (!dragging) return;
             const dx = e.clientX - lastX;
+            const dy = e.clientY - lastY;
             this.state.cameraPanX = Math.max(-220, Math.min(220, this.state.cameraPanX + dx * 0.65));
+            this.state.cameraPanY = Math.max(-180, Math.min(180, this.state.cameraPanY + dy * 0.65));
             lastX = e.clientX;
+            lastY = e.clientY;
         });
         this.canvas.addEventListener("touchstart", e => {
             if (e.touches.length === 2) {
@@ -345,7 +356,7 @@ export class IsometricWeatherEngine {
         const dw = 1376 * baseScale;
         const dh = 768 * baseScale;
         const dx = (w - dw) * 0.5 - w * 0.04 + (this.state.cameraPanX * baseScale * 2.0);
-        const dy = (h - dh) * 0.5;
+        const dy = (h - dh) * 0.5 + (this.state.cameraPanY * baseScale * 2.0);
 
         ctx.save();
         const cx = dx + dw * 0.5;
