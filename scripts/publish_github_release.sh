@@ -12,7 +12,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 GH_BIN="${HOME}/.local/bin/gh"
 REPO_SLUG="gcerkez/global-3d-isometric-weather"
 SSH_REMOTE="git@github.com:${REPO_SLUG}.git"
-RELEASE_TAG="${1:-v0.0.4}"
+RELEASE_TAG="${1:-v0.0.5}"
 
 if ! command -v "${GH_BIN}" >/dev/null 2>&1; then
     GH_BIN="gh"

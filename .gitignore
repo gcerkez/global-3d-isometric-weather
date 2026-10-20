@@ -7,3 +7,5 @@ dist/*.apk
 dist/*.plasmoid
 dist/*.zip
 dist/*.tar.gz
+node_modules/
+dist-web/
