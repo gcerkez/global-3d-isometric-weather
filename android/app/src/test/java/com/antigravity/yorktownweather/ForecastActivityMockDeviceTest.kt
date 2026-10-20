@@ -191,6 +191,36 @@ class ForecastActivityMockDeviceTest {
         assertEquals(37.1310, intent.getDoubleExtra("lat", 0.0), 0.0001)
     }
 
+    @Test
+    fun testForecastActivityRendersDualUnitWithoutBothText() {
+        val intent = Intent(context, ForecastActivity::class.java).apply {
+            putExtra("lat", 37.1310)
+            putExtra("lon", -76.4452)
+            putExtra("location_name", "Yorktown, VA")
+            putExtra("temp_unit", "BOTH")
+            putExtra("wind_unit", "MPH")
+        }
+
+        ActivityScenario.launch<ForecastActivity>(intent).use { scenario ->
+            scenario.onActivity { activity ->
+                assertNotNull("ForecastActivity must launch", activity)
+
+                val rootView = activity.findViewById<ViewGroup>(android.R.id.content)
+                val textViews = findAllViewsOfType(rootView, TextView::class.java)
+
+                // Verify that no TextView in the hierarchy contains the string "BOTH"
+                for (tv in textViews) {
+                    assertFalse("No TextView should contain the literal string 'BOTH' in text: '${tv.text}'",
+                        tv.text.contains("BOTH"))
+                }
+
+                // Verify hero temperature formatted with dual units e.g. "68°F (20°C)"
+                val heroTempTv = textViews.firstOrNull { it.text.contains("°F (") && it.text.contains("°C)") }
+                assertNotNull("Hero temperature must be formatted with dual units like '68°F (20°C)'", heroTempTv)
+            }
+        }
+    }
+
     private fun <T : View> findAllViewsOfType(root: ViewGroup, clazz: Class<T>): List<T> {
         val out = mutableListOf<T>()
         for (i in 0 until root.childCount) {

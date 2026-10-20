@@ -472,14 +472,34 @@ class ForecastGraphView @JvmOverloads constructor(
         val line1 = "${pt.hourLabel} • ${pt.emoji} ${pt.conditionText}"
         val line2 = when (graphMode) {
             MODE_PRECIPITATION -> "💧 ${pt.precipProb}% chance" + (if (pt.precipAmount > 0.005) " • ${String.format("%.2f", pt.precipAmount)}$precipitationUnit" else "")
-            MODE_TEMPERATURE -> "🌡️ ${pt.temp.roundToInt()}°$tempUnit (Feels ${pt.feelsLike.roundToInt()}°)"
+            MODE_TEMPERATURE -> "🌡️ ${formatTemp(pt.temp)} (Feels ${formatTempShort(pt.feelsLike)})"
             MODE_WIND -> "💨 ${pt.windSpeed.roundToInt()} $windUnit • Hum ${pt.humidity}%"
             else -> ""
         }
-        val line3 = "Temp: ${pt.temp.roundToInt()}°$tempUnit • Wind: ${pt.windSpeed.roundToInt()} $windUnit"
+        val line3 = "Temp: ${formatTemp(pt.temp)} • Wind: ${pt.windSpeed.roundToInt()} $windUnit"
 
         canvas.drawText(line1, textPadL, cardT + 17f * density, tooltipTitlePaint)
         canvas.drawText(line2, textPadL, cardT + 33f * density, tooltipBodyPaint)
         canvas.drawText(line3, textPadL, cardT + 48f * density, tooltipSubPaint)
+    }
+
+    private fun formatTemp(tempVal: Double): String {
+        val fVal = if (tempUnit == "C") ((tempVal * 9.0 / 5.0) + 32.0).roundToInt() else tempVal.roundToInt()
+        val cVal = if (tempUnit == "C") tempVal.roundToInt() else ((tempVal - 32.0) * 5.0 / 9.0).roundToInt()
+        return when (tempUnit) {
+            "F" -> "${fVal}°F"
+            "C" -> "${cVal}°C"
+            "BOTH", "Dual" -> "${fVal}°F (${cVal}°C)"
+            else -> "${fVal}°F"
+        }
+    }
+
+    private fun formatTempShort(tempVal: Double): String {
+        val fVal = if (tempUnit == "C") ((tempVal * 9.0 / 5.0) + 32.0).roundToInt() else tempVal.roundToInt()
+        val cVal = if (tempUnit == "C") tempVal.roundToInt() else ((tempVal - 32.0) * 5.0 / 9.0).roundToInt()
+        return when (tempUnit) {
+            "C" -> "${cVal}°"
+            else -> "${fVal}°"
+        }
     }
 }

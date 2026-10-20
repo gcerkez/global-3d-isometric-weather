@@ -124,9 +124,9 @@ class ForecastActivity : Activity() {
         val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
         latitude = intent.getDoubleExtra("lat", prefs.getFloat("latitude", 37.1310f).toDouble())
         longitude = intent.getDoubleExtra("lon", prefs.getFloat("longitude", -76.4452f).toDouble())
-        locationName = intent.getStringExtra("location_name") ?: prefs.getString("location_name", "Yorktown, VA") ?: "Yorktown, VA"
-        tempUnit = intent.getStringExtra("temp_unit") ?: prefs.getString("temp_unit", "F") ?: "F"
-        windUnit = intent.getStringExtra("wind_unit") ?: prefs.getString("wind_unit", "MPH") ?: "MPH"
+        locationName = intent.getStringExtra("location_name") ?: prefs.getString("location_name", null) ?: prefs.getString("locationName", "Yorktown, VA") ?: "Yorktown, VA"
+        tempUnit = intent.getStringExtra("temp_unit") ?: prefs.getString("temperatureUnit", null) ?: prefs.getString("temp_unit", "BOTH") ?: "BOTH"
+        windUnit = intent.getStringExtra("wind_unit") ?: prefs.getString("windUnit", null) ?: prefs.getString("wind_unit", "MPH") ?: "MPH"
         precipUnit = if (tempUnit == "C") "mm" else "in"
 
         setContentView(buildRootLayout())
@@ -142,6 +142,26 @@ class ForecastActivity : Activity() {
     override fun onDestroy() {
         super.onDestroy()
         activityScope.cancel()
+    }
+
+    fun formatTemperature(tempVal: Double, unitMode: String = tempUnit): String {
+        val fVal = if (unitMode == "C") ((tempVal * 9.0 / 5.0) + 32.0).roundToInt() else tempVal.roundToInt()
+        val cVal = if (unitMode == "C") tempVal.roundToInt() else ((tempVal - 32.0) * 5.0 / 9.0).roundToInt()
+        return when (unitMode) {
+            "F" -> "${fVal}°F"
+            "C" -> "${cVal}°C"
+            "BOTH", "Dual" -> "${fVal}°F (${cVal}°C)"
+            else -> "${fVal}°F"
+        }
+    }
+
+    fun formatTempShort(tempVal: Double, unitMode: String = tempUnit): String {
+        val fVal = if (unitMode == "C") ((tempVal * 9.0 / 5.0) + 32.0).roundToInt() else tempVal.roundToInt()
+        val cVal = if (unitMode == "C") tempVal.roundToInt() else ((tempVal - 32.0) * 5.0 / 9.0).roundToInt()
+        return when (unitMode) {
+            "C" -> "${cVal}°"
+            else -> "${fVal}°"
+        }
     }
 
     private fun buildRootLayout(): View {
@@ -256,8 +276,8 @@ class ForecastActivity : Activity() {
         }
 
         currentTempView = TextView(this).apply {
-            text = "68°$tempUnit"
-            textSize = 42f
+            text = formatTemperature(currentRealtimeTemp)
+            textSize = if (tempUnit == "BOTH" || tempUnit == "Dual") 30f else 40f
             setTextColor(Color.WHITE)
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
@@ -362,7 +382,7 @@ class ForecastActivity : Activity() {
             }
             onHourScrubbed = { pt ->
                 pt?.let {
-                    scrubberReadoutView.text = "${it.hourLabel} • ${it.emoji} ${it.conditionText} • 💧 ${it.precipProb}% • ${it.temp.roundToInt()}°$tempUnit"
+                    scrubberReadoutView.text = "${it.hourLabel} • ${it.emoji} ${it.conditionText} • 💧 ${it.precipProb}% • ${formatTemperature(it.temp)}"
                 }
             }
         }
@@ -558,9 +578,12 @@ class ForecastActivity : Activity() {
         val selDay = forecastDays[selectedDayIndex.coerceIn(0, forecastDays.size - 1)]
 
         // 1. Update Hero Card
-        currentTempView.text = "${currentRealtimeTemp.roundToInt()}°$tempUnit"
+        currentTempView.text = formatTemperature(currentRealtimeTemp)
+        currentTempView.textSize = if (tempUnit == "BOTH" || tempUnit == "Dual") 30f else 40f
         conditionView.text = "${selDay.emoji} ${selDay.conditionLabel}"
-        rangeFeelsView.text = "High ${selDay.tempMax.roundToInt()}° • Low ${selDay.tempMin.roundToInt()}° • Wind ${selDay.windSpeedMax.roundToInt()} $windUnit"
+        val highStr = formatTempShort(selDay.tempMax)
+        val lowStr = formatTempShort(selDay.tempMin)
+        rangeFeelsView.text = "High $highStr • Low $lowStr • Wind ${selDay.windSpeedMax.roundToInt()} $windUnit"
 
         val rainChip = if (selDay.precipSum > 0.005) {
             val amt = if (precipUnit == "mm") "${String.format("%.1f", selDay.precipSum)}mm" else "${String.format("%.2f", selDay.precipSum)} in"
@@ -671,7 +694,7 @@ class ForecastActivity : Activity() {
 
             // Min Temp
             val tvMin = TextView(this).apply {
-                text = "${day.tempMin.roundToInt()}°"
+                text = formatTempShort(day.tempMin)
                 textSize = 12f
                 setTextColor(Color.parseColor("#94a3b8"))
                 gravity = Gravity.END
@@ -695,7 +718,7 @@ class ForecastActivity : Activity() {
 
             // Max Temp
             val tvMax = TextView(this).apply {
-                text = "${day.tempMax.roundToInt()}°"
+                text = formatTempShort(day.tempMax)
                 textSize = 12.5f
                 setTextColor(Color.WHITE)
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)

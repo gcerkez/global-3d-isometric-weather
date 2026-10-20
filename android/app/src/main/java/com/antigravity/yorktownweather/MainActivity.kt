@@ -427,7 +427,7 @@ class MainActivity : Activity() {
                 putExtra("lat", prefs.getFloat("latitude", 37.1310f).toDouble())
                 putExtra("lon", prefs.getFloat("longitude", -76.4452f).toDouble())
                 putExtra("location_name", prefs.getString("locationName", "Yorktown, VA"))
-                putExtra("temp_unit", prefs.getString("tempUnit", "F"))
+                putExtra("temp_unit", prefs.getString("temperatureUnit", "BOTH") ?: "BOTH")
                 putExtra("wind_unit", prefs.getString("windUnit", "MPH"))
             }
             startActivity(intent)
