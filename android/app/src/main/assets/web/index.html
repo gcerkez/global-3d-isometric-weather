@@ -538,9 +538,10 @@
       document.getElementById("mHeroCond").textContent = `${selDay.emoji} ${selDay.condition}`;
       document.getElementById("mHeroSub").textContent = `High ${Math.round(selDay.tempMax)}° • Low ${Math.round(selDay.tempMin)}° • Wind ${Math.round(selDay.windMax)} MPH`;
 
+      const chipIcon = selDay.precipProbMax <= 25 ? "🌦️" : "🌧️";
       const rainChipText = selDay.precipSum > 0.005
-        ? `🌧️ ${selDay.precipSum.toFixed(2)} in expected precipitation (${selDay.precipProbMax}% peak chance)`
-        : (selDay.precipProbMax > 0 ? `💧 ${selDay.precipProbMax}% chance of rain` : `☀️ Dry conditions • 0% chance of rain`);
+        ? `${chipIcon} ${selDay.precipSum.toFixed(2)} in expected precipitation (${selDay.precipProbMax}% peak chance)`
+        : (selDay.precipProbMax > 0 ? `${selDay.precipProbMax <= 25 ? '🌦️' : '💧'} ${selDay.precipProbMax}% chance of rain` : `☀️ Dry conditions • 0% chance of rain`);
       document.getElementById("mHeroChip").textContent = rainChipText;
 
       document.getElementById("mGraphTitle").textContent = `Hourly Breakdown • ${selDay.dayName}`;
@@ -584,7 +585,7 @@
           <div class="day-name">${isToday ? 'TODAY' : day.dayName}</div>
           <div class="day-icon-box">
             <span>${day.emoji}</span>
-            ${day.precipProbMax >= 20 ? `<span class="day-pop">${day.precipProbMax}%</span>` : ''}
+            ${day.precipProbMax >= 10 ? `<span class="day-pop">${day.precipProbMax}%</span>` : ''}
           </div>
           <div class="day-min">${Math.round(day.tempMin)}°</div>
           <div class="day-bar-box">

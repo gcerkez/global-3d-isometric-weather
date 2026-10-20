@@ -270,9 +270,12 @@ PlasmoidItem {
                             var code = data.daily.weather_code ? data.daily.weather_code[i] : 0
                             var icon = "☀️"
                             if (code >= 95) icon = "⛈️"
-                            else if (code >= 71) icon = "🌨️"
-                            else if (code >= 61 || code >= 80) icon = "🌧️"
-                            else if (code >= 51) icon = "🌦️"
+                            else if ((code >= 71 && code <= 77) || code === 85 || code === 86) icon = "🌨️"
+                            else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {
+                                if (code === 65 || code === 82) icon = "🌧️"
+                                else if (pProb <= 35) icon = "🌦️"
+                                else icon = "🌧️"
+                            }
                             else if (code === 3) icon = "☁️"
                             else if (code >= 1) icon = "⛅"
 

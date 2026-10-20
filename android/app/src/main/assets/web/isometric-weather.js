@@ -51,20 +51,27 @@ export const VALID_DIORAMA_THEMES = [
     "rome_mediterranean", "cairo_giza", "tokyo_east_asia", "modern", "alpine"
 ];
 
-export function wmoToCondition(code, isDay = true) {
+export function wmoToCondition(code, isDay = true, precipProb = 0) {
+    if (code >= 95) return { label: "Thunderstorm", emoji: "⛈️" };
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return { label: "Snow", emoji: "🌨️" };
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {
+        if (code === 65 || code === 82) {
+            return { label: "Heavy Rain", emoji: "🌧️" };
+        }
+        if (precipProb <= 20) {
+            return { label: isDay ? "Stray Shower" : "Passing Shower", emoji: isDay ? "🌦️" : "🌧️" };
+        }
+        if (precipProb <= 40 || code === 51 || code === 53 || code === 55 || code === 80) {
+            return { label: "Scattered Showers", emoji: isDay ? "🌦️" : "🌧️" };
+        }
+        return { label: "Rain", emoji: "🌧️" };
+    }
     switch (code) {
         case 0: return { label: "Clear Sky", emoji: isDay ? "☀️" : "🌙" };
         case 1: return { label: "Mainly Clear", emoji: isDay ? "🌤️" : "🌤️" };
         case 2: return { label: "Partly Cloudy", emoji: "⛅" };
         case 3: return { label: "Overcast", emoji: "☁️" };
         case 45: case 48: return { label: "Foggy", emoji: "🌫️" };
-        case 51: case 53: case 55: return { label: "Drizzle", emoji: "🌦️" };
-        case 61: case 63: return { label: "Rain", emoji: "🌧️" };
-        case 65: return { label: "Heavy Rain", emoji: "🌧️" };
-        case 71: case 73: case 75: case 77: return { label: "Snow", emoji: "🌨️" };
-        case 80: case 81: case 82: return { label: "Rain Showers", emoji: "🌧️" };
-        case 85: case 86: return { label: "Snow Showers", emoji: "🌨️" };
-        case 95: case 96: case 99: return { label: "Thunderstorm", emoji: "⛈️" };
         default: return { label: "Clear", emoji: isDay ? "☀️" : "🌙" };
     }
 }
@@ -213,11 +220,11 @@ export class IsometricWeatherEngine {
                     const dayName = (d === 0) ? "TODAY" : days[dt.getDay()];
                     const shortDate = `${months[dt.getMonth()]} ${dt.getDate()}`;
                     const code = data.daily.weather_code ? data.daily.weather_code[d] : 0;
-                    const cond = wmoToCondition(code, true);
                     const maxT = data.daily.temperature_2m_max[d];
                     const minT = data.daily.temperature_2m_min[d];
                     const pSum = data.daily.precipitation_sum ? (data.daily.precipitation_sum[d] || 0) : 0;
                     const pProb = data.daily.precipitation_probability_max ? (data.daily.precipitation_probability_max[d] || 0) : 0;
+                    const cond = wmoToCondition(code, true, pProb);
                     const windMax = data.daily.wind_speed_10m_max ? (data.daily.wind_speed_10m_max[d] || 10) : 10;
                     const uvMax = data.daily.uv_index_max ? (data.daily.uv_index_max[d] || 3) : 3;
 
@@ -236,14 +243,15 @@ export class IsometricWeatherEngine {
                         const hDt = new Date(hTime);
                         const hCode = data.hourly.weather_code ? data.hourly.weather_code[h] : code;
                         const isDayHour = hDt.getHours() >= 6 && hDt.getHours() <= 19;
-                        const hCond = wmoToCondition(hCode, isDayHour);
+                        const pop = data.hourly.precipitation_probability ? (data.hourly.precipitation_probability[h] || 0) : 0;
+                        const hCond = wmoToCondition(hCode, isDayHour, pop);
                         hours.push({
                             time: hTime,
                             hourOfDay: hDt.getHours(),
                             hourLabel: hDt.toLocaleTimeString([], { hour: 'numeric' }),
                             temp: data.hourly.temperature_2m[h],
                             feelsLike: data.hourly.apparent_temperature ? data.hourly.apparent_temperature[h] : data.hourly.temperature_2m[h],
-                            precipProb: data.hourly.precipitation_probability ? (data.hourly.precipitation_probability[h] || 0) : 0,
+                            precipProb: pop,
                             precipAmount: data.hourly.precipitation ? (data.hourly.precipitation[h] || 0) : 0,
                             weatherCode: hCode,
                             condition: hCond.label,
@@ -307,6 +315,9 @@ export class IsometricWeatherEngine {
                 const label = h === 0 ? "12 AM" : h === 12 ? "12 PM" : h < 12 ? `${h} AM` : `${h - 12} PM`;
                 const t = minT + (maxT - minT) * (0.5 + 0.5 * Math.sin((h - 8) * Math.PI / 12));
                 const hProb = (pProb > 0 && h >= 13 && h <= 19) ? pProb : 0;
+                const hCode = hProb > 0 ? 61 : 0;
+                const isDayH = (h >= 6 && h <= 19);
+                const hCond = wmoToCondition(hCode, isDayH, hProb);
                 hours.push({
                     time: `2026-10-2${d}T${String(h).padStart(2, '0')}:00`,
                     hourOfDay: h,
@@ -315,21 +326,23 @@ export class IsometricWeatherEngine {
                     feelsLike: t - 1.5,
                     precipProb: hProb,
                     precipAmount: hProb > 0 ? 0.05 : 0.0,
-                    weatherCode: pProb > 0 ? 61 : 0,
-                    condition: pProb > 0 ? "Rain Showers" : "Clear Sky",
-                    emoji: pProb > 0 ? "🌧️" : (h >= 6 && h <= 19 ? "☀️" : "🌙"),
+                    weatherCode: hCode,
+                    condition: hCond.label,
+                    emoji: hCond.emoji,
                     windSpeed: 8 + (h % 4),
                     humidity: 55 + (h % 15),
                     uvIndex: (h >= 10 && h <= 16) ? 4.2 : 0
                 });
             }
+            const dCode = pProb > 0 ? 61 : 0;
+            const dCond = wmoToCondition(dCode, true, pProb);
             return {
                 dateStr: `2026-10-2${d}`,
                 dayName: dName,
                 shortDate: `Oct ${20 + d}`,
-                weatherCode: pProb > 0 ? 61 : 0,
-                condition: pProb > 0 ? "Rain Showers" : "Sunny",
-                emoji: pProb > 0 ? "🌧️" : "☀️",
+                weatherCode: dCode,
+                condition: dCond.label,
+                emoji: dCond.emoji,
                 tempMin: minT,
                 tempMax: maxT,
                 precipSum: pSum,

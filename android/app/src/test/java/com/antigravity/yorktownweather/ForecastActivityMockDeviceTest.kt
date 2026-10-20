@@ -221,6 +221,42 @@ class ForecastActivityMockDeviceTest {
         }
     }
 
+    @Test
+    fun testLowPrecipitationProbabilityRendersSunBehindRainCloudEmoji() {
+        val intent = Intent(context, ForecastActivity::class.java).apply {
+            putExtra("lat", 37.1310)
+            putExtra("lon", -76.4452)
+            putExtra("location_name", "Yorktown, VA")
+            putExtra("temp_unit", "F")
+            putExtra("wind_unit", "MPH")
+        }
+
+        ActivityScenario.launch<ForecastActivity>(intent).use { scenario ->
+            scenario.onActivity { activity ->
+                // 1. Direct unit verification of wmoCodeToInfo
+                // Low probability (11%) slight rain code 61 -> 🌦️ (Sun Behind Rain Cloud)
+                val (emoji61Low, label61Low) = activity.wmoCodeToInfo(code = 61, isDay = true, precipProb = 11)
+                assertEquals("11% rain chance must show sun-behind-rain-cloud 🌦️", "🌦️", emoji61Low)
+                assertEquals("Isolated Shower", label61Low)
+
+                // Low probability (11%) showers code 80 -> 🌦️
+                val (emoji80Low, label80Low) = activity.wmoCodeToInfo(code = 80, isDay = true, precipProb = 11)
+                assertEquals("11% shower chance must show sun-behind-rain-cloud 🌦️", "🌦️", emoji80Low)
+                assertEquals("Stray Shower", label80Low)
+
+                // High probability (75%) rain code 61 -> 🌧️ (Rain)
+                val (emoji61High, label61High) = activity.wmoCodeToInfo(code = 61, isDay = true, precipProb = 75)
+                assertEquals("75% rain chance should show full rain 🌧️", "🌧️", emoji61High)
+                assertEquals("Light Rain", label61High)
+
+                // 2. Test night behavior for slight rain
+                val (emojiNight, labelNight) = activity.wmoCodeToInfo(code = 61, isDay = false, precipProb = 11)
+                assertEquals("🌧️", emojiNight)
+                assertEquals("Nighttime isolated shower label", "Isolated Shower", labelNight)
+            }
+        }
+    }
+
     private fun <T : View> findAllViewsOfType(root: ViewGroup, clazz: Class<T>): List<T> {
         val out = mutableListOf<T>()
         for (i in 0 until root.childCount) {

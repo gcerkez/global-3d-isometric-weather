@@ -585,11 +585,13 @@ class ForecastActivity : Activity() {
         val lowStr = formatTempShort(selDay.tempMin)
         rangeFeelsView.text = "High $highStr • Low $lowStr • Wind ${selDay.windSpeedMax.roundToInt()} $windUnit"
 
+        val chipIcon = if (selDay.precipProbMax <= 25) "🌦️" else "🌧️"
         val rainChip = if (selDay.precipSum > 0.005) {
             val amt = if (precipUnit == "mm") "${String.format("%.1f", selDay.precipSum)}mm" else "${String.format("%.2f", selDay.precipSum)} in"
-            "🌧️ $amt precipitation expected (${selDay.precipProbMax}% max probability)"
+            "$chipIcon $amt precipitation expected (${selDay.precipProbMax}% max probability)"
         } else if (selDay.precipProbMax > 0) {
-            "💧 ${selDay.precipProbMax}% chance of rain"
+            val smallChip = if (selDay.precipProbMax <= 25) "🌦️" else "💧"
+            "$smallChip ${selDay.precipProbMax}% chance of rain"
         } else {
             "☀️ Dry conditions • 0% chance of rain"
         }
@@ -678,7 +680,7 @@ class ForecastActivity : Activity() {
             }
             iconBox.addView(tvIcon)
 
-            if (day.precipProbMax >= 20) {
+            if (day.precipProbMax >= 10 && (day.emoji == "🌦️" || day.emoji == "🌧️" || day.emoji == "🌨️" || day.emoji == "⛈️" || day.precipSum > 0.005 || day.precipProbMax >= 20)) {
                 val tvProb = TextView(this).apply {
                     text = "${day.precipProbMax}%"
                     textSize = 10f
@@ -846,7 +848,7 @@ class ForecastActivity : Activity() {
                     val hum = hourlyHum?.optInt(h, 50) ?: 50
                     val uv = hourlyUv?.optDouble(h, 0.0) ?: 0.0
 
-                    val (hEmoji, hLabelText) = wmoCodeToInfo(hCode, hourOfDay in 6..19)
+                    val (hEmoji, hLabelText) = wmoCodeToInfo(hCode, hourOfDay in 6..19, pop)
 
                     hours.add(
                         HourPoint(
@@ -868,7 +870,7 @@ class ForecastActivity : Activity() {
                 }
             }
 
-            val (dEmoji, dLabelText) = wmoCodeToInfo(code, isDay = true)
+            val (dEmoji, dLabelText) = wmoCodeToInfo(code, isDay = true, precipProb = pProb)
 
             out.add(
                 DayForecast(
@@ -926,6 +928,8 @@ class ForecastActivity : Activity() {
                 val t = minT + (maxT - minT) * (0.5 + 0.5 * kotlin.math.sin((h - 8) * Math.PI / 12.0))
                 val hourProb = if (pProb > 0 && h in 13..19) pProb else 0
                 val hourAmt = if (hourProb > 0) (pAmt / 6.0) else 0.0
+                val hCode = if (hourProb > 0) 61 else 0
+                val (hEmoji, hLabelText) = wmoCodeToInfo(hCode, h in 6..19, hourProb)
 
                 hours.add(
                     HourPoint(
@@ -936,9 +940,9 @@ class ForecastActivity : Activity() {
                         feelsLike = t - 1.5,
                         precipProb = hourProb,
                         precipAmount = hourAmt,
-                        weatherCode = if (pProb > 0) 61 else 0,
-                        conditionText = if (pProb > 0) "Rain Showers" else "Clear Sky",
-                        emoji = if (pProb > 0) "🌧️" else (if (h in 6..19) "☀️" else "🌙"),
+                        weatherCode = hCode,
+                        conditionText = hLabelText,
+                        emoji = hEmoji,
                         windSpeed = 8.0 + (h % 5),
                         humidity = 55 + (h % 20),
                         uvIndex = if (h in 10..16) 4.5 else 0.0
@@ -946,14 +950,17 @@ class ForecastActivity : Activity() {
                 )
             }
 
+            val dayCode = if (pProb > 0) 61 else 0
+            val (dEmoji, dLabelText) = wmoCodeToInfo(dayCode, isDay = true, precipProb = pProb)
+
             out.add(
                 DayForecast(
                     dateStr = "2026-10-2$i",
                     dayOfWeek = days[i],
                     formattedDate = "Oct ${20 + i}",
-                    weatherCode = if (pProb > 0) 61 else 0,
-                    conditionLabel = if (pProb > 0) "Scattered Showers" else "Sunny",
-                    emoji = if (pProb > 0) "🌧️" else "☀️",
+                    weatherCode = dayCode,
+                    conditionLabel = dLabelText,
+                    emoji = dEmoji,
                     tempMin = minT,
                     tempMax = maxT,
                     precipProbMax = pProb,
@@ -969,18 +976,57 @@ class ForecastActivity : Activity() {
         return out
     }
 
-    private fun wmoCodeToInfo(code: Int, isDay: Boolean): Pair<String, String> {
+    fun wmoCodeToInfo(code: Int, isDay: Boolean, precipProb: Int = 0): Pair<String, String> {
         return when (code) {
             0 -> if (isDay) "☀️" to "Clear Sky" else "🌙" to "Clear Sky"
             1 -> if (isDay) "🌤️" to "Mainly Clear" else "🌤️" to "Mainly Clear"
             2 -> "⛅" to "Partly Cloudy"
             3 -> "☁️" to "Overcast"
             45, 48 -> "🌫️" to "Foggy"
-            51, 53, 55 -> "🌦️" to "Drizzle"
-            61, 63 -> "🌧️" to "Rain"
+            51, 53, 55 -> { // Drizzle
+                if (isDay) {
+                    if (precipProb <= 20) "🌦️" to "Stray Drizzle"
+                    else "🌦️" to "Drizzle"
+                } else {
+                    "🌧️" to "Drizzle"
+                }
+            }
+            56, 57 -> "🌨️" to "Freezing Drizzle"
+            61 -> { // Slight Rain
+                if (isDay) {
+                    when {
+                        precipProb <= 20 -> "🌦️" to "Isolated Shower"
+                        precipProb <= 40 -> "🌦️" to "Passing Showers"
+                        precipProb < 60 -> "🌦️" to "Light Rain"
+                        else -> "🌧️" to "Light Rain"
+                    }
+                } else {
+                    if (precipProb <= 20) "🌧️" to "Isolated Shower" else "🌧️" to "Light Rain"
+                }
+            }
+            63 -> { // Moderate Rain
+                if (isDay && precipProb <= 20) "🌦️" to "Passing Shower"
+                else "🌧️" to "Rain"
+            }
             65 -> "🌧️" to "Heavy Rain"
+            66, 67 -> "🌨️" to "Freezing Rain"
             71, 73, 75, 77 -> "🌨️" to "Snow"
-            80, 81, 82 -> "🌧️" to "Rain Showers"
+            80 -> { // Rain Showers: Slight
+                if (isDay) {
+                    when {
+                        precipProb <= 20 -> "🌦️" to "Stray Shower"
+                        precipProb <= 50 -> "🌦️" to "Scattered Showers"
+                        else -> "🌧️" to "Rain Showers"
+                    }
+                } else {
+                    if (precipProb <= 20) "🌧️" to "Stray Shower" else "🌧️" to "Rain Showers"
+                }
+            }
+            81 -> { // Rain Showers: Moderate
+                if (isDay && precipProb <= 20) "🌦️" to "Passing Shower"
+                else "🌧️" to "Rain Showers"
+            }
+            82 -> "🌧️" to "Violent Rain Showers"
             85, 86 -> "🌨️" to "Snow Showers"
             95, 96, 99 -> "⛈️" to "Thunderstorm"
             else -> if (isDay) "☀️" to "Sunny" else "🌙" to "Clear"

@@ -483,7 +483,7 @@ Item {
                                 height: Math.round(38 * hudRoot.scaleFactor)
                                 radius: Math.round(5 * hudRoot.scaleFactor)
                                 color: Qt.rgba(0.12, 0.20, 0.28, 0.55)
-                                border.color: (modelData.precipProb >= 20) ? Qt.rgba(0.22, 0.74, 0.97, 0.45) : Qt.rgba(1, 1, 1, 0.14)
+                                border.color: (modelData.precipProb >= 10) ? Qt.rgba(0.22, 0.74, 0.97, 0.45) : Qt.rgba(1, 1, 1, 0.14)
                                 border.width: 1
 
                                 Column {
@@ -505,8 +505,8 @@ Item {
                                     }
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
-                                        text: (modelData.precipProb >= 20) ? (modelData.tempRange + " 💧" + modelData.precipProb + "%") : modelData.tempRange
-                                        color: (modelData.precipProb >= 20) ? "#7dd3fc" : "#ffffff"
+                                        text: (modelData.precipProb >= 10) ? (modelData.tempRange + " 💧" + modelData.precipProb + "%") : modelData.tempRange
+                                        color: (modelData.precipProb >= 10) ? "#7dd3fc" : "#ffffff"
                                         font.pixelSize: Math.max(7, Math.round(8 * hudRoot.scaleFactor))
                                         font.weight: Font.DemiBold
                                     }

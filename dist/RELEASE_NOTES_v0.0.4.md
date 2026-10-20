@@ -52,8 +52,9 @@ Release **v0.0.4** introduces a premium native **7-Day Interactive Forecast & Pr
   - `TempRangeBarView` drawing and current temperature indicator placement.
   - `ForecastGraphView` 24-hour canvas rendering and touch scrubber motion event handling.
   - Dual unit temperature formatting eliminating literal "BOTH" text.
+  - Intelligent precipitation icon scaling: low probability days (≤ 20%, e.g. 11%) now display sun-behind-rain-cloud (`🌦️`) and labels like "Isolated Shower" rather than full rain clouds (`🌧️`).
   - Widget pending intent targeting `ForecastActivity` rather than browser.
-* All 54 unit tests passing.
+* All 55 unit tests passing.
 
 ---
 
@@ -67,8 +68,9 @@ Release **v0.0.4** introduces a premium native **7-Day Interactive Forecast & Pr
 
 ### 🔐 Checksums (SHA-256)
 ```text
-a3f9f125ac7ee7827b8e133902fb9f6a43cd96240dd243ff7199d8caa2dcb983  global-3d-isometric-weather-v0.0.4.apk
-ab9760b9af9bb21e3eff188b0d8c69c92817443862f98ff97fb34bbf5d1192f3  global-3d-isometric-weather-v0.0.4.plasmoid
-d2a27a159d10f3f3c11bee6bc1218d763875d287c17e52abfe0eca6d923b360a  global-3d-isometric-weather-web-android-v0.0.4.zip
+9eea4de164c43afbb73aa8226ac872ea2ad69d3903b94071760a9f24e8c0580f  global-3d-isometric-weather-v0.0.4.apk
+8cbad6823cf94b7d838d869cb0d887d7e876f70c27a666591647f99f7d1195d6  global-3d-isometric-weather-v0.0.4.plasmoid
+2ea010a841a138621122c466f477e092bce7abff9f8ef91984b2ce18ed81fef8  global-3d-isometric-weather-web-android-v0.0.4.zip
 ```
+
 
