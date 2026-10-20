@@ -39,6 +39,18 @@
             </intent-filter>
         </activity>
 
+        <!-- Premium 7-Day Forecast & Precipitation Radar Activity -->
+        <activity
+            android:name=".ForecastActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+            <intent-filter>
+                <action android:name="com.antigravity.yorktownweather.ACTION_VIEW_FORECAST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <!-- Homescreen & Lockscreen AppWidget Provider -->
         <receiver
             android:name=".IsometricWeatherWidgetProvider"

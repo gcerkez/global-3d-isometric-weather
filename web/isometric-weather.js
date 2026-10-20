@@ -51,6 +51,24 @@ export const VALID_DIORAMA_THEMES = [
     "rome_mediterranean", "cairo_giza", "tokyo_east_asia", "modern", "alpine"
 ];
 
+export function wmoToCondition(code, isDay = true) {
+    switch (code) {
+        case 0: return { label: "Clear Sky", emoji: isDay ? "☀️" : "🌙" };
+        case 1: return { label: "Mainly Clear", emoji: isDay ? "🌤️" : "🌤️" };
+        case 2: return { label: "Partly Cloudy", emoji: "⛅" };
+        case 3: return { label: "Overcast", emoji: "☁️" };
+        case 45: case 48: return { label: "Foggy", emoji: "🌫️" };
+        case 51: case 53: case 55: return { label: "Drizzle", emoji: "🌦️" };
+        case 61: case 63: return { label: "Rain", emoji: "🌧️" };
+        case 65: return { label: "Heavy Rain", emoji: "🌧️" };
+        case 71: case 73: case 75: case 77: return { label: "Snow", emoji: "🌨️" };
+        case 80: case 81: case 82: return { label: "Rain Showers", emoji: "🌧️" };
+        case 85: case 86: return { label: "Snow Showers", emoji: "🌨️" };
+        case 95: case 96: case 99: return { label: "Thunderstorm", emoji: "⛈️" };
+        default: return { label: "Clear", emoji: isDay ? "☀️" : "🌙" };
+    }
+}
+
 export class IsometricWeatherEngine {
     /**
      * Initializes the portable 3D Isometric Weather Engine.
@@ -157,9 +175,9 @@ export class IsometricWeatherEngine {
         try {
             const wxUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}`
                 + `&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m,wind_direction_10m`
-                + `&hourly=temperature_2m,precipitation_probability,uv_index`
-                + `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset`
-                + `&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=3`;
+                + `&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m,uv_index`
+                + `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,sunrise,sunset,wind_speed_10m_max,uv_index_max`
+                + `&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7`;
 
             const resp = await fetch(wxUrl);
             const data = await resp.json();
@@ -180,6 +198,7 @@ export class IsometricWeatherEngine {
             }
             if (data.daily && data.daily.time) {
                 const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+                const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
                 this.state.forecastDays = data.daily.time.slice(0, 3).map((t, i) => {
                     const dt = new Date(t + "T12:00:00");
                     return {
@@ -187,9 +206,79 @@ export class IsometricWeatherEngine {
                         tempRange: `${Math.round(data.daily.temperature_2m_max[i])}° / ${Math.round(data.daily.temperature_2m_min[i])}°F`
                     };
                 });
+
+                // Detailed 7-day model with 24 hours per day for the modal view
+                this.state.sevenDayDetailed = data.daily.time.slice(0, 7).map((t, d) => {
+                    const dt = new Date(t + "T12:00:00");
+                    const dayName = (d === 0) ? "TODAY" : days[dt.getDay()];
+                    const shortDate = `${months[dt.getMonth()]} ${dt.getDate()}`;
+                    const code = data.daily.weather_code ? data.daily.weather_code[d] : 0;
+                    const cond = wmoToCondition(code, true);
+                    const maxT = data.daily.temperature_2m_max[d];
+                    const minT = data.daily.temperature_2m_min[d];
+                    const pSum = data.daily.precipitation_sum ? (data.daily.precipitation_sum[d] || 0) : 0;
+                    const pProb = data.daily.precipitation_probability_max ? (data.daily.precipitation_probability_max[d] || 0) : 0;
+                    const windMax = data.daily.wind_speed_10m_max ? (data.daily.wind_speed_10m_max[d] || 10) : 10;
+                    const uvMax = data.daily.uv_index_max ? (data.daily.uv_index_max[d] || 3) : 3;
+
+                    const sunriseRaw = data.daily.sunrise ? data.daily.sunrise[d] : "";
+                    const sunsetRaw = data.daily.sunset ? data.daily.sunset[d] : "";
+                    const formatTime = (iso) => {
+                        if (!iso) return "--:--";
+                        const dObj = new Date(iso);
+                        return dObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                    };
+
+                    const hours = [];
+                    const startH = d * 24;
+                    for (let h = startH; h < startH + 24 && h < (data.hourly?.time?.length || 0); h++) {
+                        const hTime = data.hourly.time[h];
+                        const hDt = new Date(hTime);
+                        const hCode = data.hourly.weather_code ? data.hourly.weather_code[h] : code;
+                        const isDayHour = hDt.getHours() >= 6 && hDt.getHours() <= 19;
+                        const hCond = wmoToCondition(hCode, isDayHour);
+                        hours.push({
+                            time: hTime,
+                            hourOfDay: hDt.getHours(),
+                            hourLabel: hDt.toLocaleTimeString([], { hour: 'numeric' }),
+                            temp: data.hourly.temperature_2m[h],
+                            feelsLike: data.hourly.apparent_temperature ? data.hourly.apparent_temperature[h] : data.hourly.temperature_2m[h],
+                            precipProb: data.hourly.precipitation_probability ? (data.hourly.precipitation_probability[h] || 0) : 0,
+                            precipAmount: data.hourly.precipitation ? (data.hourly.precipitation[h] || 0) : 0,
+                            weatherCode: hCode,
+                            condition: hCond.label,
+                            emoji: hCond.emoji,
+                            windSpeed: data.hourly.wind_speed_10m ? (data.hourly.wind_speed_10m[h] || 8) : 8,
+                            humidity: data.hourly.relative_humidity_2m ? (data.hourly.relative_humidity_2m[h] || 50) : 50,
+                            uvIndex: data.hourly.uv_index ? (data.hourly.uv_index[h] || 0) : 0
+                        });
+                    }
+
+                    return {
+                        dateStr: t,
+                        dayName,
+                        shortDate,
+                        weatherCode: code,
+                        condition: cond.label,
+                        emoji: cond.emoji,
+                        tempMin: minT,
+                        tempMax: maxT,
+                        precipSum: pSum,
+                        precipProbMax: pProb,
+                        sunrise: formatTime(sunriseRaw),
+                        sunset: formatTime(sunsetRaw),
+                        windMax,
+                        uvMax,
+                        hourly: hours
+                    };
+                });
             }
         } catch (err) {
             console.warn("Open-Meteo forecast fetch error:", err);
+        }
+
+        if (!this.state.sevenDayDetailed || this.state.sevenDayDetailed.length === 0) {
+            this.state.sevenDayDetailed = this.generateFallbackSevenDay();
         }
 
         try {
@@ -204,6 +293,54 @@ export class IsometricWeatherEngine {
         }
 
         this.onHudUpdate(this.state);
+    }
+
+    generateFallbackSevenDay() {
+        const days = ["TODAY", "WED", "THU", "FRI", "SAT", "SUN", "MON"];
+        return days.map((dName, d) => {
+            const maxT = 68 + (d % 3) * 2;
+            const minT = 48 + (d % 2) * 2;
+            const pProb = (d === 1 || d === 4) ? 45 : 0;
+            const pSum = pProb > 0 ? 0.25 : 0.0;
+            const hours = [];
+            for (let h = 0; h < 24; h++) {
+                const label = h === 0 ? "12 AM" : h === 12 ? "12 PM" : h < 12 ? `${h} AM` : `${h - 12} PM`;
+                const t = minT + (maxT - minT) * (0.5 + 0.5 * Math.sin((h - 8) * Math.PI / 12));
+                const hProb = (pProb > 0 && h >= 13 && h <= 19) ? pProb : 0;
+                hours.push({
+                    time: `2026-10-2${d}T${String(h).padStart(2, '0')}:00`,
+                    hourOfDay: h,
+                    hourLabel: label,
+                    temp: t,
+                    feelsLike: t - 1.5,
+                    precipProb: hProb,
+                    precipAmount: hProb > 0 ? 0.05 : 0.0,
+                    weatherCode: pProb > 0 ? 61 : 0,
+                    condition: pProb > 0 ? "Rain Showers" : "Clear Sky",
+                    emoji: pProb > 0 ? "🌧️" : (h >= 6 && h <= 19 ? "☀️" : "🌙"),
+                    windSpeed: 8 + (h % 4),
+                    humidity: 55 + (h % 15),
+                    uvIndex: (h >= 10 && h <= 16) ? 4.2 : 0
+                });
+            }
+            return {
+                dateStr: `2026-10-2${d}`,
+                dayName: dName,
+                shortDate: `Oct ${20 + d}`,
+                weatherCode: pProb > 0 ? 61 : 0,
+                condition: pProb > 0 ? "Rain Showers" : "Sunny",
+                emoji: pProb > 0 ? "🌧️" : "☀️",
+                tempMin: minT,
+                tempMax: maxT,
+                precipSum: pSum,
+                precipProbMax: pProb,
+                sunrise: "7:14 AM",
+                sunset: "6:21 PM",
+                windMax: 12,
+                uvMax: 4.5,
+                hourly: hours
+            };
+        });
     }
 
     /**

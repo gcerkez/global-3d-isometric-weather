@@ -292,19 +292,19 @@ class IsometricWeatherWidgetProvider : AppWidgetProvider() {
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
 
-                // 7-day & hourly detailed forecast URL for the active telemetry coordinates
-                val forecastUrl = if (cfg.lat >= 18.0 && cfg.lat <= 72.0 && cfg.lon >= -170.0 && cfg.lon <= -65.0) {
-                    "https://forecast.weather.gov/MapClick.php?lat=${cfg.lat}&lon=${cfg.lon}"
-                } else {
-                    "https://weather.com/weather/today/l/${cfg.lat},${cfg.lon}"
-                }
-                val browserIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(forecastUrl)).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                // 7-day interactive forecast & precipitation radar view for the active coordinates
+                val forecastIntent = Intent(context, ForecastActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    putExtra("lat", cfg.lat)
+                    putExtra("lon", cfg.lon)
+                    putExtra("location_name", cfg.locationName)
+                    putExtra("temp_unit", cfg.tempUnit)
+                    putExtra("wind_unit", cfg.windUnit)
                 }
                 val pendingOpenForecast = PendingIntent.getActivity(
                     context,
                     201,
-                    browserIntent,
+                    forecastIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
 

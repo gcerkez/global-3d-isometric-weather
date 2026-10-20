@@ -421,6 +421,24 @@ class MainActivity : Activity() {
         }
         layout.addView(presetRow)
 
+        // 7-Day Forecast & Precipitation Radar Button
+        val btnOpenForecast = makeStyledButton("📅 View 7-Day Forecast & Precipitation Radar") {
+            val intent = Intent(this, ForecastActivity::class.java).apply {
+                putExtra("lat", prefs.getFloat("latitude", 37.1310f).toDouble())
+                putExtra("lon", prefs.getFloat("longitude", -76.4452f).toDouble())
+                putExtra("location_name", prefs.getString("locationName", "Yorktown, VA"))
+                putExtra("temp_unit", prefs.getString("tempUnit", "F"))
+                putExtra("wind_unit", prefs.getString("windUnit", "MPH"))
+            }
+            startActivity(intent)
+        }.apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(44)).apply {
+                topMargin = dp(14)
+            }
+            textSize = 13f
+        }
+        layout.addView(btnOpenForecast)
+
         scroll.addView(layout)
         return scroll
     }

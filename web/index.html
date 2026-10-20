@@ -2,51 +2,52 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Global 3D Isometric Weather Widget</title>
-  <link rel="manifest" href="manifest.json" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    :root {
-      --hud-bg: rgba(45, 65, 84, 0.84);
-      --hud-border: rgba(255, 255, 255, 0.25);
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Noto Sans", system-ui, sans-serif; }
-    body {
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
       background: #0d1b2a;
-      color: #ffffff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
       overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      user-select: none;
     }
     .widget-frame {
       position: relative;
-      width: min(96vw, 960px);
-      aspect-ratio: 1376 / 768;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
-      border: 1.5px solid rgba(188, 224, 247, 0.65);
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at 50% 30%, #1b263b 0%, #0d1b2a 100%);
     }
-    canvas {
+    canvas#isoCanvas {
       width: 100%;
       height: 100%;
-      display: block;
+      object-fit: contain;
+      image-rendering: auto;
     }
     .hud-card {
       position: absolute;
-      top: 18px;
-      right: 18px;
-      width: 280px;
-      background: var(--hud-bg);
-      backdrop-filter: blur(12px);
-      border: 1px solid var(--hud-border);
-      border-radius: 14px;
-      padding: 14px 16px;
-      user-select: none;
+      top: 16px;
+      left: 16px;
+      background: rgba(20, 32, 44, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: #fff;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+      min-width: 260px;
+      max-width: calc(100vw - 32px);
+      box-sizing: border-box;
+      z-index: 10;
     }
-    .hud-condition { font-size: 13px; font-weight: 700; letter-spacing: 0.7px; }
+    .hud-condition { font-size: 11px; font-weight: 700; color: #7ec3ed; letter-spacing: 0.8px; text-transform: uppercase; }
     .hud-temp { font-size: 17px; font-weight: 800; margin-top: 2px; }
     .hud-meta { font-size: 12px; color: #ebf4fa; margin-top: 2px; }
     .hud-divider { height: 1px; background: rgba(255, 255, 255, 0.2); margin: 10px 0; }
@@ -81,6 +82,7 @@
       padding: 4px 11px;
       font-size: 11px;
       color: #eef6fc;
+      z-index: 5;
     }
     .camera-pill {
       display: none;
@@ -93,6 +95,7 @@
       border-radius: 16px;
       padding: 3px 8px;
       user-select: none;
+      z-index: 5;
     }
     .camera-pill button {
       background: transparent;
@@ -111,13 +114,174 @@
       transform: scale(0.86) !important;
       background: rgba(110, 168, 215, 0.70) !important;
     }
+
+    /* 7-Day Forecast & Precipitation Modal */
+    .forecast-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(4, 9, 18, 0.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      box-sizing: border-box;
+      opacity: 0;
+      transition: opacity 0.22s ease;
+    }
+    .forecast-modal-overlay.open {
+      display: flex;
+      opacity: 1;
+    }
+    .forecast-modal-card {
+      background: #0b1322;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 18px;
+      width: 100%;
+      max-width: 620px;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85);
+      color: #fff;
+      overflow: hidden;
+      animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes modalSlideUp {
+      from { transform: translateY(24px) scale(0.97); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .modal-header {
+      padding: 12px 18px;
+      background: #0f1a2e;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-title { font-size: 16px; font-weight: 800; color: #fff; }
+    .modal-subtitle { font-size: 11px; color: #94a3b8; margin-top: 1px; }
+    .btn-close-modal {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #fff;
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.08s, background 0.1s;
+    }
+    .btn-close-modal:hover { background: rgba(255, 255, 255, 0.22); }
+    .btn-close-modal:active { transform: scale(0.88); }
+    .modal-body {
+      padding: 14px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .modal-hero-card, .modal-graph-card, .modal-metrics-card, .modal-outlook-card {
+      background: #101c2e;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .hero-temp-row { display: flex; align-items: center; gap: 14px; }
+    .hero-temp-large { font-size: 38px; font-weight: 800; }
+    .hero-cond-title { font-size: 15px; font-weight: 700; color: #ffd166; }
+    .hero-cond-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+    .hero-chip {
+      margin-top: 10px;
+      background: rgba(30, 58, 138, 0.4);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 11.5px;
+      color: #38bdf8;
+    }
+    .graph-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .graph-title { font-size: 13px; font-weight: 700; color: #fff; }
+    .graph-pills { display: flex; gap: 5px; }
+    .graph-pill-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #94a3b8;
+      border-radius: 12px;
+      padding: 3px 9px;
+      font-size: 10.5px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .graph-pill-btn.active {
+      background: #ffd166;
+      color: #070d18;
+      border-color: #ffd166;
+    }
+    .graph-canvas-box {
+      width: 100%;
+      height: 190px;
+      position: relative;
+    }
+    #forecastCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+    .graph-hint { font-size: 10px; color: #64748b; text-align: center; margin-top: 5px; }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .metric-tile {
+      background: #0b1523;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 9px 12px;
+    }
+    .metric-tile-title { font-size: 9.5px; color: #94a3b8; font-weight: 700; }
+    .metric-tile-val { font-size: 14px; font-weight: 800; color: #fff; margin-top: 2px; }
+    .metric-tile-sub { font-size: 10px; color: #38bdf8; margin-top: 1px; }
+
+    /* 7-Day Rows */
+    .outlook-title { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+    .outlook-sub { font-size: 10.5px; color: #94a3b8; margin-bottom: 8px; }
+    .day-row {
+      display: flex;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: #0b1523;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .day-row:hover { background: #132238; border-color: rgba(255, 255, 255, 0.18); }
+    .day-row.active {
+      background: #162a47;
+      border-color: #ffd166;
+    }
+    .day-name { width: 54px; font-size: 11.5px; font-weight: 700; color: #fff; }
+    .day-row.active .day-name { color: #ffd166; }
+    .day-icon-box { width: 54px; display: flex; align-items: center; gap: 4px; font-size: 14px; }
+    .day-pop { font-size: 9.5px; color: #38bdf8; font-weight: 700; }
+    .day-min { width: 28px; text-align: right; font-size: 11px; color: #94a3b8; }
+    .day-bar-box { flex: 1; margin: 0 8px; position: relative; height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
+    .day-bar-pill { position: absolute; height: 100%; border-radius: 3px; }
+    .cur-dot { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: #fff; top: 0; transform: translateX(-50%); box-shadow: 0 0 5px #fff; }
+    .day-max { width: 28px; text-align: left; font-size: 11.5px; font-weight: 700; color: #fff; }
   </style>
 </head>
 <body>
   <div class="widget-frame">
     <canvas id="isoCanvas" width="1376" height="768"></canvas>
 
-    <div class="hud-card" id="hudCard">
+    <div class="hud-card" id="hudCard" style="cursor:pointer;" title="Tap to view 7-day forecast & precipitation graph">
       <div style="display:flex; justify-content:space-between; align-items:baseline;">
         <div class="hud-condition" id="hudCondition">CLEAR WEATHER</div>
         <div class="hud-clock" id="hudClock" style="font-size:13px; font-weight:800; color:#93c5fd; letter-spacing:0.5px;">--:-- --</div>
@@ -131,9 +295,9 @@
         <span class="pill" id="hudAqi" style="color:#4cd137">AQI 24 GOOD</span>
         <span class="pill" id="hudUv" style="color:#fbc531">UV 3.2</span>
         <span class="pill" id="hudMoon">🌔 Waxing Gibbous</span>
-        <a id="hudForecastLink" target="_blank" rel="noopener noreferrer" class="pill" style="color:#60a5fa; text-decoration:none; cursor:pointer;" title="Open detailed 7-day weather forecast">🌐 7-Day Forecast ↗</a>
+        <span id="hudForecastLink" class="pill" style="color:#60a5fa; cursor:pointer;" title="Open detailed 7-day weather forecast">📅 7-Day Forecast</span>
       </div>
-      <div class="hud-controls">
+      <div class="hud-controls" onclick="event.stopPropagation();">
         <input id="citySearch" type="text" placeholder="Search any city..." />
         <button id="btnSearch">Go</button>
         <button id="btnAutoLoc" title="Detect Current Computer Location">📍 My Loc</button>
@@ -193,6 +357,81 @@
     <div class="location-badge" id="locBadge">Yorktown, VA • 3D Isometric</div>
   </div>
 
+  <!-- 7-Day Forecast & Precipitation Radar Modal -->
+  <div class="forecast-modal-overlay" id="forecastModal">
+    <div class="forecast-modal-card">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="mLocationTitle">📍 Yorktown, VA</div>
+          <div class="modal-subtitle">7-Day Forecast &amp; Precipitation Radar</div>
+        </div>
+        <button class="btn-close-modal" id="btnCloseModal" title="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Hero Card -->
+        <div class="modal-hero-card">
+          <div class="hero-temp-row">
+            <div class="hero-temp-large" id="mHeroTemp">68°F</div>
+            <div>
+              <div class="hero-cond-title" id="mHeroCond">☀️ Clear Sky</div>
+              <div class="hero-cond-sub" id="mHeroSub">High 72° • Low 48° • Feels 67°</div>
+            </div>
+          </div>
+          <div class="hero-chip" id="mHeroChip">💧 0% chance of precipitation today</div>
+        </div>
+
+        <!-- 24-Hour Graph Card -->
+        <div class="modal-graph-card">
+          <div class="graph-header">
+            <div class="graph-title" id="mGraphTitle">Hourly Breakdown • TODAY</div>
+            <div class="graph-pills">
+              <button class="graph-pill-btn active" id="btnPillPrecip">🌧️ Precip</button>
+              <button class="graph-pill-btn" id="btnPillTemp">🌡️ Temp</button>
+              <button class="graph-pill-btn" id="btnPillWind">💨 Wind</button>
+            </div>
+          </div>
+          <div class="graph-canvas-box">
+            <canvas id="forecastCanvas"></canvas>
+          </div>
+          <div class="graph-hint" id="mGraphHint">👆 Move mouse or finger across the graph to inspect hourly details.</div>
+        </div>
+
+        <!-- Selected Day Key Metrics Grid -->
+        <div class="modal-metrics-card">
+          <div class="metrics-grid">
+            <div class="metric-tile">
+              <div class="metric-tile-title">🌧️ PRECIPITATION</div>
+              <div class="metric-tile-val" id="mTilePrecipVal">0.00 in</div>
+              <div class="metric-tile-sub" id="mTilePrecipSub">Peak chance: 0%</div>
+            </div>
+            <div class="metric-tile">
+              <div class="metric-tile-title">🌅 SUN CYCLE</div>
+              <div class="metric-tile-val" id="mTileSunVal">7:14 AM</div>
+              <div class="metric-tile-sub" id="mTileSunSub">Sunset: 6:21 PM</div>
+            </div>
+            <div class="metric-tile">
+              <div class="metric-tile-title">💨 WIND &amp; GUSTS</div>
+              <div class="metric-tile-val" id="mTileWindVal">8 MPH</div>
+              <div class="metric-tile-sub" id="mTileWindSub">Direction: NNE</div>
+            </div>
+            <div class="metric-tile">
+              <div class="metric-tile-title">☀️ UV &amp; HUMIDITY</div>
+              <div class="metric-tile-val" id="mTileUvVal">3.2 Mod</div>
+              <div class="metric-tile-sub" id="mTileUvSub">Avg Humidity: 60%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7-Day Outlook List -->
+        <div class="modal-outlook-card">
+          <div class="outlook-title">📅 7-DAY OUTLOOK</div>
+          <div class="outlook-sub">Tap any day to view its 24-hour precipitation curve and conditions</div>
+          <div id="mWeeklyList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     import { IsometricWeatherEngine } from "./isometric-weather.js";
 
@@ -205,13 +444,6 @@
     }
     setInterval(updateLiveClock, 1000);
     updateLiveClock();
-
-    function getForecastUrl(lat, lon) {
-      if (lat >= 24 && lat <= 50 && lon >= -125 && lon <= -66) {
-        return `https://forecast.weather.gov/MapClick.php?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}`;
-      }
-      return `https://weather.com/weather/today/l/${lat.toFixed(4)},${lon.toFixed(4)}`;
-    }
 
     const canvas = document.getElementById("isoCanvas");
     const engine = new IsometricWeatherEngine(canvas, {
@@ -227,17 +459,393 @@
         document.getElementById("hudMoon").textContent = `${moon.emoji} ${moon.name}`;
         document.getElementById("locBadge").textContent = `${st.locationName} • 3D Isometric`;
 
-        const fUrl = getForecastUrl(st.latitude, st.longitude);
-        const fLink = document.getElementById("hudForecastLink");
-        if (fLink) {
-          fLink.href = fUrl;
-        }
+        updateForecastModalUI();
       }
     });
     window.isoEngine = engine;
 
     engine.start();
     engine.refreshAll();
+
+    // --- 7-Day Forecast & Precipitation Radar Modal Controller ---
+    const modal = document.getElementById("forecastModal");
+    const btnCloseModal = document.getElementById("btnCloseModal");
+    const fCanvas = document.getElementById("forecastCanvas");
+    let fCtx = null;
+    let selectedDayIdx = 0;
+    let graphMode = "precip"; // "precip" | "temp" | "wind"
+    let scrubbedHourIdx = null;
+
+    function openForecastModal() {
+      modal.classList.add("open");
+      updateForecastModalUI();
+      initGraphCanvas();
+      drawGraph();
+    }
+
+    function closeForecastModal() {
+      modal.classList.remove("open");
+      scrubbedHourIdx = null;
+    }
+
+    document.getElementById("hudForecastLink").addEventListener("click", (e) => {
+      e.stopPropagation();
+      openForecastModal();
+    });
+
+    document.getElementById("hudCard").addEventListener("click", (e) => {
+      if (!e.target.closest(".hud-controls") && !e.target.closest("button") && !e.target.closest("input") && !e.target.closest("select")) {
+        openForecastModal();
+      }
+    });
+
+    btnCloseModal.addEventListener("click", closeForecastModal);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeForecastModal();
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modal.classList.contains("open")) closeForecastModal();
+    });
+
+    // Metric Mode Switcher
+    const btnPillPrecip = document.getElementById("btnPillPrecip");
+    const btnPillTemp = document.getElementById("btnPillTemp");
+    const btnPillWind = document.getElementById("btnPillWind");
+
+    btnPillPrecip.addEventListener("click", () => setGraphMode("precip"));
+    btnPillTemp.addEventListener("click", () => setGraphMode("temp"));
+    btnPillWind.addEventListener("click", () => setGraphMode("wind"));
+
+    function setGraphMode(mode) {
+      graphMode = mode;
+      btnPillPrecip.classList.toggle("active", mode === "precip");
+      btnPillTemp.classList.toggle("active", mode === "temp");
+      btnPillWind.classList.toggle("active", mode === "wind");
+      drawGraph();
+    }
+
+    function updateForecastModalUI() {
+      const st = engine.state;
+      const days = st.sevenDayDetailed || [];
+      if (days.length === 0) return;
+
+      const selDay = days[selectedDayIdx] || days[0];
+      const curTempF = Math.round(st.tempF);
+      const curTempC = Math.round((st.tempF - 32) * 5 / 9);
+
+      document.getElementById("mLocationTitle").textContent = `📍 ${st.locationName}`;
+      document.getElementById("mHeroTemp").textContent = `${curTempF}°F (${curTempC}°C)`;
+      document.getElementById("mHeroCond").textContent = `${selDay.emoji} ${selDay.condition}`;
+      document.getElementById("mHeroSub").textContent = `High ${Math.round(selDay.tempMax)}° • Low ${Math.round(selDay.tempMin)}° • Wind ${Math.round(selDay.windMax)} MPH`;
+
+      const rainChipText = selDay.precipSum > 0.005
+        ? `🌧️ ${selDay.precipSum.toFixed(2)} in expected precipitation (${selDay.precipProbMax}% peak chance)`
+        : (selDay.precipProbMax > 0 ? `💧 ${selDay.precipProbMax}% chance of rain` : `☀️ Dry conditions • 0% chance of rain`);
+      document.getElementById("mHeroChip").textContent = rainChipText;
+
+      document.getElementById("mGraphTitle").textContent = `Hourly Breakdown • ${selDay.dayName}`;
+
+      document.getElementById("mTilePrecipVal").textContent = `${selDay.precipSum.toFixed(2)} in`;
+      document.getElementById("mTilePrecipSub").textContent = `Peak chance: ${selDay.precipProbMax}%`;
+      document.getElementById("mTileSunVal").textContent = selDay.sunrise;
+      document.getElementById("mTileSunSub").textContent = `Sunset: ${selDay.sunset}`;
+      document.getElementById("mTileWindVal").textContent = `${Math.round(selDay.windMax)} MPH`;
+      document.getElementById("mTileWindSub").textContent = "Max gusts";
+      const uvL = selDay.uvMax < 3 ? "Low" : (selDay.uvMax < 6 ? "Moderate" : "High");
+      document.getElementById("mTileUvVal").textContent = `${selDay.uvMax.toFixed(1)} ${uvL}`;
+      const avgHum = Math.round(selDay.hourly.reduce((acc, h) => acc + h.humidity, 0) / (selDay.hourly.length || 1));
+      document.getElementById("mTileUvSub").textContent = `Avg Humidity: ${avgHum}%`;
+
+      // Render 7-day outlook list with Apple-style temperature range gradient bars
+      const listContainer = document.getElementById("mWeeklyList");
+      listContainer.innerHTML = "";
+
+      const weekMin = Math.min(...days.map(d => d.tempMin));
+      const weekMax = Math.max(...days.map(d => d.tempMax));
+      const totalRange = Math.max(1, weekMax - weekMin);
+
+      days.forEach((day, idx) => {
+        const isSelected = (idx === selectedDayIdx);
+        const isToday = (idx === 0);
+        const row = document.createElement("div");
+        row.className = `day-row ${isSelected ? 'active' : ''}`;
+
+        const leftPct = Math.max(0, Math.min(100, ((day.tempMin - weekMin) / totalRange) * 100));
+        const rightPct = Math.max(0, Math.min(100, ((day.tempMax - weekMin) / totalRange) * 100));
+        const widthPct = Math.max(4, rightPct - leftPct);
+
+        let dotHtml = "";
+        if (isToday) {
+          const curPct = Math.max(0, Math.min(100, ((st.tempF - weekMin) / totalRange) * 100));
+          dotHtml = `<div class="cur-dot" style="left:${curPct}%;"></div>`;
+        }
+
+        row.innerHTML = `
+          <div class="day-name">${isToday ? 'TODAY' : day.dayName}</div>
+          <div class="day-icon-box">
+            <span>${day.emoji}</span>
+            ${day.precipProbMax >= 20 ? `<span class="day-pop">${day.precipProbMax}%</span>` : ''}
+          </div>
+          <div class="day-min">${Math.round(day.tempMin)}°</div>
+          <div class="day-bar-box">
+            <div class="day-bar-pill" style="left:${leftPct}%; width:${widthPct}%; background: linear-gradient(90deg, #38bdf8, #ffd166);"></div>
+            ${dotHtml}
+          </div>
+          <div class="day-max">${Math.round(day.tempMax)}°</div>
+        `;
+
+        row.addEventListener("click", () => {
+          selectedDayIdx = idx;
+          updateForecastModalUI();
+          drawGraph();
+        });
+
+        listContainer.appendChild(row);
+      });
+
+      drawGraph();
+    }
+
+    // --- HTML5 Canvas 24-Hour Graph Drawing & Touch Scrubber ---
+    function initGraphCanvas() {
+      if (!fCtx) {
+        fCtx = fCanvas.getContext("2d");
+      }
+      const rect = fCanvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      fCanvas.width = (rect.width || 560) * dpr;
+      fCanvas.height = (rect.height || 190) * dpr;
+    }
+
+    window.addEventListener("resize", () => {
+      if (modal.classList.contains("open")) {
+        initGraphCanvas();
+        drawGraph();
+      }
+    });
+
+    function drawGraph() {
+      if (!fCtx || !modal.classList.contains("open")) return;
+      const days = engine.state.sevenDayDetailed || [];
+      const selDay = days[selectedDayIdx] || days[0];
+      if (!selDay || !selDay.hourly) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      const w = fCanvas.width;
+      const h = fCanvas.height;
+      fCtx.clearRect(0, 0, w, h);
+
+      const padL = 36 * dpr;
+      const padR = 14 * dpr;
+      const padT = 24 * dpr;
+      const padB = 26 * dpr;
+      const chartW = w - padL - padR;
+      const chartH = h - padT - padB;
+
+      const hours = selDay.hourly;
+      const count = hours.length;
+      const stepX = chartW / count;
+
+      // Draw Grid lines
+      fCtx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+      fCtx.lineWidth = 1 * dpr;
+      fCtx.font = `${9.5 * dpr}px sans-serif`;
+      fCtx.fillStyle = "#64748b";
+      fCtx.textAlign = "right";
+
+      if (graphMode === "precip") {
+        [100, 75, 50, 25, 0].forEach(pct => {
+          const y = padT + chartH * (1 - pct / 100);
+          fCtx.beginPath();
+          fCtx.moveTo(padL, y);
+          fCtx.lineTo(padL + chartW, y);
+          fCtx.stroke();
+          fCtx.fillText(`${pct}%`, padL - 5 * dpr, y + 3 * dpr);
+        });
+
+        // Draw Bars
+        const barW = Math.max(4 * dpr, stepX * 0.65);
+        hours.forEach((pt, i) => {
+          const cx = padL + i * stepX + stepX / 2;
+          const barH = chartH * (pt.precipProb / 100);
+          const top = padT + chartH - barH;
+
+          if (barH > 1) {
+            const grad = fCtx.createLinearGradient(0, top, 0, padT + chartH);
+            grad.addColorStop(0, "#38bdf8");
+            grad.addColorStop(1, "#1d4ed8");
+            fCtx.fillStyle = grad;
+            fCtx.beginPath();
+            fCtx.roundRect(cx - barW / 2, top, barW, barH, [3 * dpr, 3 * dpr, 0, 0]);
+            fCtx.fill();
+          }
+
+          if (pt.precipProb >= 20) {
+            fCtx.font = `bold ${9 * dpr}px sans-serif`;
+            fCtx.fillStyle = "#7dd3fc";
+            fCtx.textAlign = "center";
+            fCtx.fillText(`${pt.precipProb}%`, cx, top - 3 * dpr);
+          }
+        });
+      } else if (graphMode === "temp") {
+        const minT = Math.min(...hours.map(h => h.temp));
+        const maxT = Math.max(...hours.map(h => h.temp));
+        const range = Math.max(6, maxT - minT);
+
+        [maxT, (minT + maxT) / 2, minT].forEach(t => {
+          const frac = (t - minT) / range;
+          const y = padT + chartH * (1 - frac);
+          fCtx.beginPath();
+          fCtx.moveTo(padL, y);
+          fCtx.lineTo(padL + chartW, y);
+          fCtx.stroke();
+          fCtx.fillText(`${Math.round(t)}°`, padL - 5 * dpr, y + 3 * dpr);
+        });
+
+        const points = hours.map((pt, i) => ({
+          x: padL + i * stepX + stepX / 2,
+          y: padT + chartH * (1 - (pt.temp - minT) / range)
+        }));
+
+        if (points.length > 1) {
+          fCtx.beginPath();
+          fCtx.moveTo(points[0].x, points[0].y);
+          for (let i = 0; i < points.length - 1; i++) {
+            const xc = (points[i].x + points[i + 1].x) / 2;
+            const yc = (points[i].y + points[i + 1].y) / 2;
+            fCtx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+          }
+          fCtx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+          fCtx.strokeStyle = "#ffd166";
+          fCtx.lineWidth = 2.5 * dpr;
+          fCtx.stroke();
+
+          // Fill area underneath
+          fCtx.lineTo(points[points.length - 1].x, padT + chartH);
+          fCtx.lineTo(points[0].x, padT + chartH);
+          fCtx.closePath();
+          const fillGrad = fCtx.createLinearGradient(0, padT, 0, padT + chartH);
+          fillGrad.addColorStop(0, "rgba(255, 209, 102, 0.35)");
+          fillGrad.addColorStop(1, "rgba(255, 209, 102, 0.02)");
+          fCtx.fillStyle = fillGrad;
+          fCtx.fill();
+        }
+      } else if (graphMode === "wind") {
+        const maxW = Math.max(15, ...hours.map(h => h.windSpeed));
+        [maxW, maxW / 2, 0].forEach(wVal => {
+          const y = padT + chartH * (1 - wVal / maxW);
+          fCtx.beginPath();
+          fCtx.moveTo(padL, y);
+          fCtx.lineTo(padL + chartW, y);
+          fCtx.stroke();
+          fCtx.fillText(`${Math.round(wVal)}`, padL - 5 * dpr, y + 3 * dpr);
+        });
+
+        const barW = Math.max(4 * dpr, stepX * 0.6);
+        hours.forEach((pt, i) => {
+          const cx = padL + i * stepX + stepX / 2;
+          const barH = chartH * (pt.windSpeed / maxW);
+          const top = padT + chartH - barH;
+
+          const grad = fCtx.createLinearGradient(0, top, 0, padT + chartH);
+          grad.addColorStop(0, "#34d399");
+          grad.addColorStop(1, "#065f46");
+          fCtx.fillStyle = grad;
+          fCtx.beginPath();
+          fCtx.roundRect(cx - barW / 2, top, barW, barH, [3 * dpr, 3 * dpr, 0, 0]);
+          fCtx.fill();
+
+          if (pt.windSpeed >= 5) {
+            fCtx.font = `bold ${8.5 * dpr}px sans-serif`;
+            fCtx.fillStyle = "#a7f3d0";
+            fCtx.textAlign = "center";
+            fCtx.fillText(`${Math.round(pt.windSpeed)}`, cx, top - 3 * dpr);
+          }
+        });
+      }
+
+      // Time axis labels
+      fCtx.font = `bold ${9 * dpr}px sans-serif`;
+      fCtx.fillStyle = "#94a3b8";
+      fCtx.textAlign = "center";
+      hours.forEach((pt, i) => {
+        if (i % 3 === 0 || i === count - 1) {
+          const cx = padL + i * stepX + stepX / 2;
+          fCtx.fillText(pt.hourLabel, cx, padT + chartH + 16 * dpr);
+        }
+      });
+
+      // Interactive Scrubber Tooltip
+      if (scrubbedHourIdx !== null && scrubbedHourIdx in hours) {
+        const pt = hours[scrubbedHourIdx];
+        const cx = padL + scrubbedHourIdx * stepX + stepX / 2;
+
+        fCtx.setLineDash([4 * dpr, 3 * dpr]);
+        fCtx.strokeStyle = "#38bdf8";
+        fCtx.lineWidth = 1.5 * dpr;
+        fCtx.beginPath();
+        fCtx.moveTo(cx, padT);
+        fCtx.lineTo(cx, padT + chartH);
+        fCtx.stroke();
+        fCtx.setLineDash([]);
+
+        // Tooltip card
+        const cardW = 160 * dpr;
+        const cardH = 50 * dpr;
+        let cardL = cx - cardW / 2;
+        if (cardL < padL) cardL = padL;
+        if (cardL + cardW > w - 8 * dpr) cardL = w - 8 * dpr - cardW;
+        const cardT = padT + 4 * dpr;
+
+        fCtx.fillStyle = "rgba(11, 19, 34, 0.94)";
+        fCtx.strokeStyle = "#38bdf8";
+        fCtx.lineWidth = 1 * dpr;
+        fCtx.beginPath();
+        fCtx.roundRect(cardL, cardT, cardW, cardH, 8 * dpr);
+        fCtx.fill();
+        fCtx.stroke();
+
+        fCtx.textAlign = "left";
+        fCtx.fillStyle = "#ffffff";
+        fCtx.font = `bold ${10.5 * dpr}px sans-serif`;
+        fCtx.fillText(`${pt.hourLabel} • ${pt.emoji} ${pt.condition}`, cardL + 8 * dpr, cardT + 15 * dpr);
+
+        fCtx.fillStyle = "#38bdf8";
+        fCtx.font = `${9.5 * dpr}px sans-serif`;
+        fCtx.fillText(`💧 ${pt.precipProb}% • ${Math.round(pt.temp)}°F • 💨 ${Math.round(pt.windSpeed)} MPH`, cardL + 8 * dpr, cardT + 31 * dpr);
+        fCtx.fillStyle = "#94a3b8";
+        fCtx.font = `${8.5 * dpr}px sans-serif`;
+        fCtx.fillText(`Feels ${Math.round(pt.feelsLike)}°F • Humidity ${pt.humidity}%`, cardL + 8 * dpr, cardT + 44 * dpr);
+      }
+    }
+
+    function handlePointerScrub(e) {
+      if (!fCanvas || !modal.classList.contains("open")) return;
+      const rect = fCanvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const x = (e.clientX - rect.left) * dpr;
+      const padL = 36 * dpr;
+      const padR = 14 * dpr;
+      const chartW = fCanvas.width - padL - padR;
+      const days = engine.state.sevenDayDetailed || [];
+      const selDay = days[selectedDayIdx] || days[0];
+      if (!selDay || !selDay.hourly) return;
+      const count = selDay.hourly.length;
+      const stepX = chartW / count;
+
+      const idx = Math.max(0, Math.min(count - 1, Math.floor((x - padL) / stepX)));
+      if (scrubbedHourIdx !== idx) {
+        scrubbedHourIdx = idx;
+        const pt = selDay.hourly[idx];
+        document.getElementById("mGraphHint").textContent = `${pt.hourLabel} • ${pt.emoji} ${pt.condition} • 💧 ${pt.precipProb}% chance • ${Math.round(pt.temp)}°F`;
+        drawGraph();
+      }
+    }
+
+    fCanvas.addEventListener("pointerdown", handlePointerScrub);
+    fCanvas.addEventListener("pointermove", (e) => {
+      if (e.buttons > 0) handlePointerScrub(e);
+    });
 
     document.getElementById("btnTime").addEventListener("click", () => {
       const modes = ["realtime", "day", "sunset", "night"];

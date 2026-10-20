@@ -463,38 +463,53 @@ Item {
                     }
                 }
 
-                // 3-Day Mini Forecast Row
-                Row {
+                // 7-Day Forecast Strip (Scrollable Flickable)
+                Flickable {
                     width: parent.width
-                    spacing: Math.round(5 * hudRoot.scaleFactor)
+                    height: Math.round(38 * hudRoot.scaleFactor)
+                    contentWidth: forecastRow.width
+                    boundsBehavior: Flickable.StopAtBounds
+                    clip: true
                     visible: hudRoot.forecastDays && hudRoot.forecastDays.length > 0
 
-                    Repeater {
-                        model: hudRoot.forecastDays
-                        delegate: Rectangle {
-                            width: (parent.width - Math.round(10 * hudRoot.scaleFactor)) / 3
-                            height: Math.round(36 * hudRoot.scaleFactor)
-                            radius: Math.round(5 * hudRoot.scaleFactor)
-                            color: Qt.rgba(0.12, 0.20, 0.28, 0.45)
-                            border.color: Qt.rgba(1, 1, 1, 0.14)
-                            border.width: 1
+                    Row {
+                        id: forecastRow
+                        spacing: Math.round(5 * hudRoot.scaleFactor)
 
-                            Column {
-                                anchors.centerIn: parent
-                                spacing: 1
-                                Text {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    text: modelData.dayName
-                                    color: "#bfd8ee"
-                                    font.pixelSize: Math.max(7, Math.round(8.5 * hudRoot.scaleFactor))
-                                    font.weight: Font.Bold
-                                }
-                                Text {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    text: modelData.tempRange
-                                    color: "#ffffff"
-                                    font.pixelSize: Math.max(8, Math.round(9.5 * hudRoot.scaleFactor))
-                                    font.weight: Font.DemiBold
+                        Repeater {
+                            model: hudRoot.forecastDays
+                            delegate: Rectangle {
+                                width: Math.round(62 * hudRoot.scaleFactor)
+                                height: Math.round(38 * hudRoot.scaleFactor)
+                                radius: Math.round(5 * hudRoot.scaleFactor)
+                                color: Qt.rgba(0.12, 0.20, 0.28, 0.55)
+                                border.color: (modelData.precipProb >= 20) ? Qt.rgba(0.22, 0.74, 0.97, 0.45) : Qt.rgba(1, 1, 1, 0.14)
+                                border.width: 1
+
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: 1
+                                    Row {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        spacing: 2
+                                        Text {
+                                            text: modelData.emoji ? modelData.emoji : ""
+                                            font.pixelSize: Math.max(7, Math.round(8.5 * hudRoot.scaleFactor))
+                                        }
+                                        Text {
+                                            text: modelData.dayName
+                                            color: "#bfd8ee"
+                                            font.pixelSize: Math.max(7, Math.round(8.5 * hudRoot.scaleFactor))
+                                            font.weight: Font.Bold
+                                        }
+                                    }
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: (modelData.precipProb >= 20) ? (modelData.tempRange + " 💧" + modelData.precipProb + "%") : modelData.tempRange
+                                        color: (modelData.precipProb >= 20) ? "#7dd3fc" : "#ffffff"
+                                        font.pixelSize: Math.max(7, Math.round(8 * hudRoot.scaleFactor))
+                                        font.weight: Font.DemiBold
+                                    }
                                 }
                             }
                         }
@@ -519,7 +534,7 @@ Item {
                                 action: "time"
                             },
                             {
-                                label: "🌐 7-Day",
+                                label: "📅 7-Day",
                                 action: "forecast"
                             },
                             {
@@ -554,7 +569,7 @@ Item {
                                 onClicked: {
                                     if (modelData.action === "mode") hudRoot.toggleRenderModeRequested()
                                     else if (modelData.action === "time") hudRoot.cycleTimeModeRequested()
-                                    else if (modelData.action === "forecast" && hudRoot.forecastUrl) Qt.openUrlExternally(hudRoot.forecastUrl)
+                                    else if (modelData.action === "forecast") hudRoot.expanded = !hudRoot.expanded
                                     else if (modelData.action === "refresh") hudRoot.refreshRequested()
                                 }
                             }

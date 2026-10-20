@@ -221,8 +221,8 @@ PlasmoidItem {
             + "&longitude=" + encodeURIComponent(cfgLongitude)
             + "&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m,wind_direction_10m"
             + "&hourly=temperature_2m,precipitation_probability,uv_index"
-            + "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max"
-            + "&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=3"
+            + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,sunrise,sunset,uv_index_max"
+            + "&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=7"
 
         var xhr = new XMLHttpRequest()
         xhr.open("GET", url)
@@ -259,17 +259,45 @@ PlasmoidItem {
                     if (data.daily && data.daily.time && data.daily.time.length >= 3) {
                         var days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
                         var parsed = []
-                        for (var i = 0; i < 3; i++) {
+                        var numDays = Math.min(data.daily.time.length, 7)
+                        for (var i = 0; i < numDays; i++) {
                             var dt = new Date(data.daily.time[i] + "T12:00:00")
                             var dName = (i === 0) ? "TODAY" : days[dt.getDay()]
                             var maxF = Math.round(data.daily.temperature_2m_max[i])
                             var minF = Math.round(data.daily.temperature_2m_min[i])
+                            var pProb = data.daily.precipitation_probability_max ? (data.daily.precipitation_probability_max[i] || 0) : 0
+                            var pSum = data.daily.precipitation_sum ? (data.daily.precipitation_sum[i] || 0) : 0
+                            var code = data.daily.weather_code ? data.daily.weather_code[i] : 0
+                            var icon = "☀️"
+                            if (code >= 95) icon = "⛈️"
+                            else if (code >= 71) icon = "🌨️"
+                            else if (code >= 61 || code >= 80) icon = "🌧️"
+                            else if (code >= 51) icon = "🌦️"
+                            else if (code === 3) icon = "☁️"
+                            else if (code >= 1) icon = "⛅"
+
                             if (root.cfgTempUnit === "C") {
                                 var maxC = Math.round((maxF - 32) * 5 / 9)
                                 var minC = Math.round((minF - 32) * 5 / 9)
-                                parsed.push({ dayName: dName, tempRange: maxC + "° / " + minC + "°C" })
+                                parsed.push({
+                                    dayName: dName,
+                                    tempRange: maxC + "° / " + minC + "°C",
+                                    maxT: maxC,
+                                    minT: minC,
+                                    precipProb: pProb,
+                                    precipSum: pSum,
+                                    emoji: icon
+                                })
                             } else {
-                                parsed.push({ dayName: dName, tempRange: maxF + "° / " + minF + "°F" })
+                                parsed.push({
+                                    dayName: dName,
+                                    tempRange: maxF + "° / " + minF + "°F",
+                                    maxT: maxF,
+                                    minT: minF,
+                                    precipProb: pProb,
+                                    precipSum: pSum,
+                                    emoji: icon
+                                })
                             }
                         }
                         root.liveForecastDays = parsed
