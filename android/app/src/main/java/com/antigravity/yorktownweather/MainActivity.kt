@@ -59,10 +59,31 @@ class MainActivity : Activity() {
     private lateinit var autoMatchDioramaCheck: CheckBox
     private lateinit var closestMatchStatusText: TextView
     private lateinit var framingStatsText: TextView
+    private lateinit var tab0HudTemp: TextView
+    private lateinit var tab0HudClock: TextClock
+    private lateinit var tab0HudCondition: TextView
+    private lateinit var tab0HudLoc: TextView
+    private lateinit var tab0HudWindHum: TextView
+    private lateinit var tab0HudBadges: TextView
+    private lateinit var tab0BottomBadge: TextView
     private val tabButtons = mutableListOf<Button>()
     private var currentTabIndex = 0
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).roundToInt()
+
+    private fun applyPressAnimation(view: View) {
+        view.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    v.animate().scaleX(0.95f).scaleY(0.95f).setDuration(80).start()
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(120).start()
+                }
+            }
+            false
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -299,6 +320,180 @@ class MainActivity : Activity() {
                 dp(330)
             )
         )
+
+        // 2. Exact Widget Overlay on top of the 3D diorama canvas
+        val widgetTopBar = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = getDrawable(R.drawable.hud_background)
+            val padH = dp(10)
+            val padV = dp(6)
+            setPadding(padH, padV, padH, padV)
+            isClickable = true
+            isFocusable = true
+            applyPressAnimation(this)
+            setOnClickListener {
+                val forecastIntent = Intent(this@MainActivity, ForecastActivity::class.java).apply {
+                    putExtra("lat", prefs.getFloat("latitude", 37.2388f).toDouble())
+                    putExtra("lon", prefs.getFloat("longitude", -76.5097f).toDouble())
+                    putExtra("location_name", prefs.getString("locationName", "Yorktown, VA"))
+                    putExtra("temp_unit", prefs.getString("temperatureUnit", "BOTH"))
+                    putExtra("wind_unit", prefs.getString("windSpeedUnit", "mph"))
+                }
+                startActivity(forecastIntent)
+            }
+        }
+
+        // Row 1: Temp (left), Clock + Condition (right)
+        val row1 = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        tab0HudTemp = TextView(this).apply {
+            text = "☀️ 70°F (21°C)"
+            setTextColor(Color.WHITE)
+            textSize = 17f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            includeFontPadding = false
+            maxLines = 1
+        }
+        row1.addView(tab0HudTemp)
+
+        val row1Right = LinearLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f)
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            orientation = LinearLayout.HORIZONTAL
+        }
+        tab0HudClock = TextClock(this).apply {
+            format12Hour = "h:mm a"
+            format24Hour = "HH:mm"
+            setTextColor(Color.parseColor("#E0F2FE"))
+            textSize = 11.5f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            setBackgroundColor(Color.parseColor("#38000000"))
+            val cPadH = dp(6)
+            val cPadV = dp(1)
+            setPadding(cPadH, cPadV, cPadH, cPadV)
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                marginEnd = dp(6)
+            }
+        }
+        row1Right.addView(tab0HudClock)
+
+        tab0HudCondition = TextView(this).apply {
+            text = "PARTLY CLOUDY"
+            setTextColor(Color.parseColor("#FFD166"))
+            textSize = 12f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+        row1Right.addView(tab0HudCondition)
+        row1.addView(row1Right)
+        widgetTopBar.addView(row1)
+
+        // Row 2: Location + Feels like
+        tab0HudLoc = TextView(this).apply {
+            val curLoc = prefs.getString("locationName", "Yorktown, VA") ?: "Yorktown, VA"
+            text = "📍 ${curLoc.uppercase()} • FEELS 63°F"
+            setTextColor(Color.parseColor("#D9ECFF"))
+            textSize = 11.5f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(2)
+            }
+        }
+        widgetTopBar.addView(tab0HudLoc)
+
+        // Row 3: Humidity + Wind
+        tab0HudWindHum = TextView(this).apply {
+            text = "💧 27% • 💨 6 MPH N"
+            setTextColor(Color.parseColor("#EEF6FC"))
+            textSize = 11.5f
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(1)
+            }
+        }
+        widgetTopBar.addView(tab0HudWindHum)
+
+        // Row 4: AQI + UV + Moon
+        tab0HudBadges = TextView(this).apply {
+            text = "AQI 38 GOOD • UV 4.6 • 🌔"
+            setTextColor(Color.parseColor("#86EFAC"))
+            textSize = 11f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(1)
+            }
+        }
+        widgetTopBar.addView(tab0HudBadges)
+
+        previewFrame.addView(
+            widgetTopBar,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.TOP
+                val m = dp(6)
+                setMargins(m, m, m, 0)
+            }
+        )
+
+        // Bottom-Right Badge & Transparent Refresh Button
+        val widgetBottomBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        tab0BottomBadge = TextView(this).apply {
+            val dTheme = prefs.getString("dioramaTheme", "yorktown") ?: "yorktown"
+            text = formatThemeBadge(dTheme)
+            setTextColor(Color.parseColor("#EEF6FC"))
+            textSize = 10.5f
+            setBackgroundColor(Color.parseColor("#B81C2C3C"))
+            val bPadH = dp(8)
+            val bPadV = dp(3)
+            setPadding(bPadH, bPadV, bPadH, bPadV)
+            isSingleLine = true
+        }
+        widgetBottomBar.addView(tab0BottomBadge)
+
+        val btnWidgetRefresh = TextView(this).apply {
+            text = "⟳"
+            setTextColor(Color.parseColor("#DDF0FF"))
+            textSize = 17f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            gravity = Gravity.CENTER
+            background = getDrawable(R.drawable.widget_btn_selector)
+            layoutParams = LinearLayout.LayoutParams(dp(26), dp(26)).apply {
+                marginStart = dp(6)
+            }
+            applyPressAnimation(this)
+            setOnClickListener {
+                performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                applyAndRefreshWidgets("Refreshed weather & 3D diorama")
+            }
+        }
+        widgetBottomBar.addView(btnWidgetRefresh)
+
+        previewFrame.addView(
+            widgetBottomBar,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.BOTTOM or Gravity.END
+                val m = dp(8)
+                setMargins(0, 0, m, m)
+            }
+        )
+
         layout.addView(
             previewFrame,
             LinearLayout.LayoutParams(
@@ -1181,6 +1376,10 @@ class MainActivity : Activity() {
             if (hud) hud.style.display = 'none';
             const cam = document.querySelector('.camera-pill');
             if (cam) cam.style.display = 'none';
+            const refreshBtn = document.querySelector('.refresh-btn-floating');
+            if (refreshBtn) refreshBtn.style.display = 'none';
+            const locBadge = document.querySelector('.location-badge');
+            if (locBadge) locBadge.style.display = 'none';
             if (window.isoEngine) {
                 window.isoEngine.state.locationName = '$name';
                 window.isoEngine.state.latitude = $lat;
@@ -1197,6 +1396,141 @@ class MainActivity : Activity() {
             }
         """.trimIndent()
         webView.evaluateJavascript(js, null)
+        updateTab0WidgetOverlay()
+    }
+
+    private fun formatThemeBadge(theme: String): String {
+        return when (theme) {
+            "jamestown" -> "Historic Jamestown 3D"
+            "virginia_beach" -> "Virginia Beach 3D"
+            "norfolk" -> "Norfolk, VA 3D"
+            "chesapeake_bay" -> "Chesapeake Bay 3D"
+            "washington_dc" -> "Washington, D.C. 3D"
+            "new_york" -> "New York City 3D"
+            "myrtle_beach" -> "Myrtle Beach 3D"
+            "atlanta" -> "Atlanta & Piedmont 3D"
+            "orlando" -> "Orlando Theme Parks 3D"
+            "miami_caribbean" -> "Miami & Keys 3D"
+            "new_orleans" -> "New Orleans 3D"
+            "texas" -> "Texas & Austin 3D"
+            "chicago_great_lakes" -> "Chicago & Great Lakes 3D"
+            "denver" -> "Denver Mile High 3D"
+            "colorado_springs" -> "Colorado Springs 3D"
+            "arizona" -> "Arizona Sonoran 3D"
+            "grand_canyon" -> "Grand Canyon & SW 3D"
+            "las_vegas" -> "Las Vegas Strip 3D"
+            "san_francisco" -> "San Francisco 3D"
+            "seattle_pnw" -> "Seattle & PNW 3D"
+            "coastal" -> "Maritime Harbor 3D"
+            "london_uk" -> "London & UK 3D"
+            "paris_europe" -> "Paris & Europe 3D"
+            "rome_mediterranean" -> "Rome & Mediterranean 3D"
+            "cairo_giza" -> "Cairo & Giza 3D"
+            "tokyo_east_asia" -> "Tokyo & East Asia 3D"
+            "modern" -> "Global Metropolis 3D"
+            "alpine" -> "Alpine Village 3D"
+            else -> "Historic Yorktown 3D"
+        }
+    }
+
+    private fun updateTab0WidgetOverlay() {
+        if (!::tab0HudTemp.isInitialized) return
+        val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
+        val lat = prefs.getFloat("latitude", 37.2388f).toDouble()
+        val lon = prefs.getFloat("longitude", -76.5097f).toDouble()
+        val locName = prefs.getString("locationName", "Yorktown, VA") ?: "Yorktown, VA"
+        val diorama = prefs.getString("dioramaTheme", "yorktown") ?: "yorktown"
+        val tempU = prefs.getString("temperatureUnit", "BOTH") ?: "BOTH"
+        val windU = prefs.getString("windSpeedUnit", "mph") ?: "mph"
+
+        tab0BottomBadge.text = formatThemeBadge(diorama)
+
+        scope.launch {
+            val telemetry = withContext(Dispatchers.IO) {
+                runCatching {
+                    val urlStr = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m,wind_direction_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto"
+                    val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 6000
+                        readTimeout = 6000
+                    }
+                    val body = conn.inputStream.bufferedReader().use { it.readText() }
+                    val json = JSONObject(body).getJSONObject("current")
+                    val tF = json.getDouble("temperature_2m")
+                    val fF = json.getDouble("apparent_temperature")
+                    val hum = json.getInt("relative_humidity_2m")
+                    val wMph = json.getDouble("wind_speed_10m")
+                    val wDeg = json.optInt("wind_direction_10m", 180)
+                    val code = json.getInt("weather_code")
+                    val isDay = json.getInt("is_day") == 1
+
+                    var aqi = 28
+                    runCatching {
+                        val aqUrl = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=$lat&longitude=$lon&current=us_aqi"
+                        val aqConn = (URL(aqUrl).openConnection() as HttpURLConnection).apply {
+                            connectTimeout = 4000
+                            readTimeout = 4000
+                        }
+                        val aqBody = aqConn.inputStream.bufferedReader().use { it.readText() }
+                        aqi = JSONObject(aqBody).getJSONObject("current").getInt("us_aqi")
+                    }
+
+                    object {
+                        val tempF = tF
+                        val feelsF = fF
+                        val humidity = hum
+                        val windMph = wMph
+                        val windDeg = wDeg
+                        val weatherCode = code
+                        val day = isDay
+                        val usAqi = aqi
+                    }
+                }.getOrNull()
+            }
+
+            if (telemetry != null && ::tab0HudTemp.isInitialized) {
+                val fVal = telemetry.tempF.roundToInt()
+                val cVal = ((telemetry.tempF - 32.0) * 5.0 / 9.0).roundToInt()
+                val tFormatted = when (tempU) {
+                    "F" -> "${fVal}°F"
+                    "C" -> "${cVal}°C"
+                    else -> "${fVal}°F (${cVal}°C)"
+                }
+                val feelsFormatted = when (tempU) {
+                    "C" -> "${((telemetry.feelsF - 32.0) * 5.0 / 9.0).roundToInt()}°C"
+                    else -> "${telemetry.feelsF.roundToInt()}°F"
+                }
+                val emoji = if (telemetry.weatherCode == 0) { if (telemetry.day) "☀️" else "🌙" }
+                    else if (telemetry.weatherCode <= 2) { if (telemetry.day) "⛅" else "☁️" }
+                    else if (telemetry.weatherCode <= 48) "🌫️"
+                    else if (telemetry.weatherCode <= 67 || telemetry.weatherCode in 80..82) "🌧️"
+                    else if (telemetry.weatherCode <= 77 || telemetry.weatherCode in 85..86) "🌨️"
+                    else "⛈️"
+                val condName = if (telemetry.weatherCode == 0) "CLEAR"
+                    else if (telemetry.weatherCode <= 2) "PARTLY CLOUDY"
+                    else if (telemetry.weatherCode == 3) "OVERCAST"
+                    else if (telemetry.weatherCode in 45..48) "FOG"
+                    else if (telemetry.weatherCode in 51..67 || telemetry.weatherCode in 80..82) "RAIN"
+                    else if (telemetry.weatherCode in 71..77 || telemetry.weatherCode in 85..86) "SNOW"
+                    else "THUNDERSTORM"
+
+                tab0HudTemp.text = "$emoji $tFormatted"
+                tab0HudCondition.text = condName
+                tab0HudLoc.text = "📍 ${locName.uppercase()} • FEELS $feelsFormatted"
+
+                val compass = when (((telemetry.windDeg + 22.5) / 45.0).toInt() % 8) {
+                    0 -> "N"; 1 -> "NE"; 2 -> "E"; 3 -> "SE"; 4 -> "S"; 5 -> "SW"; 6 -> "W"; else -> "NW"
+                }
+                val windFormatted = when (windU) {
+                    "kmh" -> "${(telemetry.windMph * 1.60934).roundToInt()} KM/H $compass"
+                    "kn" -> "${(telemetry.windMph * 0.868976).roundToInt()} KN $compass"
+                    "ms" -> "${(telemetry.windMph * 0.44704).roundToInt()} M/S $compass"
+                    else -> "${telemetry.windMph.roundToInt()} MPH $compass"
+                }
+                tab0HudWindHum.text = "💧 ${telemetry.humidity}% • 💨 $windFormatted"
+                val aqiLabel = if (telemetry.usAqi <= 50) "GOOD" else "MOD"
+                tab0HudBadges.text = "AQI ${telemetry.usAqi} $aqiLabel • UV 3.5 • 🌔"
+            }
+        }
     }
 
     private fun applyAndRefreshWidgets(msg: String) {

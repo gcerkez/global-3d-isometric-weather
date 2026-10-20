@@ -17,11 +17,19 @@ Release **v0.0.5** is a major architectural refactor transitioning the entire ap
   - `WeatherCanvas.tsx`: 3D isometric diorama canvas host, camera zoom/pan pills, and transparent floating refresh button.
   - `App.tsx`: Central coordinator managing telemetry, diorama matching, provider selection, and Android Kotlin WebView interop via `window.isoEngine`.
 
-### 2. Elimination of Day Row Expansion Flicker Bug
-- In previous versions, clicking any day row called `updateForecastModalUI()`, which executed `listContainer.innerHTML = ""` to destroy and rebuild all DOM nodes, resulting in the app momentarily going blank and refilling.
-- With React state (`selectedDayIdx`), selecting a day simply toggles the active accordion panel without unmounting or re-rendering unaffected day rows.
+### 2. Elimination of Day Row Expansion Flicker Bug (Web & Native Android)
+- **Web App**: With React state (`selectedDayIdx`), selecting a day toggles the active accordion panel without unmounting or re-rendering unaffected day rows.
+- **Native Android (`ForecastActivity.kt`)**: Previously, tapping a day row called `renderForecastData()` which executed `weeklyListContainer.removeAllViews()`, causing all 7 day panels to collapse, measure to 0 height, and re-inflate, creating a jarring blank flash.
+  - Implemented `DayRowHolder` pattern: All 7 rows are created once during initial data load.
+  - Implemented `selectDayRow(index)`: Smoothly expands/collapses the target day's `FrameLayout` body container and rotates chevrons via `TransitionManager.beginDelayedTransition` without removing any child views. A single reusable `expandedCardView` is reparented and updated in-place (`updateExpandedDayData()`) with zero flash or blanking.
 
-### 3. Multi-Provider Weather API Integration
+### 3. Authentic Homescreen Widget Overlay in 3D Preview (Tab 0)
+- In the Android app, Tab 0 ("3D Preview") now displays the exact authentic homescreen widget overlay matching `widget_isometric_weather.xml`:
+  - Top glassmorphic HUD pill: Current temperature, live digital clock (`TextClock`), condition label in `#FFD166`, uppercase location name with feels-like temperature, humidity and compass-directed wind speed, and live AQI + UV badges. Tapping the HUD immediately opens `ForecastActivity`.
+  - Bottom-right diorama badge pill and transparent refresh button: Displays the active 3D diorama theme and provides an instant one-tap refresh with haptic feedback.
+  - Hides desktop-oriented web HUD inputs (search bar, provider select, diorama dropdown, camera controls) in the embedded WebView so the native widget overlay sits cleanly on top of the 3D diorama canvas and clouds.
+
+### 4. Multi-Provider Weather API Integration
 Users can now choose from 5 meteorological data providers:
 1. **Open-Meteo**: High-resolution global numerical models (ECMWF, GFS, ICON). Free, open access, no key required.
 2. **National Weather Service (NOAA)**: Official US government forecasts via `api.weather.gov` gridpoints. Free, no key required.
@@ -30,7 +38,7 @@ Users can now choose from 5 meteorological data providers:
 5. **WeatherAPI.com**: Global forecasts and air quality metrics supporting custom tokens or simulated fallback.
 - **Automatic Fallback Engine**: If any custom provider fails or encounters network rate limits, the app automatically fails over to Open-Meteo without interrupting the user.
 
-### 4. Comprehensive UI Spec Test Suite (Vitest + React Testing Library)
+### 5. Comprehensive UI Spec Test Suite (Vitest + React Testing Library)
 - Includes 31 comprehensive spec tests across 6 test suites:
   - `DayForecastRow.spec.tsx`: Verifies metrics display, "TODAY" dot, click expansion without DOM wipes, and keyboard navigation.
   - `ForecastModal.spec.tsx`: Verifies modal opening/closing, Escape key handling, and day accordion switching.
@@ -39,7 +47,7 @@ Users can now choose from 5 meteorological data providers:
   - `WeatherHudCard.spec.tsx`: Verifies telemetry rendering, search submissions, diorama theme selection, and unit toggling.
   - `WeatherService.spec.ts`: Verifies WMO code conversions, API key handling, provider switching, and network fallback behavior.
 
-### 5. Floating Manual Refresh Button & Android Interop
+### 6. Floating Manual Refresh Button & Android Interop
 - Added the transparent red refresh button (`↻`) at the bottom-right of the render view for manual weather and diorama updates.
 - Preserved full backward compatibility with Android Kotlin (`MainActivity.kt`) and KDE Plasma 6 through the `window.isoEngine` bridge.
 
@@ -55,7 +63,7 @@ Users can now choose from 5 meteorological data providers:
 
 ### SHA256 Checksums
 ```text
-4ad2c99ac4d435e547d39205772bbc99adeefaeae1c2705331d3bd0c70cdeb2c  global-3d-isometric-weather-v0.0.5.apk
+5c806b3d2e4d702598ce6b8ff46413f5c2d791b4b15e1c774aa7e84a0864c3f9  global-3d-isometric-weather-v0.0.5.apk
 1ba936c71b3e6d6a2c1f9dab69e06200fd58aed97414d154744aa269d7914602  global-3d-isometric-weather-v0.0.5.plasmoid
-da57ebb548282b6302aac817876e6ba08c1a08e2df1d444fc8b34269c32e8369  global-3d-isometric-weather-web-android-v0.0.5.zip
+dc82bf53e0e4eb4924c59217ea67c0dc03b951c113dfa96d5b0886a4f115ff4f  global-3d-isometric-weather-web-android-v0.0.5.zip
 ```

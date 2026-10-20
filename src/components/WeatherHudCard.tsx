@@ -56,7 +56,7 @@ export const WeatherHudCard: React.FC<WeatherHudCardProps> = ({
 
   if (!telemetry) {
     return (
-      <div className="hud-card loading" data-testid="hud-card-loading">
+      <div id="hudCard" className="hud-card loading" data-testid="hud-card-loading">
         <div className="hud-condition">FETCHING METEOROLOGICAL TELEMETRY...</div>
       </div>
     );
@@ -69,6 +69,7 @@ export const WeatherHudCard: React.FC<WeatherHudCardProps> = ({
 
   return (
     <div
+      id="hudCard"
       className="hud-card"
       onClick={onOpenForecast}
       title="Tap to view 7-day forecast & precipitation graph"

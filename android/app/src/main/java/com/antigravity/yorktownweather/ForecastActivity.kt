@@ -113,7 +113,14 @@ class ForecastActivity : Activity() {
 
     // 7-Day Cards Container
     private lateinit var weeklyListContainer: LinearLayout
-    private val dayRowViews = mutableListOf<View>()
+    private class DayRowHolder(
+        val panel: LinearLayout,
+        val tvDay: TextView,
+        val chevron: TextView,
+        val bodyContainer: FrameLayout
+    )
+    private val dayRowHolders = mutableListOf<DayRowHolder>()
+    private var expandedCardView: View? = null
 
     private var forecastDays: List<DayForecast> = emptyList()
     private var selectedDayIndex: Int = 0
@@ -595,10 +602,12 @@ class ForecastActivity : Activity() {
 
     private fun renderForecastData() {
         if (forecastDays.isEmpty()) return
-
         val selDay = forecastDays[selectedDayIndex.coerceIn(0, forecastDays.size - 1)]
+        updateHeroCard(selDay)
+        populateWeeklyList()
+    }
 
-        // 1. Update Hero Card
+    private fun updateHeroCard(selDay: DayForecast) {
         currentTempView.text = formatTemperature(currentRealtimeTemp)
         currentTempView.textSize = if (tempUnit == "BOTH" || tempUnit == "Dual") 30f else 40f
         conditionView.text = "${selDay.emoji} ${selDay.conditionLabel}"
@@ -617,10 +626,83 @@ class ForecastActivity : Activity() {
             "☀️ Dry conditions • 0% chance of rain"
         }
         precipSummaryView.text = rainChip
+    }
 
-        // 2. Populate 7-Day Expansion Panels with Apple-style Range Bars & Material Accordion
+    private fun updateExpandedDayData(day: DayForecast) {
+        if (::graphTitleView.isInitialized) {
+            graphTitleView.text = "Hourly Breakdown • ${day.dayOfWeek}"
+        }
+        if (::forecastGraph.isInitialized) {
+            forecastGraph.hourlyPoints = day.hourlyPoints
+            forecastGraph.invalidate()
+        }
+        if (::scrubberReadoutView.isInitialized) {
+            scrubberReadoutView.text = "👆 Drag horizontally across the graph to inspect hourly precipitation & conditions."
+        }
+        val precipAmtStr = if (precipUnit == "mm") "${String.format("%.1f", day.precipSum)} mm" else "${String.format("%.2f", day.precipSum)} in"
+        if (::metricPrecipVal.isInitialized) metricPrecipVal.text = precipAmtStr
+        if (::metricPrecipSub.isInitialized) metricPrecipSub.text = "Peak chance: ${day.precipProbMax}%"
+        if (::metricSunVal.isInitialized) metricSunVal.text = day.sunrise
+        if (::metricSunSub.isInitialized) metricSunSub.text = "Sunset: ${day.sunset}"
+        if (::metricWindVal.isInitialized) metricWindVal.text = "${day.windSpeedMax.roundToInt()} $windUnit"
+
+        val uvLabel = when {
+            day.uvIndexMax < 3.0 -> "Low"
+            day.uvIndexMax < 6.0 -> "Moderate"
+            day.uvIndexMax < 8.0 -> "High"
+            else -> "Very High"
+        }
+        val avgHum = if (day.hourlyPoints.isNotEmpty()) (day.hourlyPoints.map { it.humidity }.average()).roundToInt() else 50
+        if (::metricUvVal.isInitialized) metricUvVal.text = "${String.format("%.1f", day.uvIndexMax)} $uvLabel"
+        if (::metricUvSub.isInitialized) metricUvSub.text = "Avg Humidity: $avgHum%"
+    }
+
+    private fun selectDayRow(newIndex: Int) {
+        if (newIndex !in forecastDays.indices || newIndex == selectedDayIndex) return
+        val oldIndex = selectedDayIndex
+        selectedDayIndex = newIndex
+
+        // Smooth transition on weeklyListContainer without removing or rebuilding child views
+        TransitionManager.beginDelayedTransition(weeklyListContainer)
+
+        // 1. Collapse previous active panel
+        if (oldIndex in dayRowHolders.indices) {
+            val oldH = dayRowHolders[oldIndex]
+            oldH.panel.background = makeCardBackground(Color.parseColor("#0e1726"), Color.parseColor("#1e293b"), dp(12))
+            oldH.tvDay.setTextColor(Color.WHITE)
+            oldH.chevron.rotation = 0f
+            oldH.chevron.setTextColor(Color.parseColor("#64748b"))
+            oldH.bodyContainer.removeAllViews()
+            oldH.bodyContainer.visibility = View.GONE
+        }
+
+        // 2. Expand new active panel smoothly
+        if (newIndex in dayRowHolders.indices) {
+            val newH = dayRowHolders[newIndex]
+            newH.panel.background = makeCardBackground(Color.parseColor("#122034"), Color.parseColor("#38bdf8"), dp(14), strokeWidth = dp(1.5f))
+            newH.tvDay.setTextColor(Color.parseColor("#ffd166"))
+            newH.chevron.rotation = 180f
+            newH.chevron.setTextColor(Color.parseColor("#38bdf8"))
+
+            val day = forecastDays[newIndex]
+            if (expandedCardView == null) {
+                expandedCardView = buildExpandedDayComponent(day)
+            } else {
+                (expandedCardView?.parent as? ViewGroup)?.removeView(expandedCardView)
+                updateExpandedDayData(day)
+            }
+            newH.bodyContainer.addView(expandedCardView)
+            newH.bodyContainer.visibility = View.VISIBLE
+        }
+
+        // 3. Update top Hero Card
+        updateHeroCard(forecastDays[newIndex])
+    }
+
+    private fun populateWeeklyList() {
         weeklyListContainer.removeAllViews()
-        dayRowViews.clear()
+        dayRowHolders.clear()
+        expandedCardView = null
 
         val weekMinTemp = forecastDays.minOf { it.tempMin }.toFloat()
         val weekMaxTemp = forecastDays.maxOf { it.tempMax }.toFloat()
@@ -653,9 +735,7 @@ class ForecastActivity : Activity() {
                 applyPressAnimation(this)
                 setOnClickListener {
                     performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    TransitionManager.beginDelayedTransition(weeklyListContainer)
-                    selectedDayIndex = i
-                    renderForecastData()
+                    selectDayRow(i)
                 }
             }
 
@@ -746,12 +826,20 @@ class ForecastActivity : Activity() {
 
             panel.addView(headerRow)
 
-            // If expanded, reveal hourly breakdown & metrics component directly under the row
-            if (isExpanded) {
-                panel.addView(buildExpandedDayComponent(day))
+            // Expansion Body Container
+            val bodyContainer = FrameLayout(this).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                visibility = if (isExpanded) View.VISIBLE else View.GONE
             }
 
-            dayRowViews.add(panel)
+            if (isExpanded) {
+                expandedCardView = buildExpandedDayComponent(day)
+                bodyContainer.addView(expandedCardView)
+            }
+
+            panel.addView(bodyContainer)
+
+            dayRowHolders.add(DayRowHolder(panel, tvDay, chevron, bodyContainer))
             weeklyListContainer.addView(panel)
         }
     }
