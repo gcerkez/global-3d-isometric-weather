@@ -257,6 +257,46 @@ class ForecastActivityMockDeviceTest {
         }
     }
 
+    @Test
+    fun testDailyWeatherAccordionExpansionPanelRevealsHourlyBreakdown() {
+        val intent = Intent(context, ForecastActivity::class.java).apply {
+            putExtra("lat", 37.1310)
+            putExtra("lon", -76.4452)
+            putExtra("location_name", "Yorktown, VA")
+            putExtra("temp_unit", "F")
+            putExtra("wind_unit", "MPH")
+        }
+
+        ActivityScenario.launch<ForecastActivity>(intent).use { scenario ->
+            scenario.onActivity { activity ->
+                val rootView = activity.findViewById<ViewGroup>(android.R.id.content)
+
+                // 1. Verify 7-day outlook card is present
+                val allTextViews = findAllViewsOfType(rootView, TextView::class.java)
+                val outlookHeader = allTextViews.firstOrNull { it.text.contains("7-DAY OUTLOOK") }
+                assertNotNull("7-Day Outlook section must exist", outlookHeader)
+
+                // 2. Verify Day 0 (TODAY) is expanded on launch and contains ForecastGraphView
+                val initialGraphs = findAllViewsOfType(rootView, ForecastGraphView::class.java)
+                assertEquals("Initially, 1 ForecastGraphView must be present inside the expanded day", 1, initialGraphs.size)
+
+                val day0Title = allTextViews.firstOrNull { it.text == "TODAY" }
+                assertNotNull("TODAY header row must exist", day0Title)
+
+                // 3. Find another day row (e.g. WED, THU, etc.) and tap its header to expand it
+                val otherDayTitle = allTextViews.firstOrNull { it.text != "TODAY" && it.text.length == 3 }
+                assertNotNull("Another day header must exist", otherDayTitle)
+
+                val headerRow = otherDayTitle!!.parent as View
+                headerRow.performClick()
+
+                // 4. Verify graph view is now revealed under the clicked day
+                val updatedGraphs = findAllViewsOfType(rootView, ForecastGraphView::class.java)
+                assertEquals("After expanding another day, 1 ForecastGraphView must be revealed under that day", 1, updatedGraphs.size)
+            }
+        }
+    }
+
     private fun <T : View> findAllViewsOfType(root: ViewGroup, clazz: Class<T>): List<T> {
         val out = mutableListOf<T>()
         for (i in 0 until root.childCount) {

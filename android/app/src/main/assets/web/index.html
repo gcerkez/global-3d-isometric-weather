@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <title>Global 3D Isometric Weather Widget</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
   <style>
     html, body {
       margin: 0;
@@ -12,7 +15,7 @@
       height: 100%;
       background: #0d1b2a;
       overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
       user-select: none;
     }
     .widget-frame {
@@ -181,45 +184,219 @@
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
     }
-    .modal-hero-card, .modal-graph-card, .modal-metrics-card, .modal-outlook-card {
-      background: #101c2e;
-      border: 1px solid rgba(255, 255, 255, 0.12);
+    .mat-card, .p-card {
+      background: #0e1726;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    }
+    .modal-hero-card {
+      background: #0e1726;
+      border: 1px solid rgba(255, 255, 255, 0.10);
       border-radius: 14px;
-      padding: 14px;
+      padding: 12px 14px;
     }
     .hero-temp-row { display: flex; align-items: center; gap: 14px; }
-    .hero-temp-large { font-size: 38px; font-weight: 800; }
+    .hero-temp-large { font-size: 34px; font-weight: 800; letter-spacing: -0.5px; }
     .hero-cond-title { font-size: 15px; font-weight: 700; color: #ffd166; }
-    .hero-cond-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+    .hero-cond-sub { font-size: 11.5px; color: #cbd5e1; margin-top: 2px; }
     .hero-chip {
-      margin-top: 10px;
-      background: rgba(30, 58, 138, 0.4);
+      margin-top: 8px;
+      background: rgba(20, 34, 54, 0.85);
       border: 1px solid rgba(56, 189, 248, 0.35);
       border-radius: 8px;
-      padding: 6px 10px;
+      padding: 5px 10px;
+      font-size: 11px;
+      color: #38bdf8;
+      font-weight: 500;
+    }
+
+    /* 7-Day Outlook & Expansion Accordion (Placed first towards top) */
+    .modal-outlook-card {
+      background: #0a121e;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .outlook-header-row { margin-bottom: 10px; }
+    .outlook-title { font-size: 13px; font-weight: 800; color: #fff; letter-spacing: 0.5px; }
+    .outlook-sub { font-size: 10.5px; color: #94a3b8; margin-top: 2px; }
+
+    /* Angular Material Expansion Panel (.mat-accordion, .mat-expansion-panel) */
+    .mat-accordion {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      width: 100%;
+    }
+    .mat-expansion-panel {
+      background: #0e1726;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .mat-expansion-panel.mat-expanded {
+      background: #111e32;
+      border: 1.5px solid #38bdf8;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    }
+    .mat-expansion-panel-header {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.12s ease;
+    }
+    .mat-expansion-panel-header:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .mat-expansion-panel.mat-expanded .mat-expansion-panel-header {
+      background: rgba(56, 189, 248, 0.07);
+    }
+    .mat-panel-title {
+      width: 56px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.2px;
+    }
+    .mat-expansion-panel.mat-expanded .mat-panel-title {
+      color: #ffd166;
+    }
+    .day-icon-box {
+      width: 58px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 15px;
+    }
+    .p-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(56, 189, 248, 0.18);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.38);
+      border-radius: 6px;
+      padding: 1px 4px;
+      font-size: 9.5px;
+      font-weight: 700;
+    }
+    .day-min {
+      width: 28px;
+      text-align: right;
       font-size: 11.5px;
+      color: #94a3b8;
+    }
+    .day-bar-box {
+      flex: 1;
+      margin: 0 8px;
+      position: relative;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+    .day-bar-pill {
+      position: absolute;
+      height: 100%;
+      border-radius: 3px;
+    }
+    .cur-dot {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #fff;
+      top: 0;
+      transform: translateX(-50%);
+      box-shadow: 0 0 5px #fff;
+    }
+    .day-max {
+      width: 28px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .mat-expansion-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      font-size: 9px;
+      color: #64748b;
+      margin-left: 4px;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease;
+    }
+    .mat-expansion-indicator.expanded {
+      transform: rotate(180deg);
       color: #38bdf8;
     }
-    .graph-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .graph-title { font-size: 13px; font-weight: 700; color: #fff; }
-    .graph-pills { display: flex; gap: 5px; }
-    .graph-pill-btn {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+
+    /* Expansion Panel Body & Revealed Component */
+    .mat-expansion-panel-body {
+      padding: 0 10px 12px 10px;
+      animation: matPanelReveal 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    @keyframes matPanelReveal {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .mat-divider {
+      height: 1px;
+      background: #1e293b;
+      margin: 2px 0 10px 0;
+    }
+
+    /* Segmented Button Toggle Group (Angular Material Button Toggle / PrimeUI SelectButton) */
+    .graph-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .graph-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .mat-button-toggle-group {
+      display: inline-flex;
+      background: #14213d;
+      border: 1px solid #1f3256;
+      border-radius: 16px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .mat-button-toggle {
+      background: transparent;
+      border: none;
       color: #94a3b8;
-      border-radius: 12px;
-      padding: 3px 9px;
+      border-radius: 14px;
+      padding: 4px 10px;
       font-size: 10.5px;
       font-weight: 700;
       cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease, transform 0.08s ease;
     }
-    .graph-pill-btn.active {
+    .mat-button-toggle:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .mat-button-toggle.active {
       background: #ffd166;
       color: #070d18;
-      border-color: #ffd166;
+      box-shadow: 0 2px 8px rgba(255, 209, 102, 0.35);
     }
+    .mat-button-toggle:active {
+      transform: scale(0.92);
+    }
+
     .graph-canvas-box {
       width: 100%;
       height: 190px;
@@ -231,50 +408,38 @@
       display: block;
       cursor: crosshair;
     }
-    .graph-hint { font-size: 10px; color: #64748b; text-align: center; margin-top: 5px; }
+    .graph-hint {
+      font-size: 10px;
+      color: #94a3b8;
+      text-align: center;
+      background: #142236;
+      border: 1px solid #1e3a5f;
+      border-radius: 6px;
+      padding: 4px 8px;
+      margin-top: 6px;
+    }
+
+    /* Key Metrics Grid (Material Sub-Cards / PrimeUI p-card) */
     .metrics-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
+      margin-top: 10px;
     }
     .metric-tile {
-      background: #0b1523;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: #14213d;
+      border: 1px solid #1f3256;
       border-radius: 10px;
       padding: 9px 12px;
+      transition: transform 0.12s ease, border-color 0.12s ease;
+    }
+    .metric-tile:hover {
+      border-color: rgba(56, 189, 248, 0.3);
+      transform: translateY(-1px);
     }
     .metric-tile-title { font-size: 9.5px; color: #94a3b8; font-weight: 700; }
     .metric-tile-val { font-size: 14px; font-weight: 800; color: #fff; margin-top: 2px; }
     .metric-tile-sub { font-size: 10px; color: #38bdf8; margin-top: 1px; }
-
-    /* 7-Day Rows */
-    .outlook-title { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
-    .outlook-sub { font-size: 10.5px; color: #94a3b8; margin-bottom: 8px; }
-    .day-row {
-      display: flex;
-      align-items: center;
-      padding: 8px 10px;
-      border-radius: 10px;
-      background: #0b1523;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      margin-bottom: 6px;
-      cursor: pointer;
-      transition: background 0.12s, border-color 0.12s;
-    }
-    .day-row:hover { background: #132238; border-color: rgba(255, 255, 255, 0.18); }
-    .day-row.active {
-      background: #162a47;
-      border-color: #ffd166;
-    }
-    .day-name { width: 54px; font-size: 11.5px; font-weight: 700; color: #fff; }
-    .day-row.active .day-name { color: #ffd166; }
-    .day-icon-box { width: 54px; display: flex; align-items: center; gap: 4px; font-size: 14px; }
-    .day-pop { font-size: 9.5px; color: #38bdf8; font-weight: 700; }
-    .day-min { width: 28px; text-align: right; font-size: 11px; color: #94a3b8; }
-    .day-bar-box { flex: 1; margin: 0 8px; position: relative; height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
-    .day-bar-pill { position: absolute; height: 100%; border-radius: 3px; }
-    .cur-dot { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: #fff; top: 0; transform: translateX(-50%); box-shadow: 0 0 5px #fff; }
-    .day-max { width: 28px; text-align: left; font-size: 11.5px; font-weight: 700; color: #fff; }
   </style>
 </head>
 <body>
@@ -368,8 +533,8 @@
         <button class="btn-close-modal" id="btnCloseModal" title="Close">✕</button>
       </div>
       <div class="modal-body">
-        <!-- Hero Card -->
-        <div class="modal-hero-card">
+        <!-- Hero Weather Status Card -->
+        <div class="modal-hero-card mat-card">
           <div class="hero-temp-row">
             <div class="hero-temp-large" id="mHeroTemp">68°F</div>
             <div>
@@ -380,53 +545,58 @@
           <div class="hero-chip" id="mHeroChip">💧 0% chance of precipitation today</div>
         </div>
 
-        <!-- 24-Hour Graph Card -->
-        <div class="modal-graph-card">
+        <!-- 7-Day Outlook & Expansion Accordion (Placed first, towards the top!) -->
+        <div class="modal-outlook-card mat-card">
+          <div class="outlook-header-row">
+            <div class="outlook-title">📅 7-DAY OUTLOOK &amp; HOURLY BREAKDOWN</div>
+            <div class="outlook-sub">Tap any day to expand its interactive 24-hour graph &amp; key metrics.</div>
+          </div>
+          <div class="mat-accordion" id="mWeeklyList"></div>
+        </div>
+
+        <!-- Reusable Expanded Day Component (Dynamically mounted inside the active mat-expansion-panel) -->
+        <div id="expandedDayComponent" style="display:none;">
+          <div class="mat-divider"></div>
+
+          <!-- Header Row (Title + Angular Material Button Toggle Group) -->
           <div class="graph-header">
             <div class="graph-title" id="mGraphTitle">Hourly Breakdown • TODAY</div>
-            <div class="graph-pills">
-              <button class="graph-pill-btn active" id="btnPillPrecip">🌧️ Precip</button>
-              <button class="graph-pill-btn" id="btnPillTemp">🌡️ Temp</button>
-              <button class="graph-pill-btn" id="btnPillWind">💨 Wind</button>
+            <div class="mat-button-toggle-group" role="group">
+              <button class="mat-button-toggle active" id="btnPillPrecip" type="button">🌧️ Precip</button>
+              <button class="mat-button-toggle" id="btnPillTemp" type="button">🌡️ Temp</button>
+              <button class="mat-button-toggle" id="btnPillWind" type="button">💨 Wind</button>
             </div>
           </div>
+
+          <!-- 24-Hour Graph Canvas -->
           <div class="graph-canvas-box">
             <canvas id="forecastCanvas"></canvas>
           </div>
           <div class="graph-hint" id="mGraphHint">👆 Move mouse or finger across the graph to inspect hourly details.</div>
-        </div>
 
-        <!-- Selected Day Key Metrics Grid -->
-        <div class="modal-metrics-card">
+          <!-- 4 Key Metric Sub-Cards (Material / PrimeUI p-card) -->
           <div class="metrics-grid">
-            <div class="metric-tile">
+            <div class="metric-tile p-card">
               <div class="metric-tile-title">🌧️ PRECIPITATION</div>
               <div class="metric-tile-val" id="mTilePrecipVal">0.00 in</div>
               <div class="metric-tile-sub" id="mTilePrecipSub">Peak chance: 0%</div>
             </div>
-            <div class="metric-tile">
+            <div class="metric-tile p-card">
               <div class="metric-tile-title">🌅 SUN CYCLE</div>
               <div class="metric-tile-val" id="mTileSunVal">7:14 AM</div>
               <div class="metric-tile-sub" id="mTileSunSub">Sunset: 6:21 PM</div>
             </div>
-            <div class="metric-tile">
+            <div class="metric-tile p-card">
               <div class="metric-tile-title">💨 WIND &amp; GUSTS</div>
               <div class="metric-tile-val" id="mTileWindVal">8 MPH</div>
-              <div class="metric-tile-sub" id="mTileWindSub">Direction: NNE</div>
+              <div class="metric-tile-sub" id="mTileWindSub">Max gusts</div>
             </div>
-            <div class="metric-tile">
+            <div class="metric-tile p-card">
               <div class="metric-tile-title">☀️ UV &amp; HUMIDITY</div>
               <div class="metric-tile-val" id="mTileUvVal">3.2 Mod</div>
               <div class="metric-tile-sub" id="mTileUvSub">Avg Humidity: 60%</div>
             </div>
           </div>
-        </div>
-
-        <!-- 7-Day Outlook List -->
-        <div class="modal-outlook-card">
-          <div class="outlook-title">📅 7-DAY OUTLOOK</div>
-          <div class="outlook-sub">Tap any day to view its 24-hour precipitation curve and conditions</div>
-          <div id="mWeeklyList"></div>
         </div>
       </div>
     </div>
@@ -557,7 +727,13 @@
       const avgHum = Math.round(selDay.hourly.reduce((acc, h) => acc + h.humidity, 0) / (selDay.hourly.length || 1));
       document.getElementById("mTileUvSub").textContent = `Avg Humidity: ${avgHum}%`;
 
-      // Render 7-day outlook list with Apple-style temperature range gradient bars
+      // Detach #expandedDayComponent safely so it's not wiped out by innerHTML = ""
+      const expComp = document.getElementById("expandedDayComponent");
+      if (expComp && expComp.parentNode) {
+        expComp.parentNode.removeChild(expComp);
+      }
+
+      // Render 7-day outlook accordion with Angular Material Expansion Panels
       const listContainer = document.getElementById("mWeeklyList");
       listContainer.innerHTML = "";
 
@@ -568,8 +744,9 @@
       days.forEach((day, idx) => {
         const isSelected = (idx === selectedDayIdx);
         const isToday = (idx === 0);
-        const row = document.createElement("div");
-        row.className = `day-row ${isSelected ? 'active' : ''}`;
+
+        const panel = document.createElement("div");
+        panel.className = `mat-expansion-panel ${isSelected ? 'mat-expanded' : ''}`;
 
         const leftPct = Math.max(0, Math.min(100, ((day.tempMin - weekMin) / totalRange) * 100));
         const rightPct = Math.max(0, Math.min(100, ((day.tempMax - weekMin) / totalRange) * 100));
@@ -581,11 +758,15 @@
           dotHtml = `<div class="cur-dot" style="left:${curPct}%;"></div>`;
         }
 
-        row.innerHTML = `
-          <div class="day-name">${isToday ? 'TODAY' : day.dayName}</div>
+        const header = document.createElement("div");
+        header.className = "mat-expansion-panel-header";
+        const hasRainBadge = day.precipProbMax >= 10 && (day.emoji === "🌦️" || day.emoji === "🌧️" || day.emoji === "🌨️" || day.emoji === "⛈️" || day.precipSum > 0.005 || day.precipProbMax >= 20);
+
+        header.innerHTML = `
+          <div class="mat-panel-title">${isToday ? 'TODAY' : day.dayName}</div>
           <div class="day-icon-box">
             <span>${day.emoji}</span>
-            ${day.precipProbMax >= 10 ? `<span class="day-pop">${day.precipProbMax}%</span>` : ''}
+            ${hasRainBadge ? `<span class="p-badge">${day.precipProbMax}%</span>` : ''}
           </div>
           <div class="day-min">${Math.round(day.tempMin)}°</div>
           <div class="day-bar-box">
@@ -593,17 +774,31 @@
             ${dotHtml}
           </div>
           <div class="day-max">${Math.round(day.tempMax)}°</div>
+          <div class="mat-expansion-indicator ${isSelected ? 'expanded' : ''}">▼</div>
         `;
 
-        row.addEventListener("click", () => {
+        header.addEventListener("click", () => {
           selectedDayIdx = idx;
           updateForecastModalUI();
+          initGraphCanvas();
           drawGraph();
         });
 
-        listContainer.appendChild(row);
+        panel.appendChild(header);
+
+        // If selected, reveal hourly breakdown component directly under the row
+        if (isSelected && expComp) {
+          const body = document.createElement("div");
+          body.className = "mat-expansion-panel-body";
+          expComp.style.display = "block";
+          body.appendChild(expComp);
+          panel.appendChild(body);
+        }
+
+        listContainer.appendChild(panel);
       });
 
+      initGraphCanvas();
       drawGraph();
     }
 

@@ -1,5 +1,6 @@
 package com.antigravity.yorktownweather
 
+import android.animation.LayoutTransition
 import android.animation.ObjectAnimator
 import android.app.Activity
 import android.content.Context
@@ -7,6 +8,7 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.transition.TransitionManager
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
@@ -115,6 +117,7 @@ class ForecastActivity : Activity() {
 
     private var forecastDays: List<DayForecast> = emptyList()
     private var selectedDayIndex: Int = 0
+    private var currentGraphMode: Int = ForecastGraphView.MODE_PRECIPITATION
     private var currentRealtimeTemp: Double = 68.0
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -179,17 +182,11 @@ class ForecastActivity : Activity() {
         // 1. Top Navigation Bar (Back Button + Location + Refresh Button)
         content.addView(buildTopBar())
 
-        // 2. Hero Weather Card
+        // 2. Compact Hero Weather Status Card
         content.addView(buildHeroWeatherCard())
 
-        // 3. Interactive 24-Hour Graph Card
-        content.addView(buildGraphCard())
-
-        // 4. Selected Day Key Metrics Grid
-        content.addView(buildMetricsGridCard())
-
-        // 5. 7-Day Outlook Card
-        content.addView(buildSevenDayCard())
+        // 3. 7-Day Outlook & Expansion Panels (Towards the top, as requested!)
+        content.addView(buildSevenDayExpansionCard())
 
         rootScroll.addView(content)
         return rootScroll
@@ -233,7 +230,7 @@ class ForecastActivity : Activity() {
         titleContainer.addView(locationHeader)
 
         val subHeader = TextView(this).apply {
-            text = "7-Day Outlook & Precipitation Radar"
+            text = "7-Day Outlook & Hourly Forecast"
             textSize = 11.5f
             setTextColor(Color.parseColor("#94a3b8"))
         }
@@ -262,8 +259,8 @@ class ForecastActivity : Activity() {
     private fun buildHeroWeatherCard(): View {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = makeCardBackground(Color.parseColor("#0e1726"), Color.parseColor("#1e293b"), dp(18))
-            val pad = dp(16)
+            background = makeCardBackground(Color.parseColor("#0e1726"), Color.parseColor("#1e293b"), dp(16))
+            val pad = dp(14)
             setPadding(pad, pad, pad, pad)
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 bottomMargin = dp(12)
@@ -277,7 +274,7 @@ class ForecastActivity : Activity() {
 
         currentTempView = TextView(this).apply {
             text = formatTemperature(currentRealtimeTemp)
-            textSize = if (tempUnit == "BOTH" || tempUnit == "Dual") 30f else 40f
+            textSize = if (tempUnit == "BOTH" || tempUnit == "Dual") 28f else 38f
             setTextColor(Color.WHITE)
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
@@ -299,8 +296,8 @@ class ForecastActivity : Activity() {
         condBox.addView(conditionView)
 
         rangeFeelsView = TextView(this).apply {
-            text = "High 72° • Low 48° • Feels 67°"
-            textSize = 12f
+            text = "High 72° • Low 48° • Wind 8 MPH"
+            textSize = 11.5f
             setTextColor(Color.parseColor("#cbd5e1"))
         }
         condBox.addView(rangeFeelsView)
@@ -309,13 +306,13 @@ class ForecastActivity : Activity() {
 
         // Summary chip
         precipSummaryView = TextView(this).apply {
-            text = "💧 0% chance of precipitation today"
-            textSize = 12f
+            text = "☀️ Dry conditions • 0% chance of rain"
+            textSize = 11.5f
             setTextColor(Color.parseColor("#38bdf8"))
-            background = makeCardBackground(Color.parseColor("#162842"), Color.parseColor("#1e3a5f"), dp(8))
-            setPadding(dp(10), dp(6), dp(10), dp(6))
+            background = makeCardBackground(Color.parseColor("#142236"), Color.parseColor("#1e3a5f"), dp(8))
+            setPadding(dp(10), dp(5), dp(10), dp(5))
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = dp(12)
+                topMargin = dp(10)
             }
         }
         card.addView(precipSummaryView)
@@ -323,144 +320,17 @@ class ForecastActivity : Activity() {
         return card
     }
 
-    private fun buildGraphCard(): View {
+    private fun buildSevenDayExpansionCard(): View {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = makeCardBackground(Color.parseColor("#0e1726"), Color.parseColor("#1e293b"), dp(18))
-            val pad = dp(14)
-            setPadding(pad, pad, pad, pad)
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = dp(12)
-            }
-        }
-
-        val headerRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-
-        graphTitleView = TextView(this).apply {
-            text = "Hourly Breakdown • TODAY"
-            textSize = 13.5f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f)
-        }
-        headerRow.addView(graphTitleView)
-
-        // Tab Pill Buttons for Metric Mode
-        val pillBar = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-
-        btnModePrecip = makeMetricPillButton("🌧️ Precip", active = true) {
-            switchGraphMode(ForecastGraphView.MODE_PRECIPITATION)
-        }
-        pillBar.addView(btnModePrecip)
-
-        btnModeTemp = makeMetricPillButton("🌡️ Temp", active = false) {
-            switchGraphMode(ForecastGraphView.MODE_TEMPERATURE)
-        }
-        pillBar.addView(btnModeTemp)
-
-        btnModeWind = makeMetricPillButton("💨 Wind", active = false) {
-            switchGraphMode(ForecastGraphView.MODE_WIND)
-        }
-        pillBar.addView(btnModeWind)
-
-        headerRow.addView(pillBar)
-        card.addView(headerRow)
-
-        // Custom 24-Hour Graph View
-        forecastGraph = ForecastGraphView(this).apply {
-            tempUnit = this@ForecastActivity.tempUnit
-            windUnit = this@ForecastActivity.windUnit
-            precipitationUnit = this@ForecastActivity.precipUnit
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(210)).apply {
-                topMargin = dp(8)
-            }
-            onHourScrubbed = { pt ->
-                pt?.let {
-                    scrubberReadoutView.text = "${it.hourLabel} • ${it.emoji} ${it.conditionText} • 💧 ${it.precipProb}% • ${formatTemperature(it.temp)}"
-                }
-            }
-        }
-        card.addView(forecastGraph)
-
-        scrubberReadoutView = TextView(this).apply {
-            text = "👆 Drag horizontally across the graph to inspect hourly precipitation & conditions."
-            textSize = 10.5f
-            setTextColor(Color.parseColor("#94a3b8"))
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = dp(6)
-            }
-        }
-        card.addView(scrubberReadoutView)
-
-        return card
-    }
-
-    private fun buildMetricsGridCard(): View {
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = makeCardBackground(Color.parseColor("#0e1726"), Color.parseColor("#1e293b"), dp(18))
-            val pad = dp(14)
-            setPadding(pad, pad, pad, pad)
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = dp(12)
-            }
-        }
-
-        val row1 = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        }
-
-        val (tilePrecip, vPrecipVal, vPrecipSub) = makeMetricTile("🌧️ PRECIPITATION", "0.00 in", "Peak chance: 0%")
-        metricPrecipVal = vPrecipVal
-        metricPrecipSub = vPrecipSub
-        row1.addView(tilePrecip)
-
-        val (tileSun, vSunVal, vSunSub) = makeMetricTile("🌅 SUN CYCLE", "7:14 AM", "Sunset: 6:21 PM")
-        metricSunVal = vSunVal
-        metricSunSub = vSunSub
-        row1.addView(tileSun)
-        card.addView(row1)
-
-        val row2 = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = dp(8)
-            }
-        }
-
-        val (tileWind, vWindVal, vWindSub) = makeMetricTile("💨 WIND & GUSTS", "8 MPH", "Direction: NNE")
-        metricWindVal = vWindVal
-        metricWindSub = vWindSub
-        row2.addView(tileWind)
-
-        val (tileUv, vUvVal, vUvSub) = makeMetricTile("☀️ UV & HUMIDITY", "3.2 Moderate", "Avg Humidity: 60%")
-        metricUvVal = vUvVal
-        metricUvSub = vUvSub
-        row2.addView(tileUv)
-        card.addView(row2)
-
-        return card
-    }
-
-    private fun buildSevenDayCard(): View {
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = makeCardBackground(Color.parseColor("#0e1726"), Color.parseColor("#1e293b"), dp(18))
+            background = makeCardBackground(Color.parseColor("#0a121e"), Color.parseColor("#1a273b"), dp(18))
             val pad = dp(14)
             setPadding(pad, pad, pad, pad)
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         }
 
         val title = TextView(this).apply {
-            text = "📅 7-DAY OUTLOOK"
+            text = "📅 7-DAY OUTLOOK & HOURLY BREAKDOWN"
             textSize = 13.5f
             setTextColor(Color.WHITE)
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -468,10 +338,11 @@ class ForecastActivity : Activity() {
         card.addView(title)
 
         val hint = TextView(this).apply {
-            text = "Tap any day to view its full 24-hour precipitation curve and hourly conditions."
+            text = "Tap any day to expand its interactive 24-hour graph & condition details."
             textSize = 11f
             setTextColor(Color.parseColor("#94a3b8"))
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(2)
                 bottomMargin = dp(10)
             }
         }
@@ -480,10 +351,155 @@ class ForecastActivity : Activity() {
         weeklyListContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            layoutTransition = LayoutTransition().apply {
+                enableTransitionType(LayoutTransition.CHANGING)
+            }
         }
         card.addView(weeklyListContainer)
 
         return card
+    }
+
+    private fun buildExpandedDayComponent(day: DayForecast): View {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val padH = dp(10)
+            setPadding(padH, dp(4), padH, dp(12))
+        }
+
+        // Material Divider
+        val divider = View(this).apply {
+            setBackgroundColor(Color.parseColor("#1e293b"))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply {
+                topMargin = dp(2)
+                bottomMargin = dp(8)
+            }
+        }
+        container.addView(divider)
+
+        // Header controls (Title + Segmented Button Toggle Group)
+        val headerRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        graphTitleView = TextView(this).apply {
+            text = "Hourly Breakdown • ${day.dayOfWeek}"
+            textSize = 12.5f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f)
+        }
+        headerRow.addView(graphTitleView)
+
+        // Segmented Button Toggle Group (Angular Material Button Toggle / PrimeUI SelectButton)
+        val pillBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        btnModePrecip = makeMetricPillButton("🌧️ Precip", active = (currentGraphMode == ForecastGraphView.MODE_PRECIPITATION)) {
+            switchGraphMode(ForecastGraphView.MODE_PRECIPITATION)
+        }
+        pillBar.addView(btnModePrecip)
+
+        btnModeTemp = makeMetricPillButton("🌡️ Temp", active = (currentGraphMode == ForecastGraphView.MODE_TEMPERATURE)) {
+            switchGraphMode(ForecastGraphView.MODE_TEMPERATURE)
+        }
+        pillBar.addView(btnModeTemp)
+
+        btnModeWind = makeMetricPillButton("💨 Wind", active = (currentGraphMode == ForecastGraphView.MODE_WIND)) {
+            switchGraphMode(ForecastGraphView.MODE_WIND)
+        }
+        pillBar.addView(btnModeWind)
+
+        headerRow.addView(pillBar)
+        container.addView(headerRow)
+
+        // Custom 24-Hour Graph Canvas
+        forecastGraph = ForecastGraphView(this).apply {
+            tempUnit = this@ForecastActivity.tempUnit
+            windUnit = this@ForecastActivity.windUnit
+            precipitationUnit = this@ForecastActivity.precipUnit
+            hourlyPoints = day.hourlyPoints
+            graphMode = currentGraphMode
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(190)).apply {
+                topMargin = dp(8)
+            }
+            onHourScrubbed = { pt ->
+                pt?.let {
+                    scrubberReadoutView.text = "${it.hourLabel} • ${it.emoji} ${it.conditionText} • 💧 ${it.precipProb}% • ${formatTemperature(it.temp)}"
+                }
+            }
+        }
+        container.addView(forecastGraph)
+
+        scrubberReadoutView = TextView(this).apply {
+            text = "👆 Drag horizontally across the graph to inspect hourly precipitation & conditions."
+            textSize = 10f
+            setTextColor(Color.parseColor("#94a3b8"))
+            gravity = Gravity.CENTER
+            background = makeCardBackground(Color.parseColor("#142236"), Color.parseColor("#1e3a5f"), dp(6))
+            val pad = dp(6)
+            setPadding(pad, dp(4), pad, dp(4))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(6)
+            }
+        }
+        container.addView(scrubberReadoutView)
+
+        // Day's 4 Key Metric Tiles (Material Sub-Cards)
+        val precipAmtStr = if (precipUnit == "mm") "${String.format("%.1f", day.precipSum)} mm" else "${String.format("%.2f", day.precipSum)} in"
+        val uvLabel = when {
+            day.uvIndexMax < 3.0 -> "Low"
+            day.uvIndexMax < 6.0 -> "Moderate"
+            day.uvIndexMax < 8.0 -> "High"
+            else -> "Very High"
+        }
+        val avgHum = if (day.hourlyPoints.isNotEmpty()) (day.hourlyPoints.map { it.humidity }.average()).roundToInt() else 50
+
+        val metricsBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(10)
+            }
+        }
+
+        val row1 = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+        val (tilePrecip, vPrecipVal, vPrecipSub) = makeMetricTile("🌧️ PRECIPITATION", precipAmtStr, "Peak chance: ${day.precipProbMax}%")
+        metricPrecipVal = vPrecipVal
+        metricPrecipSub = vPrecipSub
+        row1.addView(tilePrecip)
+
+        val (tileSun, vSunVal, vSunSub) = makeMetricTile("🌅 SUN CYCLE", day.sunrise, "Sunset: ${day.sunset}")
+        metricSunVal = vSunVal
+        metricSunSub = vSunSub
+        row1.addView(tileSun)
+        metricsBox.addView(row1)
+
+        val row2 = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(6)
+            }
+        }
+        val (tileWind, vWindVal, vWindSub) = makeMetricTile("💨 WIND & GUSTS", "${day.windSpeedMax.roundToInt()} $windUnit", "Max sustained gusts")
+        metricWindVal = vWindVal
+        metricWindSub = vWindSub
+        row2.addView(tileWind)
+
+        val (tileUv, vUvVal, vUvSub) = makeMetricTile("☀️ UV & HUMIDITY", "${String.format("%.1f", day.uvIndexMax)} $uvLabel", "Avg Humidity: $avgHum%")
+        metricUvVal = vUvVal
+        metricUvSub = vUvSub
+        row2.addView(tileUv)
+        metricsBox.addView(row2)
+
+        container.addView(metricsBox)
+
+        return container
     }
 
     private fun makeMetricPillButton(label: String, active: Boolean, onClick: () -> Unit): Button {
@@ -522,10 +538,15 @@ class ForecastActivity : Activity() {
     }
 
     private fun switchGraphMode(mode: Int) {
-        forecastGraph.graphMode = mode
-        updatePillState(btnModePrecip, mode == ForecastGraphView.MODE_PRECIPITATION)
-        updatePillState(btnModeTemp, mode == ForecastGraphView.MODE_TEMPERATURE)
-        updatePillState(btnModeWind, mode == ForecastGraphView.MODE_WIND)
+        currentGraphMode = mode
+        if (::forecastGraph.isInitialized) {
+            forecastGraph.graphMode = mode
+        }
+        if (::btnModePrecip.isInitialized && ::btnModeTemp.isInitialized && ::btnModeWind.isInitialized) {
+            updatePillState(btnModePrecip, mode == ForecastGraphView.MODE_PRECIPITATION)
+            updatePillState(btnModeTemp, mode == ForecastGraphView.MODE_TEMPERATURE)
+            updatePillState(btnModeWind, mode == ForecastGraphView.MODE_WIND)
+        }
     }
 
     private fun makeMetricTile(title: String, initialVal: String, initialSub: String): Triple<View, TextView, TextView> {
@@ -597,32 +618,7 @@ class ForecastActivity : Activity() {
         }
         precipSummaryView.text = rainChip
 
-        // 2. Update Graph Card
-        graphTitleView.text = "Hourly Breakdown • ${selDay.dayOfWeek}"
-        forecastGraph.hourlyPoints = selDay.hourlyPoints
-
-        // 3. Update Metric Grid
-        val precipAmtStr = if (precipUnit == "mm") "${String.format("%.1f", selDay.precipSum)} mm" else "${String.format("%.2f", selDay.precipSum)} in"
-        metricPrecipVal.text = precipAmtStr
-        metricPrecipSub.text = "Peak chance: ${selDay.precipProbMax}%"
-
-        metricSunVal.text = selDay.sunrise
-        metricSunSub.text = "Sunset: ${selDay.sunset}"
-
-        metricWindVal.text = "${selDay.windSpeedMax.roundToInt()} $windUnit"
-        metricWindSub.text = "Max sustained gusts"
-
-        val uvLabel = when {
-            selDay.uvIndexMax < 3.0 -> "Low"
-            selDay.uvIndexMax < 6.0 -> "Moderate"
-            selDay.uvIndexMax < 8.0 -> "High"
-            else -> "Very High"
-        }
-        metricUvVal.text = "${String.format("%.1f", selDay.uvIndexMax)} $uvLabel"
-        val avgHum = (selDay.hourlyPoints.map { it.humidity }.average()).roundToInt()
-        metricUvSub.text = "Avg Humidity: $avgHum%"
-
-        // 4. Populate 7-Day Rows with Apple-style Range Bars
+        // 2. Populate 7-Day Expansion Panels with Apple-style Range Bars & Material Accordion
         weeklyListContainer.removeAllViews()
         dayRowViews.clear()
 
@@ -631,27 +627,33 @@ class ForecastActivity : Activity() {
 
         for (i in forecastDays.indices) {
             val day = forecastDays[i]
-            val isSelected = (i == selectedDayIndex)
+            val isExpanded = (i == selectedDayIndex)
             val isToday = (i == 0)
 
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                val bg = if (isSelected) {
-                    makeCardBackground(Color.parseColor("#1b2f4f"), Color.parseColor("#ffd166"), dp(12), strokeWidth = dp(1.5f))
+            val panel = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                val bg = if (isExpanded) {
+                    makeCardBackground(Color.parseColor("#122034"), Color.parseColor("#38bdf8"), dp(14), strokeWidth = dp(1.5f))
                 } else {
-                    makeCardBackground(Color.parseColor("#101c2e"), Color.parseColor("#1a2b42"), dp(12))
+                    makeCardBackground(Color.parseColor("#0e1726"), Color.parseColor("#1e293b"), dp(12))
                 }
                 background = bg
-                val padH = dp(12)
-                val padV = dp(10)
-                setPadding(padH, padV, padH, padV)
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                    bottomMargin = dp(6)
+                    bottomMargin = dp(8)
                 }
+            }
+
+            // Header (mat-expansion-panel-header)
+            val headerRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                val padH = dp(12)
+                val padV = dp(11)
+                setPadding(padH, padV, padH, padV)
                 applyPressAnimation(this)
                 setOnClickListener {
                     performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                    TransitionManager.beginDelayedTransition(weeklyListContainer)
                     selectedDayIndex = i
                     renderForecastData()
                 }
@@ -661,13 +663,13 @@ class ForecastActivity : Activity() {
             val tvDay = TextView(this).apply {
                 text = if (isToday) "TODAY" else day.dayOfWeek
                 textSize = 12.5f
-                setTextColor(if (isSelected) Color.parseColor("#ffd166") else Color.WHITE)
+                setTextColor(if (isExpanded) Color.parseColor("#ffd166") else Color.WHITE)
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                layoutParams = LinearLayout.LayoutParams(dp(58), ViewGroup.LayoutParams.WRAP_CONTENT)
+                layoutParams = LinearLayout.LayoutParams(dp(56), ViewGroup.LayoutParams.WRAP_CONTENT)
             }
-            row.addView(tvDay)
+            headerRow.addView(tvDay)
 
-            // Weather Icon & Prob
+            // Weather Icon & Prob (mat-badge / p-badge)
             val iconBox = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
@@ -692,7 +694,7 @@ class ForecastActivity : Activity() {
                 }
                 iconBox.addView(tvProb)
             }
-            row.addView(iconBox)
+            headerRow.addView(iconBox)
 
             // Min Temp
             val tvMin = TextView(this).apply {
@@ -700,9 +702,9 @@ class ForecastActivity : Activity() {
                 textSize = 12f
                 setTextColor(Color.parseColor("#94a3b8"))
                 gravity = Gravity.END
-                layoutParams = LinearLayout.LayoutParams(dp(30), ViewGroup.LayoutParams.WRAP_CONTENT)
+                layoutParams = LinearLayout.LayoutParams(dp(28), ViewGroup.LayoutParams.WRAP_CONTENT)
             }
-            row.addView(tvMin)
+            headerRow.addView(tvMin)
 
             // Apple Weather style Temp Range Bar
             val rangeBar = TempRangeBarView(this).apply {
@@ -711,12 +713,12 @@ class ForecastActivity : Activity() {
                 dayMin = day.tempMin.toFloat()
                 dayMax = day.tempMax.toFloat()
                 currentTemp = if (isToday) currentRealtimeTemp.toFloat() else null
-                layoutParams = LinearLayout.LayoutParams(0, dp(12), 1.0f).apply {
+                layoutParams = LinearLayout.LayoutParams(0, dp(14), 1.0f).apply {
                     marginStart = dp(8)
                     marginEnd = dp(8)
                 }
             }
-            row.addView(rangeBar)
+            headerRow.addView(rangeBar)
 
             // Max Temp
             val tvMax = TextView(this).apply {
@@ -725,12 +727,32 @@ class ForecastActivity : Activity() {
                 setTextColor(Color.WHITE)
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 gravity = Gravity.START
-                layoutParams = LinearLayout.LayoutParams(dp(30), ViewGroup.LayoutParams.WRAP_CONTENT)
+                layoutParams = LinearLayout.LayoutParams(dp(28), ViewGroup.LayoutParams.WRAP_CONTENT)
             }
-            row.addView(tvMax)
+            headerRow.addView(tvMax)
 
-            dayRowViews.add(row)
-            weeklyListContainer.addView(row)
+            // Material Expansion Chevron Indicator
+            val chevron = TextView(this).apply {
+                text = "▼"
+                textSize = 10f
+                rotation = if (isExpanded) 180f else 0f
+                setTextColor(if (isExpanded) Color.parseColor("#38bdf8") else Color.parseColor("#64748b"))
+                gravity = Gravity.CENTER
+                layoutParams = LinearLayout.LayoutParams(dp(18), ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                    marginStart = dp(4)
+                }
+            }
+            headerRow.addView(chevron)
+
+            panel.addView(headerRow)
+
+            // If expanded, reveal hourly breakdown & metrics component directly under the row
+            if (isExpanded) {
+                panel.addView(buildExpandedDayComponent(day))
+            }
+
+            dayRowViews.add(panel)
+            weeklyListContainer.addView(panel)
         }
     }
 
