@@ -723,7 +723,14 @@ class MainActivity : Activity() {
             )
             applyPressAnimation(this)
             setOnClickListener {
-                startActivity(Intent(this@MainActivity, ForecastActivity::class.java))
+                val forecastIntent = Intent(this@MainActivity, ForecastActivity::class.java).apply {
+                    putExtra("lat", prefs.getFloat("latitude", 37.2388f).toDouble())
+                    putExtra("lon", prefs.getFloat("longitude", -76.5097f).toDouble())
+                    putExtra("location_name", prefs.getString("locationName", "Yorktown, VA"))
+                    putExtra("temp_unit", prefs.getString("temperatureUnit", "BOTH"))
+                    putExtra("wind_unit", prefs.getString("windSpeedUnit", "mph"))
+                }
+                startActivity(forecastIntent)
             }
         }
         titleRow.addView(btnForecast)
@@ -768,7 +775,10 @@ class MainActivity : Activity() {
                 false
             }
 
-            loadUrl("file:///android_asset/web/index.html#radar")
+            val curLat = prefs.getFloat("latitude", 37.2388f)
+            val curLon = prefs.getFloat("longitude", -76.5097f)
+            val encodedName = android.net.Uri.encode(curLocation)
+            loadUrl("file:///android_asset/web/index.html#radar?lat=$curLat&lon=$curLon&name=$encodedName")
         }
         radarFrame.addView(radarWv, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
         layout.addView(radarFrame)

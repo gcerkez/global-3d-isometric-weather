@@ -1,3 +1,3 @@
-858414071924a57e847b739b954af226831c620715e20537b231d7a4ab75f07a  global-3d-isometric-weather-v0.0.6.apk
+aa4f852dbe381c5ddf667e6d3228469bb436ede389859c03abbce3afa2b09fbb  global-3d-isometric-weather-v0.0.6.apk
 8e594a63e5e4dad06c5bf138f22574732a7e1fb8688b4516343c5fd4e803dd10  global-3d-isometric-weather-v0.0.6.plasmoid
-173229dfa378bc057aa8140b57c4b1bc9e7067296a05e52cc940cf7b7e0def71  global-3d-isometric-weather-web-android-v0.0.6.zip
+95c464241859bc3eb281e621418fba7d18123d426fb45bdee39d9a5f8ec99615  global-3d-isometric-weather-web-android-v0.0.6.zip

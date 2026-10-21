@@ -42,7 +42,7 @@ describe('RadarService', () => {
 
   it('constructs base map tile URLs', () => {
     const baseUrl = service.getBaseMapTileUrl(7, 36, 48);
-    expect(baseUrl).toBe('https://basemaps.cartocdn.com/dark_all/7/36/48.png');
+    expect(baseUrl).toBe('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/7/48/36');
   });
 
   it('formats frame Unix timestamps into readable local time strings', () => {

@@ -7,22 +7,21 @@ Release **v0.0.6** advances the **Global 3D Isometric Weather** project with int
 ## 🌟 Key Highlights & Major Features
 
 ### 1. Interactive Doppler Weather Radar (`RadarView.tsx`, `RadarModal.tsx` & `RadarService.ts`)
-- **Keyless Global Doppler Radar**: Integrated with the open RainViewer API (`api.rainviewer.com`) and CartoDB Dark Matter base maps, enabling live precipitation mapping across North America, Europe, Asia, and worldwide.
-- **Embedded Everywhere Across the App**:
-  - **7-Day Outlook Integration**: Embedded directly inside both the Android native `ForecastActivity.kt` and React `ForecastModal.tsx` 7-day forecast views with instant jump button (`📡 Radar ↓` / `📡 View Live Doppler Radar →`).
-  - **Dedicated Radar Tab**: Added a prominent **📡 Live Radar** tab to the Android main configurator (`MainActivity.kt`) featuring a full-bleed interactive radar viewer.
-  - **Standalone `#radar` Route**: High-performance headless radar routing in `App.tsx` optimized for embedded mobile WebViews with zero diorama overhead.
-- **Animated Playback Loop**:
-  - Smooth looping across past observed radar frames and forward nowcast projections.
-  - Play/Pause toggle (also triggered via keyboard `Space`), frame step backward/forward buttons, and timeline scrubbing slider.
-  - Multi-speed playback controls (`0.5x`, `1x`, `2x`).
+- **100% Free, Keyless & Watermark-Free Base Map**: Replaced CartoDB tiles with **Esri World Dark Gray Base Map** tiles (`https://server.arcgisonline.com/...`) and OpenStreetMap fallbacks. Requires zero API keys, never blocks usage, has no diagnostic watermarks, and delivers fast global CDN tile rendering.
+- **Spacious, Intuitive Mobile Controls**:
+  - **Dedicated Scrubber Section**: Full-width timeline slider with clear `-50m` and `+30m` bounds, live frame counter, and color-coded timestamp status badge (Cyan for `📡 Observed`, Purple for `🔮 Predicted`).
+  - **Generous Touch Targets & Playback Buttons**: Dedicated `[⏮ -10m]`, `[▶ Play Loop / ⏸ Pause]`, and `[+10m ⏭]` step buttons with readable text labels, alongside speed pills (`0.5x`, `1x`, `2x`).
+  - **Responsive Settings Grid**: Stacked 2-column layout separating color palette dropdown (`Universal`, `Smooth Blue/Green`, `Universal NEXRAD`, etc.) and radar opacity slider with live percentage readout (`85%`), preventing any text overlap on mobile screens.
+  - **Quick Controls Help Footer**: Integrated usage tip explaining playback, scrubbing, and zoom gestures.
+- **Dedicated Tab Architecture**:
+  - **Android Forecast Tab Separation**: `ForecastActivity.kt` now features top tab switching between `[ 📅 7-Day Forecast ]` and `[ 📡 Live Doppler Radar ]`. The radar has been completely decoupled from the 7-day scroll list, allowing each view to occupy its optimal viewport without layout conflicts.
+  - **Active Location Parameter Passing**: Both `MainActivity.kt` and `ForecastActivity.kt` forward active coordinates and city name to `#radar?lat=...&lon=...&name=...`, keeping the radar pin and tile bounds perfectly synchronized with the user's selected location (e.g., Colorado Springs, CO).
 - **Interactive Multi-Tile Composite Canvas**:
-  - Dynamic 3x3 Web Mercator (EPSG:3857) tile stitching at zoom levels 4 through 10.
+  - Dynamic 3x3 Web Mercator (EPSG:3857) tile stitching across zoom levels 4 through 10.
   - Zoom controls (`＋`, `－`) and one-tap re-centering on current geographic coordinates (`🎯`).
   - Range rings (25 mi, 50 mi, 100 mi) with animated pulsing user location beacon and pin label.
-  - Color palette selection: Original Universal, Universal Blue, The Weather Channel, and NEXRAD Level-III.
   - Adjustable tile opacity slider (20% – 100%) and interactive dBZ reflectivity scale legend bar.
-  - Resilient offline fallback simulation if RainViewer network feeds are temporarily unreachable.
+  - Resilient offline fallback simulation and dark tactical grid if network feeds are temporarily unreachable.
 
 ### 2. Modern 3D Weather App Icon
 - **High-Resolution 3D Glassmorphic App Icon**: Generated a sleek, weather-themed icon featuring a floating isometric diorama cube, glowing sun, rain cloud, droplets, and cyan radar waves.

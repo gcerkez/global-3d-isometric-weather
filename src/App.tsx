@@ -65,24 +65,56 @@ export const App: React.FC = () => {
   const [isForecastOpen, setIsForecastOpen] = useState<boolean>(false);
   const [isRadarOpen, setIsRadarOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const parseCoordsFromLocation = (): { lat: number; lon: number; name: string } => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      const search = window.location.search;
+      const paramStr = hash.includes('?') ? hash.split('?')[1] : (search ? search.substring(1) : '');
+      if (paramStr) {
+        const params = new URLSearchParams(paramStr);
+        const pLat = parseFloat(params.get('lat') || '');
+        const pLon = parseFloat(params.get('lon') || '');
+        const pName = params.get('name') || params.get('loc');
+        if (!isNaN(pLat) && !isNaN(pLon)) {
+          return {
+            lat: pLat,
+            lon: pLon,
+            name: pName ? decodeURIComponent(pName) : `${pLat.toFixed(2)}, ${pLon.toFixed(2)}`,
+          };
+        }
+      }
+      const savedLat = parseFloat(localStorage.getItem('latitude') || '');
+      const savedLon = parseFloat(localStorage.getItem('longitude') || '');
+      const savedName = localStorage.getItem('location_name');
+      if (!isNaN(savedLat) && !isNaN(savedLon) && savedName) {
+        return { lat: savedLat, lon: savedLon, name: savedName };
+      }
+    }
+    return {
+      lat: 37.2388,
+      lon: -76.5097,
+      name: 'Yorktown, VA',
+    };
+  };
+
   const [isStandaloneRadar, setIsStandaloneRadar] = useState<boolean>(() => {
-    return typeof window !== 'undefined' && (window.location.hash === '#radar' || window.location.search.includes('view=radar'));
+    return typeof window !== 'undefined' && (window.location.hash.startsWith('#radar') || window.location.search.includes('view=radar'));
+  });
+
+  // Geolocation & Coordinates
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number; name: string }>(() => {
+    return parseCoordsFromLocation();
   });
 
   useEffect(() => {
     const handleHash = () => {
-      setIsStandaloneRadar(window.location.hash === '#radar' || window.location.search.includes('view=radar'));
+      setIsStandaloneRadar(window.location.hash.startsWith('#radar') || window.location.search.includes('view=radar'));
+      const parsed = parseCoordsFromLocation();
+      setLocationCoords(parsed);
     };
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
-
-  // Geolocation & Coordinates
-  const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number; name: string }>({
-    lat: 37.2388,
-    lon: -76.5097,
-    name: 'Yorktown, VA',
-  });
 
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => {
     return typeof window !== 'undefined' && 'Notification' in window

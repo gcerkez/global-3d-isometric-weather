@@ -69,10 +69,18 @@ export class RadarService {
   }
 
   /**
-   * Constructs the CartoDB Dark Matter / OpenStreetMap base map tile URL
+   * Constructs the base map tile URL using Esri World Dark Gray Base (100% free, no API key, no watermark)
+   * Note: Esri REST coordinate scheme is {zoom}/{y}/{x}
    */
   public getBaseMapTileUrl(zoom: number, x: number, y: number): string {
-    return `https://basemaps.cartocdn.com/dark_all/${zoom}/${x}/${y}.png`;
+    return `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/${zoom}/${y}/${x}`;
+  }
+
+  /**
+   * Constructs OpenStreetMap standard base map tile URL as secondary fallback
+   */
+  public getFallbackBaseMapTileUrl(zoom: number, x: number, y: number): string {
+    return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
   }
 
   /**
