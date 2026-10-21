@@ -163,6 +163,9 @@ export const App: React.FC = () => {
   const handleEngineReady = (engine: IsometricEngine) => {
     engineRef.current = engine;
     engine.setDioramaTheme(settings.dioramaTheme);
+    (engine as unknown as { setWeatherProvider?: (p: WeatherProviderId) => void }).setWeatherProvider = (p: WeatherProviderId) => {
+      handleUpdateSettings({ provider: p });
+    };
     refreshWeather();
   };
 

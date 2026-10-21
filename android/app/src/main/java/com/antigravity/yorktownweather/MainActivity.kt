@@ -1047,6 +1047,28 @@ class MainActivity : Activity() {
             }.first
         )
 
+        // --- METEOROLOGICAL API PROVIDER ---
+        layout.addView(makeSectionHeader("Meteorological Weather API"))
+
+        layout.addView(
+            makePickerRow(
+                label = "Weather API Provider:",
+                dialogTitle = "Select Weather Provider",
+                entries = listOf(
+                    "Open-Meteo (Default — Free, Global ECMWF/GFS, No Key)" to "open-meteo",
+                    "National Weather Service (NOAA US Gov api.weather.gov)" to "nws",
+                    "MET Norway (api.met.no — European & Arctic Global)" to "met-norway",
+                    "OpenWeatherMap (Global API — Key / Cached Demo)" to "openweathermap",
+                    "WeatherAPI.com (Global Forecast & AQI — Key / Demo)" to "weatherapi"
+                ),
+                currentVal = prefs.getString("weatherProvider", "open-meteo") ?: "open-meteo"
+            ) { newVal ->
+                prefs.edit().putString("weatherProvider", newVal).apply()
+                syncSettingsToWebView()
+                applyAndRefreshWidgets("Weather provider set to $newVal")
+            }.first
+        )
+
         // --- TEMPERATURE & WIND UNITS ---
         layout.addView(makeSectionHeader("Temperature & Wind Units"))
 
@@ -1370,6 +1392,7 @@ class MainActivity : Activity() {
         val zoom = prefs.getFloat("widgetZoom", 1.0f)
         val offsetX = prefs.getFloat("widgetOffsetX", 0.0f)
         val offsetY = prefs.getFloat("widgetOffsetY", 0.0f)
+        val wProvider = prefs.getString("weatherProvider", "open-meteo") ?: "open-meteo"
 
         val js = """
             const hud = document.getElementById('hudCard');
@@ -1381,6 +1404,9 @@ class MainActivity : Activity() {
             const locBadge = document.querySelector('.location-badge');
             if (locBadge) locBadge.style.display = 'none';
             if (window.isoEngine) {
+                if (window.isoEngine.setWeatherProvider) {
+                    window.isoEngine.setWeatherProvider('$wProvider');
+                }
                 window.isoEngine.state.locationName = '$name';
                 window.isoEngine.state.latitude = $lat;
                 window.isoEngine.state.longitude = $lon;
