@@ -18,6 +18,8 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
+import android.webkit.WebSettings
+import android.webkit.WebView
 import android.widget.*
 import kotlinx.coroutines.*
 import org.json.JSONObject
@@ -121,6 +123,9 @@ class ForecastActivity : Activity() {
     private var selectedDayIndex: Int = 0
     private var currentGraphMode: Int = ForecastGraphView.MODE_PRECIPITATION
     private var currentRealtimeTemp: Double = 68.0
+    private var mainScrollView: ScrollView? = null
+    private var radarCardView: View? = null
+    private var radarWebView: WebView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -147,6 +152,8 @@ class ForecastActivity : Activity() {
     override fun onDestroy() {
         super.onDestroy()
         activityScope.cancel()
+        radarWebView?.destroy()
+        radarWebView = null
     }
 
     fun formatTemperature(tempVal: Double, unitMode: String = tempUnit): String {
@@ -174,6 +181,7 @@ class ForecastActivity : Activity() {
             setBackgroundColor(Color.parseColor("#070d18")) // Deep midnight navy
             isFillViewport = true
         }
+        mainScrollView = rootScroll
 
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -187,7 +195,12 @@ class ForecastActivity : Activity() {
         // 2. Compact Hero Weather Status Card
         content.addView(buildHeroWeatherCard())
 
-        // 3. 7-Day Outlook & Expansion Panels (Towards the top, as requested!)
+        // 3. Live Doppler Radar Card
+        val radarView = buildLiveRadarCard()
+        radarCardView = radarView
+        content.addView(radarView)
+
+        // 4. 7-Day Outlook & Expansion Panels (Towards the top, as requested!)
         content.addView(buildSevenDayExpansionCard())
 
         rootScroll.addView(content)
@@ -306,18 +319,143 @@ class ForecastActivity : Activity() {
         rowTop.addView(condBox)
         card.addView(rowTop)
 
-        // Summary chip
+        // Summary chip & Radar jump button
+        val chipRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(10)
+            }
+        }
+
         precipSummaryView = TextView(this).apply {
             text = "☀️ Dry conditions • 0% chance of rain"
             textSize = 11.5f
             setTextColor(Color.parseColor("#38bdf8"))
             background = makeCardBackground(Color.parseColor("#142236"), Color.parseColor("#1e3a5f"), dp(8))
             setPadding(dp(10), dp(5), dp(10), dp(5))
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f).apply {
+                marginEnd = dp(8)
+            }
+        }
+        chipRow.addView(precipSummaryView)
+
+        val btnJumpRadar = Button(this).apply {
+            text = "📡 Radar ↓"
+            textSize = 11f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            background = makeCardBackground(Color.parseColor("#0284c7"), Color.parseColor("#38bdf8"), dp(8))
+            setPadding(dp(10), dp(4), dp(10), dp(4))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(34))
+            applyPressAnimation(this)
+            setOnClickListener {
+                performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                radarCardView?.let { radarCard ->
+                    mainScrollView?.smoothScrollTo(0, radarCard.top - dp(10))
+                }
+            }
+        }
+        chipRow.addView(btnJumpRadar)
+        card.addView(chipRow)
+
+        return card
+    }
+
+    private fun buildLiveRadarCard(): View {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = makeCardBackground(Color.parseColor("#0a1422"), Color.parseColor("#1c304a"), dp(16))
+            val pad = dp(14)
+            setPadding(pad, pad, pad, pad)
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = dp(14)
+            }
+        }
+
+        // Header Row
+        val headerRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val textGroup = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f)
+        }
+
+        val title = TextView(this).apply {
+            text = "📡 LIVE DOPPLER RADAR COMPOSITE"
+            textSize = 13.5f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        }
+        textGroup.addView(title)
+
+        val sub = TextView(this).apply {
+            text = "Past observations loop & nowcast radar for $locationName"
+            textSize = 11f
+            setTextColor(Color.parseColor("#94a3b8"))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(2)
+            }
+        }
+        textGroup.addView(sub)
+        headerRow.addView(textGroup)
+
+        val btnReloadRadar = Button(this).apply {
+            text = "⟳"
+            textSize = 16f
+            setTextColor(Color.parseColor("#38bdf8"))
+            background = makeCardBackground(Color.parseColor("#13273e"), Color.parseColor("#25456b"), dp(10))
+            layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
+            applyPressAnimation(this)
+            setOnClickListener {
+                performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                radarWebView?.reload()
+            }
+            contentDescription = "Reload Radar"
+        }
+        headerRow.addView(btnReloadRadar)
+        card.addView(headerRow)
+
+        // Radar WebView Container with rounded border
+        val frame = FrameLayout(this).apply {
+            background = makeCardBackground(Color.parseColor("#070d18"), Color.parseColor("#1e334d"), dp(12))
+            clipChildren = true
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(380)).apply {
                 topMargin = dp(10)
             }
         }
-        card.addView(precipSummaryView)
+
+        val wv = WebView(this).apply {
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            settings.allowFileAccess = true
+            @Suppress("DEPRECATION")
+            settings.allowFileAccessFromFileURLs = true
+            @Suppress("DEPRECATION")
+            settings.allowUniversalAccessFromFileURLs = true
+            settings.cacheMode = WebSettings.LOAD_DEFAULT
+            setBackgroundColor(Color.parseColor("#070d18"))
+
+            setOnTouchListener { v, event ->
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                        v.parent?.requestDisallowInterceptTouchEvent(true)
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        v.parent?.requestDisallowInterceptTouchEvent(false)
+                    }
+                }
+                false
+            }
+
+            loadUrl("file:///android_asset/web/index.html#radar")
+        }
+        radarWebView = wv
+        frame.addView(wv, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        card.addView(frame)
 
         return card
     }

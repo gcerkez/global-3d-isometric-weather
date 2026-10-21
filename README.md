@@ -31,8 +31,12 @@ Inspired by tilt-shift isometric architectural dioramas with **translucent turqu
 
 ## 🚀 Key Features & Capabilities
 
-### 1. Interactive Doppler Weather Radar (`RadarModal.tsx` & `RadarService.ts`)
+### 1. Interactive Doppler Weather Radar (`RadarView.tsx`, `RadarModal.tsx` & `RadarService.ts`)
 - **Keyless Global Doppler Radar**: Integrated with the open RainViewer API (`api.rainviewer.com`) and CartoDB Dark Matter base maps, enabling live precipitation mapping across North America, Europe, Asia, and worldwide.
+- **Embedded Everywhere Across the App**:
+  - **7-Day Outlook Integration**: Embedded directly inside both the Android native `ForecastActivity.kt` and React `ForecastModal.tsx` 7-day forecast views with instant jump button (`📡 Radar ↓` / `📡 View Live Doppler Radar →`).
+  - **Dedicated Radar Tab**: Added a prominent **📡 Live Radar** tab to the Android main configurator (`MainActivity.kt`) featuring a full-bleed interactive radar viewer.
+  - **Standalone `#radar` Route**: High-performance headless radar routing in `App.tsx` optimized for embedded mobile WebViews with zero diorama overhead.
 - **Animated Playback Loop**:
   - Smooth looping across past observed radar frames and forward nowcast projections.
   - Play/Pause toggle (also triggered via keyboard `Space`), frame step backward/forward buttons, and timeline scrubbing slider.
@@ -45,7 +49,12 @@ Inspired by tilt-shift isometric architectural dioramas with **translucent turqu
   - Adjustable tile opacity slider (20% – 100%) and interactive dBZ reflectivity scale legend bar.
   - Resilient offline fallback simulation if RainViewer network feeds are temporarily unreachable.
 
-### 2. Severe Weather Alerts & Desktop Push Notifications (`AlertService.ts`, `WeatherAlertsBanner.tsx`, `AlertDetailsModal.tsx`)
+### 2. Modern 3D Weather App Icon
+- **High-Resolution 3D Glassmorphic App Icon**: Features a floating isometric diorama cube, glowing sun, rain cloud, droplets, and cyan radar waves.
+- **Full Android Mipmap Suite**: Packaged square and round launcher icons across all Android display densities (`mipmap-mdpi`, `mipmap-hdpi`, `mipmap-xhdpi`, `mipmap-xxhdpi`, `mipmap-xxxhdpi`), high-res adaptive foreground drawable (`ic_launcher_foreground.png`), and web icons (`public/icon.png`, `web/icon.png`).
+- **Manifest Integration**: Configured `android:icon="@mipmap/ic_launcher"` and `android:roundIcon="@mipmap/ic_launcher_round"` in `AndroidManifest.xml` for clean presentation on OnePlus / Android launchers.
+
+### 3. Severe Weather Alerts & Desktop Push Notifications (`AlertService.ts`, `WeatherAlertsBanner.tsx`, `AlertDetailsModal.tsx`)
 - **Authoritative NOAA National Weather Service Alerts**: Queries official US weather alerts directly from `api.weather.gov/alerts/active?point=lat,lon` with zero API keys required.
 - **Global Meteorological Condition Analysis Fallback**: For international regions outside NOAA NWS boundaries, automatically analyzes live telemetry and WMO weather codes to detect hazardous conditions:
   - **Severe Thunderstorm Warning** (WMO codes 96, 99)
@@ -59,7 +68,7 @@ Inspired by tilt-shift isometric architectural dioramas with **translucent turqu
 - **Alert Details Modal**: Features onset/expiration timing, urgency badges, safety instructions (e.g. interior shelter guidelines), and complete meteorological statements.
 - **Desktop Push Notifications**: Dispatches native desktop notifications for urgent hazards with built-in deduplication.
 
-### 3. Full Framework Settings & Configuration Suite (`SettingsModal.tsx`)
+### 4. Full Framework Settings & Configuration Suite (`SettingsModal.tsx`)
 Eliminated raw HTML settings pages in favor of an integrated, 6-tab React configuration suite persisted in `localStorage`:
 - **📍 Location & Presets**: Active coordinates display, 1-tap device GPS autolocate, geocoded city/ZIP search, and 18 favorite preset city chips (Yorktown, Norfolk, Washington D.C., Denver, London, Tokyo, Paris, etc.).
 - **🛰️ Meteorological Providers & Custom API Tokens**: Seamless switching between Open-Meteo, NOAA NWS, MET Norway, OpenWeatherMap, and WeatherAPI.com with custom API token management.
@@ -68,7 +77,7 @@ Eliminated raw HTML settings pages in favor of an integrated, 6-tab React config
 - **📡 Doppler Radar Preferences**: Default radar color palette and tile opacity settings.
 - **🚨 Severe Alerts & Notifications**: Severe weather monitoring toggle, desktop push notification permission manager, and auditory chime toggles.
 
-### 4. Multi-Provider Weather Engine (`WeatherService.ts`)
+### 5. Multi-Provider Weather Engine (`WeatherService.ts`)
 Users can switch dynamically between 5 meteorological providers:
 1. **Open-Meteo**: High-resolution global numerical models (ECMWF, GFS, ICON). Free, open access, no key required.
 2. **National Weather Service (NOAA)**: Official US federal government meteorological service (`api.weather.gov`). Free, no key required.
@@ -77,7 +86,7 @@ Users can switch dynamically between 5 meteorological providers:
 5. **WeatherAPI.com**: Global forecast and air quality service supporting custom tokens or simulated fallback.
 - **Automatic Failover Engine**: If any custom provider fails or encounters network rate limits, the app automatically fails over to Open-Meteo without interrupting the user.
 
-### 5. 28 Pre-Generated Regional, NPS & UNESCO 3D Isometric Dioramas
+### 6. 28 Pre-Generated Regional, NPS & UNESCO 3D Isometric Dioramas
 Each floating-island diorama features **translucent turquoise cutaway water** and comes with matching **Daylight**, **Golden Hour Sunset**, and **Starry Night** textures:
 
 | Theme ID | Region / Landmark | Iconic Architectural & Topographic Features |
@@ -112,7 +121,10 @@ Each floating-island diorama features **translucent turquoise cutaway water** an
 | `alpine` | Alpine Mountain Village | Snow-Capped Mountain Peak, Timber Chalets, Glacial Lake, Stone Bridge |
 | `modern` | Global Metropolis | Contemporary Glass Skyscraper District, Harbour Bridge, Waterfront Park |
 
-### 6. Android Homescreen AppWidget & Native App (`v0.0.6`)
+### 7. Android Homescreen AppWidget & Native App (`v0.0.6`)
+- **Dedicated 📡 Live Radar Tab**: Interactive hardware-accelerated radar view with animated loops and timeline control inside `MainActivity.kt`.
+- **Embedded 7-Day Live Doppler Radar Card**: Embedded directly inside native `ForecastActivity.kt` with instant jump button (`📡 Radar ↓`).
+- **Modern 3D Weather App Icon**: Floating isometric cube icon installed across all Android dpi buckets.
 - **4×3 Resizable Homescreen AppWidget (`IsometricWeatherWidgetProvider.kt`)**:
   - **Authentic Top-Sky Split HUD**: Clean typography in the upper sky with 0% overlap on the 3D diorama.
   - **Interactive Multi-Target Taps**:
@@ -128,7 +140,7 @@ Each floating-island diorama features **translucent turquoise cutaway water** an
   - Configurable update intervals (15m, 30m, 1h, 2h, or manual refresh) via `AlarmManager`.
 - **Floating Manual Refresh Button**: Transparent red refresh button (`↻`) at the bottom-right of the render view for instant weather and diorama updates.
 
-### 7. KDE Plasma 6 Desktop Plasmoid
+### 8. KDE Plasma 6 Desktop Plasmoid
 - Native user-space plasmoid for KDE Plasma 6 (`~/.local/share/plasma/plasmoids/`).
 - Real-time weather, AQI, UV index, lunar synodic phases, and 12-hour temperature/precipitation sparklines.
 - Solar cycle lighting simulation with smooth transitions between day, golden hour sunset, and night.
@@ -140,13 +152,14 @@ Each floating-island diorama features **translucent turquoise cutaway water** an
 ```text
 ├── src/                                    # Modern React 18 + TypeScript Source
 │   ├── components/
+│   │   ├── RadarView.tsx                   # Reusable Doppler radar canvas component with controls
 │   │   ├── RadarModal.tsx                  # Interactive Doppler radar modal (RainViewer API + Canvas)
 │   │   ├── WeatherAlertsBanner.tsx         # Pulsing glassmorphic severe weather warning banner
 │   │   ├── AlertDetailsModal.tsx           # Full emergency statement, severity badges & safety tips
 │   │   ├── SettingsModal.tsx               # 6-Tab framework settings & configuration suite
 │   │   ├── WeatherHudCard.tsx              # Telemetry HUD card, digital clock, quick actions
 │   │   ├── WeatherCanvas.tsx               # 3D diorama canvas host & camera controls
-│   │   ├── ForecastModal.tsx               # 7-day outlook container with day rows & hourly chart
+│   │   ├── ForecastModal.tsx               # 7-day outlook container with day rows, radar tab & hourly chart
 │   │   ├── DayForecastRow.tsx              # Animated day forecast accordion row
 │   │   ├── HourlyBreakdownChart.tsx        # High-DPI 24h interactive forecast canvas graph
 │   │   └── WeatherProviderSelector.tsx     # Meteorological provider dropdown with key config
@@ -156,14 +169,14 @@ Each floating-island diorama features **translucent turquoise cutaway water** an
 │   │   └── weather/WeatherService.ts       # Multi-provider coordinator & Open-Meteo fallback
 │   ├── engine/IsometricEngine.ts           # 3D diorama rendering, weather physics & cloud shadows
 │   ├── types/weather.ts                    # TypeScript types (Alerts, Radar, Settings, Telemetry)
-│   └── tests/                              # Vitest + React Testing Library Spec Suite (11 suites / 56 tests)
+│   └── tests/                              # Vitest + React Testing Library Spec Suite (11 suites / 58 tests)
 │       ├── AlertService.spec.ts            # NWS GeoJSON & WMO condition analysis tests
 │       ├── WeatherAlerts.spec.tsx          # Warning banner & alert modal spec tests
 │       ├── RadarService.spec.ts            # Web Mercator math & tile URL generation tests
 │       ├── RadarModal.spec.tsx             # Interactive radar controls & scrubber tests
 │       ├── SettingsModal.spec.tsx          # 6-Tab settings switching & persistence tests
 │       ├── WeatherService.spec.ts          # Multi-provider & Open-Meteo fallback tests
-│       ├── ForecastModal.spec.tsx          # 7-Day outlook modal tests
+│       ├── ForecastModal.spec.tsx          # 7-Day outlook & radar tab modal tests
 │       ├── DayForecastRow.spec.tsx         # Accordion row expansion tests
 │       ├── HourlyBreakdownChart.spec.tsx   # Canvas chart rendering tests
 │       ├── WeatherHudCard.spec.tsx         # Telemetry HUD tests

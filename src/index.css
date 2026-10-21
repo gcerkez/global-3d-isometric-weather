@@ -1778,3 +1778,106 @@ canvas#isoCanvas {
   font-size: 11.5px;
   color: #cbd5e1;
 }
+
+/* ==========================================================================
+   Standalone Radar View & Forecast Modal Radar Tab
+   ========================================================================== */
+.radar-standalone-view {
+  width: 100vw;
+  height: 100vh;
+  background: #070d18;
+  padding: 12px 16px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.radar-standalone-header {
+  margin-bottom: 8px;
+}
+
+.forecast-tab-bar {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 14px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 10px;
+}
+
+.forecast-tab-pill {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.forecast-tab-pill.active {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+}
+
+.forecast-tab-pill:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.14);
+  color: #f1f5f9;
+}
+
+.hero-chip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.hero-radar-btn {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid #38bdf8;
+  color: #38bdf8;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hero-radar-btn:hover {
+  background: #0284c7;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+  transform: translateY(-1px);
+}
+
+.modal-radar-card {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.radar-card-header {
+  margin-bottom: 10px;
+}
+
+.radar-card-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #38bdf8;
+  letter-spacing: 0.5px;
+}
+
+.radar-card-sub {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+

@@ -190,4 +190,58 @@ describe('ForecastModal Component', () => {
     fireEvent.click(unitBtn);
     expect(handleToggle).toHaveBeenCalledTimes(1);
   });
+
+  it('switches between 7-Day Outlook and Live Doppler Radar tabs', () => {
+    const handleOpenRadar = vi.fn();
+    render(
+      <ForecastModal
+        isOpen={true}
+        onClose={vi.fn()}
+        telemetry={mockTelemetry}
+        tempUnit="F"
+        onToggleTempUnit={vi.fn()}
+        onOpenRadar={handleOpenRadar}
+      />
+    );
+
+    // Initial outlook tab is active
+    expect(screen.getByTestId('modal-outlook-card')).toBeInTheDocument();
+    expect(screen.queryByTestId('modal-radar-card')).toBeNull();
+
+    // Click Live Doppler Radar tab
+    const radarTabBtn = screen.getByTestId('tab-btn-forecast-radar');
+    fireEvent.click(radarTabBtn);
+
+    expect(handleOpenRadar).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('modal-radar-card')).toBeInTheDocument();
+    expect(screen.queryByTestId('modal-outlook-card')).toBeNull();
+
+    // Switch back to Outlook tab
+    const outlookTabBtn = screen.getByTestId('tab-btn-forecast-outlook');
+    fireEvent.click(outlookTabBtn);
+
+    expect(screen.getByTestId('modal-outlook-card')).toBeInTheDocument();
+    expect(screen.queryByTestId('modal-radar-card')).toBeNull();
+  });
+
+  it('opens radar view when hero radar shortcut button is clicked', () => {
+    const handleOpenRadar = vi.fn();
+    render(
+      <ForecastModal
+        isOpen={true}
+        onClose={vi.fn()}
+        telemetry={mockTelemetry}
+        tempUnit="F"
+        onToggleTempUnit={vi.fn()}
+        onOpenRadar={handleOpenRadar}
+      />
+    );
+
+    const heroRadarBtn = screen.getByTestId('forecast-open-radar-btn');
+    fireEvent.click(heroRadarBtn);
+
+    expect(handleOpenRadar).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('modal-radar-card')).toBeInTheDocument();
+  });
 });
+

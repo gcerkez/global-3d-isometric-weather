@@ -361,7 +361,7 @@ class MainActivityVisualMockDeviceTest {
 
     @Test
     fun testMockDeviceRelaunchOnEachSavedTab() {
-        for (tabIdx in 0..4) {
+        for (tabIdx in 0..5) {
             prefs.edit().putInt("active_tab", tabIdx).commit()
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 scenario.onActivity { activity ->

@@ -15,6 +15,7 @@ import { RadarModal } from './components/RadarModal';
 import { AlertDetailsModal } from './components/AlertDetailsModal';
 import { WeatherAlertsBanner } from './components/WeatherAlertsBanner';
 import { SettingsModal } from './components/SettingsModal';
+import { RadarView } from './components/RadarView';
 
 const CITY_THEME_MAP: Record<string, string> = {
   yorktown: 'yorktown',
@@ -64,6 +65,17 @@ export const App: React.FC = () => {
   const [isForecastOpen, setIsForecastOpen] = useState<boolean>(false);
   const [isRadarOpen, setIsRadarOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isStandaloneRadar, setIsStandaloneRadar] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && (window.location.hash === '#radar' || window.location.search.includes('view=radar'));
+  });
+
+  useEffect(() => {
+    const handleHash = () => {
+      setIsStandaloneRadar(window.location.hash === '#radar' || window.location.search.includes('view=radar'));
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
 
   // Geolocation & Coordinates
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number; name: string }>({
@@ -163,9 +175,18 @@ export const App: React.FC = () => {
   const handleEngineReady = (engine: IsometricEngine) => {
     engineRef.current = engine;
     engine.setDioramaTheme(settings.dioramaTheme);
-    (engine as unknown as { setWeatherProvider?: (p: WeatherProviderId) => void }).setWeatherProvider = (p: WeatherProviderId) => {
+    const ext = engine as unknown as {
+      setWeatherProvider?: (p: WeatherProviderId) => void;
+      openRadar?: () => void;
+      openForecast?: () => void;
+      openSettings?: () => void;
+    };
+    ext.setWeatherProvider = (p: WeatherProviderId) => {
       handleUpdateSettings({ provider: p });
     };
+    ext.openRadar = () => setIsRadarOpen(true);
+    ext.openForecast = () => setIsForecastOpen(true);
+    ext.openSettings = () => setIsSettingsOpen(true);
     refreshWeather();
   };
 
@@ -313,6 +334,29 @@ export const App: React.FC = () => {
     }
   };
 
+  if (isStandaloneRadar) {
+    return (
+      <div className="radar-standalone-view" data-testid="radar-standalone-view">
+        <div className="radar-standalone-header">
+          <div className="radar-title-box">
+            <span className="radar-live-badge">LIVE DOPPLER</span>
+            <h2 className="modal-title">Interactive Weather Radar • {locationCoords.name}</h2>
+          </div>
+        </div>
+        <RadarView
+          lat={locationCoords.lat}
+          lon={locationCoords.lon}
+          locationName={locationCoords.name}
+          colorScheme={settings.radarColorScheme}
+          opacity={settings.radarOpacity}
+          onChangeColorScheme={(sc) => handleUpdateSettings({ radarColorScheme: sc })}
+          onChangeOpacity={(op) => handleUpdateSettings({ radarOpacity: op })}
+          height="calc(100vh - 130px)"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="widget-frame" data-testid="app-root">
       <WeatherCanvas
@@ -354,6 +398,12 @@ export const App: React.FC = () => {
         telemetry={telemetry}
         tempUnit={settings.tempUnit === 'C' ? 'C' : 'F'}
         onToggleTempUnit={toggleTempUnit}
+        lat={locationCoords.lat}
+        lon={locationCoords.lon}
+        onOpenRadar={() => {
+          setIsForecastOpen(false);
+          setIsRadarOpen(true);
+        }}
       />
 
       {/* Interactive Doppler Weather Radar Modal */}

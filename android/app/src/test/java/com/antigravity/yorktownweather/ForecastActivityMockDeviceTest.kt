@@ -7,6 +7,7 @@ import android.graphics.Canvas
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.WebView
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -296,6 +297,38 @@ class ForecastActivityMockDeviceTest {
                 val updatedGraphs = findAllViewsOfType(rootView, ForecastGraphView::class.java)
                     .filter { it.isShown }
                 assertEquals("After expanding another day, 1 ForecastGraphView must be revealed under that day", 1, updatedGraphs.size)
+            }
+        }
+    }
+
+    @Test
+    fun testForecastActivityRendersLiveRadarCardAndWebView() {
+        val intent = Intent(context, ForecastActivity::class.java).apply {
+            putExtra("lat", 37.1310)
+            putExtra("lon", -76.4452)
+            putExtra("location_name", "Yorktown, VA")
+            putExtra("temp_unit", "F")
+        }
+
+        ActivityScenario.launch<ForecastActivity>(intent).use { scenario ->
+            scenario.onActivity { activity ->
+                assertNotNull("ForecastActivity must launch successfully", activity)
+                val rootView = activity.findViewById<ViewGroup>(android.R.id.content)
+                assertNotNull("Root content view must exist", rootView)
+
+                // Verify radar composite title exists
+                val textViews = findAllViewsOfType(rootView, TextView::class.java)
+                val radarTitle = textViews.firstOrNull { it.text.contains("LIVE DOPPLER RADAR") }
+                assertNotNull("Live Doppler Radar title must be present in layout", radarTitle)
+
+                // Verify radar shortcut jump button exists in hero card
+                val buttons = findAllViewsOfType(rootView, Button::class.java)
+                val radarJumpBtn = buttons.firstOrNull { it.text.contains("Radar") }
+                assertNotNull("Radar shortcut button must be present in hero card", radarJumpBtn)
+
+                // Verify WebView for radar was created and attached
+                val webViews = findAllViewsOfType(rootView, WebView::class.java)
+                assertTrue("At least one WebView (for radar composite) must exist in ForecastActivity", webViews.isNotEmpty())
             }
         }
     }
