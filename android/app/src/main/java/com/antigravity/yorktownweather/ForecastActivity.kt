@@ -435,28 +435,10 @@ class ForecastActivity : Activity() {
             textSize = 11.5f
             setTextColor(Color.parseColor("#38bdf8"))
             background = makeCardBackground(Color.parseColor("#142236"), Color.parseColor("#1e3a5f"), dp(8))
-            setPadding(dp(10), dp(5), dp(10), dp(5))
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f).apply {
-                marginEnd = dp(8)
-            }
+            setPadding(dp(12), dp(6), dp(12), dp(6))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         }
         chipRow.addView(precipSummaryView)
-
-        val btnJumpRadar = Button(this).apply {
-            text = "📡 Live Radar Tab →"
-            textSize = 11f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            background = makeCardBackground(Color.parseColor("#0284c7"), Color.parseColor("#38bdf8"), dp(8))
-            setPadding(dp(10), dp(4), dp(10), dp(4))
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(34))
-            applyPressAnimation(this)
-            setOnClickListener {
-                performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                selectForecastTab(1)
-            }
-        }
-        chipRow.addView(btnJumpRadar)
         card.addView(chipRow)
 
         return card

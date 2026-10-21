@@ -149,17 +149,6 @@ export const ForecastModal: React.FC<ForecastModalProps> = ({
                   <div className="hero-chip" data-testid="hero-chip">
                     {rainChipText}
                   </div>
-                  <button
-                    type="button"
-                    className="hero-radar-btn"
-                    onClick={() => {
-                      setActiveTab('radar');
-                      if (onOpenRadar) onOpenRadar();
-                    }}
-                    data-testid="forecast-open-radar-btn"
-                  >
-                    📡 View Live Doppler Radar →
-                  </button>
                 </div>
               </div>
 

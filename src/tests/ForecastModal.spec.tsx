@@ -224,8 +224,7 @@ describe('ForecastModal Component', () => {
     expect(screen.queryByTestId('modal-radar-card')).toBeNull();
   });
 
-  it('opens radar view when hero radar shortcut button is clicked', () => {
-    const handleOpenRadar = vi.fn();
+  it('omits redundant hero radar button in favor of top tab navigation', () => {
     render(
       <ForecastModal
         isOpen={true}
@@ -233,15 +232,12 @@ describe('ForecastModal Component', () => {
         telemetry={mockTelemetry}
         tempUnit="F"
         onToggleTempUnit={vi.fn()}
-        onOpenRadar={handleOpenRadar}
       />
     );
 
-    const heroRadarBtn = screen.getByTestId('forecast-open-radar-btn');
-    fireEvent.click(heroRadarBtn);
-
-    expect(handleOpenRadar).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('modal-radar-card')).toBeInTheDocument();
+    // Hero button is removed to prevent clutter since top tabs are present
+    expect(screen.queryByTestId('forecast-open-radar-btn')).toBeNull();
+    expect(screen.getByTestId('tab-btn-forecast-radar')).toBeInTheDocument();
   });
 });
 

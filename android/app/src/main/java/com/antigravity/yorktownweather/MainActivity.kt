@@ -130,7 +130,6 @@ class MainActivity : Activity() {
         // --- TAB BAR (Horizontal Scrollable Strip) ---
         val tabTitles = listOf(
             "🖼️ 3D Preview",
-            "📡 Live Radar",
             "🏛️ Diorama Scene",
             "📍 Weather Location",
             "☀️ Atmosphere",
@@ -156,7 +155,6 @@ class MainActivity : Activity() {
         // --- BUILD EACH TAB'S VIEW ---
         val tabPages = listOf(
             buildTab0PreviewAndFraming(),
-            buildTabRadar(),
             buildTab1DioramaScene(),
             buildTab2Location(),
             buildTab3Atmosphere(),
@@ -639,162 +637,6 @@ class MainActivity : Activity() {
             textSize = 13f
         }
         layout.addView(btnOpenForecast)
-
-        scroll.addView(layout)
-        return scroll
-    }
-
-    /**
-     * TAB: 📡 Live Doppler Radar
-     * Real-time precipitation composite, interactive nowcast playback loop,
-     * timeline scrubber, palette toggles, and zoom controls.
-     */
-    private fun buildTabRadar(): View {
-        val prefs = getSharedPreferences("yorktown_weather_prefs", Context.MODE_PRIVATE)
-        val curLocation = prefs.getString("locationName", "Yorktown, VA") ?: "Yorktown, VA"
-
-        val scroll = ScrollView(this).apply {
-            isFillViewport = true
-            descendantFocusability = ViewGroup.FOCUS_BEFORE_DESCENDANTS
-        }
-
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(8), dp(16), dp(24))
-        }
-
-        // Header Card
-        val headerCard = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(14).toFloat()
-                setColor(Color.parseColor("#0e1a29"))
-                setStroke(dp(1), Color.parseColor("#223c59"))
-            }
-            val pad = dp(14)
-            setPadding(pad, pad, pad, pad)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                bottomMargin = dp(12)
-            }
-        }
-
-        val titleRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-
-        val titleCol = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f)
-        }
-
-        val title = TextView(this).apply {
-            text = "📡 Live Doppler Radar Composite"
-            textSize = 15f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        }
-        titleCol.addView(title)
-
-        val sub = TextView(this).apply {
-            text = "Real-time precipitation radar & nowcast loop for $curLocation"
-            textSize = 11.5f
-            setTextColor(Color.parseColor("#7ec3ed"))
-            setPadding(0, dp(2), 0, 0)
-        }
-        titleCol.addView(sub)
-        titleRow.addView(titleCol)
-
-        // Forecast Activity shortcut button
-        val btnForecast = Button(this).apply {
-            text = "📅 7-Day"
-            textSize = 11.5f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(8).toFloat()
-                setColor(Color.parseColor("#1f6feb"))
-                setStroke(dp(1), Color.parseColor("#58a6ff"))
-            }
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                dp(34)
-            )
-            applyPressAnimation(this)
-            setOnClickListener {
-                val forecastIntent = Intent(this@MainActivity, ForecastActivity::class.java).apply {
-                    putExtra("lat", prefs.getFloat("latitude", 37.2388f).toDouble())
-                    putExtra("lon", prefs.getFloat("longitude", -76.5097f).toDouble())
-                    putExtra("location_name", prefs.getString("locationName", "Yorktown, VA"))
-                    putExtra("temp_unit", prefs.getString("temperatureUnit", "BOTH"))
-                    putExtra("wind_unit", prefs.getString("windSpeedUnit", "mph"))
-                }
-                startActivity(forecastIntent)
-            }
-        }
-        titleRow.addView(btnForecast)
-        headerCard.addView(titleRow)
-        layout.addView(headerCard)
-
-        // Radar WebView Frame
-        val radarFrame = FrameLayout(this).apply {
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(14).toFloat()
-                setColor(Color.parseColor("#080f1a"))
-                setStroke(dp(1), Color.parseColor("#1c334d"))
-            }
-            clipChildren = true
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(520)
-            )
-        }
-
-        val radarWv = WebView(this).apply {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            settings.allowFileAccess = true
-            @Suppress("DEPRECATION")
-            settings.allowFileAccessFromFileURLs = true
-            @Suppress("DEPRECATION")
-            settings.allowUniversalAccessFromFileURLs = true
-            settings.cacheMode = WebSettings.LOAD_DEFAULT
-            setBackgroundColor(Color.parseColor("#080f1a"))
-
-            setOnTouchListener { v, event ->
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                        v.parent?.requestDisallowInterceptTouchEvent(true)
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        v.parent?.requestDisallowInterceptTouchEvent(false)
-                    }
-                }
-                false
-            }
-
-            val curLat = prefs.getFloat("latitude", 37.2388f)
-            val curLon = prefs.getFloat("longitude", -76.5097f)
-            val encodedName = android.net.Uri.encode(curLocation)
-            loadUrl("file:///android_asset/web/index.html#radar?lat=$curLat&lon=$curLon&name=$encodedName")
-        }
-        radarFrame.addView(radarWv, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
-        layout.addView(radarFrame)
-
-        // Quick Controls Info Card below Radar
-        val hintCard = TextView(this).apply {
-            text = "💡 Tap the Play/Pause button on the radar bar to scrub frames or let the animation loop. Adjust color palette and zoom level using the overlay buttons."
-            textSize = 11f
-            setTextColor(Color.parseColor("#8da8c4"))
-            setPadding(dp(4), dp(10), dp(4), 0)
-        }
-        layout.addView(hintCard)
 
         scroll.addView(layout)
         return scroll

@@ -27,13 +27,15 @@ export const RadarView: React.FC<RadarViewProps> = ({
   const [allFrames, setAllFrames] = useState<RadarFrame[]>([]);
   const [currentFrameIdx, setCurrentFrameIdx] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
-  const [zoom, setZoom] = useState<number>(7);
+  const [zoom, setZoom] = useState<number>(5);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedScheme, setSelectedScheme] = useState<number>(colorScheme);
   const [selectedOpacity, setSelectedOpacity] = useState<number>(opacity);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const tileCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const playTimerRef = useRef<number | null>(null);
 
   // Load radar metadata
@@ -83,7 +85,45 @@ export const RadarView: React.FC<RadarViewProps> = ({
     };
   }, [isPlaying, allFrames.length, playbackSpeed]);
 
-  // Render composite map on canvas
+  // Helper to load and cache tile images without blocking
+  const loadTile = useCallback((url: string): Promise<HTMLImageElement | null> => {
+    const cached = tileCacheRef.current.get(url);
+    if (cached && (cached.complete || cached.naturalWidth > 0)) {
+      return Promise.resolve(cached);
+    }
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      let resolved = false;
+      img.onload = () => {
+        if (!resolved) {
+          resolved = true;
+          tileCacheRef.current.set(url, img);
+          resolve(img);
+        }
+      };
+      img.onerror = () => {
+        if (!resolved) {
+          resolved = true;
+          resolve(null);
+        }
+      };
+      img.src = url;
+      if (img.complete) {
+        resolved = true;
+        tileCacheRef.current.set(url, img);
+        resolve(img);
+      }
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          resolve(img);
+        }
+      }, 300);
+    });
+  }, []);
+
+  // Render composite map on canvas with double-buffered atomic blit (Zero Blinking)
   const renderMap = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !metadata || allFrames.length === 0) return;
@@ -92,11 +132,19 @@ export const RadarView: React.FC<RadarViewProps> = ({
 
     const width = canvas.width;
     const heightPx = canvas.height;
-    ctx.clearRect(0, 0, width, heightPx);
+    if (width === 0 || heightPx === 0) return;
 
-    // Deep dark background
-    ctx.fillStyle = '#070d18';
-    ctx.fillRect(0, 0, width, heightPx);
+    // Maintain offscreen canvas for atomic, flicker-free buffer swap
+    if (!offscreenCanvasRef.current) {
+      offscreenCanvasRef.current = document.createElement('canvas');
+    }
+    const offscreen = offscreenCanvasRef.current;
+    if (offscreen.width !== width || offscreen.height !== heightPx) {
+      offscreen.width = width;
+      offscreen.height = heightPx;
+    }
+    const offCtx = offscreen.getContext('2d');
+    if (!offCtx) return;
 
     const centerTile = radarService.latLonToTile(lat, lon, zoom);
     const tileSize = 256;
@@ -114,7 +162,14 @@ export const RadarView: React.FC<RadarViewProps> = ({
     const canvasCenterX = width / 2;
     const canvasCenterY = heightPx / 2;
 
-    // Draw 3x3 grid around center tile
+    interface TileJob {
+      baseSrc: string;
+      radarSrc: string;
+      posX: number;
+      posY: number;
+    }
+
+    const tileJobs: TileJob[] = [];
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
         const tx = centerTile.x + dx;
@@ -123,73 +178,95 @@ export const RadarView: React.FC<RadarViewProps> = ({
 
         const posX = canvasCenterX + dx * tileSize - pixelOffsetX;
         const posY = canvasCenterY + dy * tileSize - pixelOffsetY;
+        const baseSrc = radarService.getBaseMapTileUrl(zoom, tx, ty);
+        const radarSrc = radarService.getTileUrl(
+          metadata.host,
+          curFrame.path,
+          zoom,
+          tx,
+          ty,
+          selectedScheme
+        );
 
-        // Base Map Tile
-        const baseImg = new Image();
-        baseImg.crossOrigin = 'anonymous';
-        baseImg.src = radarService.getBaseMapTileUrl(zoom, tx, ty);
-        baseImg.onload = () => {
-          ctx.save();
-          ctx.drawImage(baseImg, posX, posY, tileSize, tileSize);
-
-          // Radar Tile
-          const radarImg = new Image();
-          radarImg.crossOrigin = 'anonymous';
-          radarImg.src = radarService.getTileUrl(
-            metadata.host,
-            curFrame.path,
-            zoom,
-            tx,
-            ty,
-            selectedScheme
-          );
-          radarImg.onload = () => {
-            ctx.globalAlpha = selectedOpacity;
-            ctx.drawImage(radarImg, posX, posY, tileSize, tileSize);
-            ctx.restore();
-            drawRadarOverlayHUD(ctx, width, heightPx, canvasCenterX, canvasCenterY);
-          };
-          radarImg.onerror = () => {
-            ctx.restore();
-            drawRadarOverlayHUD(ctx, width, heightPx, canvasCenterX, canvasCenterY);
-          };
-        };
-        baseImg.onerror = () => {
-          ctx.save();
-          ctx.fillStyle = '#0a101d';
-          ctx.fillRect(posX, posY, tileSize, tileSize);
-          ctx.strokeStyle = '#1e293b';
-          ctx.strokeRect(posX, posY, tileSize, tileSize);
-          ctx.restore();
-
-          // Radar Tile
-          const radarImg = new Image();
-          radarImg.crossOrigin = 'anonymous';
-          radarImg.src = radarService.getTileUrl(
-            metadata.host,
-            curFrame.path,
-            zoom,
-            tx,
-            ty,
-            selectedScheme
-          );
-          radarImg.onload = () => {
-            ctx.save();
-            ctx.globalAlpha = selectedOpacity;
-            ctx.drawImage(radarImg, posX, posY, tileSize, tileSize);
-            ctx.restore();
-            drawRadarOverlayHUD(ctx, width, heightPx, canvasCenterX, canvasCenterY);
-          };
-          radarImg.onerror = () => {
-            drawRadarOverlayHUD(ctx, width, heightPx, canvasCenterX, canvasCenterY);
-          };
-        };
+        tileJobs.push({ baseSrc, radarSrc, posX, posY });
       }
     }
 
-    // Fallback immediate HUD draw
-    drawRadarOverlayHUD(ctx, width, heightPx, canvasCenterX, canvasCenterY);
-  }, [lat, lon, zoom, metadata, allFrames, currentFrameIdx, selectedScheme, selectedOpacity]);
+    // Preload adjacent frames in the playback loop to ensure instant frame swaps
+    if (isPlaying && allFrames.length > 1) {
+      const nextIdx = (currentFrameIdx + 1) % allFrames.length;
+      const nextFrame = allFrames[nextIdx];
+      if (nextFrame) {
+        tileJobs.forEach((job) => {
+          loadTile(job.baseSrc);
+          loadTile(
+            radarService.getTileUrl(
+              metadata.host,
+              nextFrame.path,
+              zoom,
+              centerTile.x,
+              centerTile.y,
+              selectedScheme
+            )
+          );
+        });
+      }
+    }
+
+    const promises: Promise<any>[] = [];
+    tileJobs.forEach((job) => {
+      promises.push(loadTile(job.baseSrc));
+      promises.push(loadTile(job.radarSrc));
+    });
+
+    const activeFramePath = curFrame.path;
+    const activeZoom = zoom;
+
+    Promise.all(promises).then(() => {
+      // Guard against stale async resolution if frame or zoom changed
+      if (
+        zoom !== activeZoom ||
+        (allFrames[currentFrameIdx] && allFrames[currentFrameIdx].path !== activeFramePath)
+      ) {
+        return;
+      }
+
+      // 1. Draw into OFFSCREEN buffer (no visible canvas flicker)
+      offCtx.fillStyle = '#070d18';
+      offCtx.fillRect(0, 0, width, heightPx);
+
+      // 2. Draw base map tiles
+      tileJobs.forEach((job) => {
+        const baseImg = tileCacheRef.current.get(job.baseSrc);
+        if (baseImg && baseImg.naturalWidth > 0) {
+          offCtx.drawImage(baseImg, job.posX, job.posY, tileSize, tileSize);
+        } else {
+          // Tactical dark grid fallback
+          offCtx.fillStyle = '#0a101d';
+          offCtx.fillRect(job.posX, job.posY, tileSize, tileSize);
+          offCtx.strokeStyle = '#1e293b';
+          offCtx.strokeRect(job.posX, job.posY, tileSize, tileSize);
+        }
+      });
+
+      // 3. Draw radar overlay tiles at selected opacity
+      offCtx.save();
+      offCtx.globalAlpha = selectedOpacity;
+      tileJobs.forEach((job) => {
+        const radarImg = tileCacheRef.current.get(job.radarSrc);
+        if (radarImg && radarImg.naturalWidth > 0) {
+          offCtx.drawImage(radarImg, job.posX, job.posY, tileSize, tileSize);
+        }
+      });
+      offCtx.restore();
+
+      // 4. Draw HUD overlays (range rings, crosshairs, location marker) ONCE
+      drawRadarOverlayHUD(offCtx, width, heightPx, canvasCenterX, canvasCenterY);
+
+      // 5. ATOMIC FRAME SWAP: Blit complete offscreen buffer to visible canvas in single sync tick
+      ctx.drawImage(offscreen, 0, 0);
+    });
+  }, [lat, lon, zoom, metadata, allFrames, currentFrameIdx, selectedScheme, selectedOpacity, isPlaying, loadTile]);
 
   // Helper to draw range rings and location pin
   const drawRadarOverlayHUD = (
@@ -310,7 +387,7 @@ export const RadarView: React.FC<RadarViewProps> = ({
           <button
             type="button"
             className="map-ctrl-btn"
-            onClick={() => setZoom((z) => Math.max(4, z - 1))}
+            onClick={() => setZoom((z) => Math.max(3, z - 1))}
             title="Zoom Out"
             data-testid="radar-zoom-out"
           >
@@ -319,7 +396,7 @@ export const RadarView: React.FC<RadarViewProps> = ({
           <button
             type="button"
             className="map-ctrl-btn"
-            onClick={() => setZoom(7)}
+            onClick={() => setZoom(5)}
             title="Reset Radar Center"
             data-testid="radar-reset-center"
           >

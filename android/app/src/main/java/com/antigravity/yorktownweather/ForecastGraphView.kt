@@ -243,9 +243,10 @@ class ForecastGraphView @JvmOverloads constructor(
         // 3. Draw time labels along bottom axis
         val baselineY = padT + chartH + 16f * density
         for (i in 0 until count) {
-            // Display label every 3 hours (e.g. 12 AM, 3 AM, 6 AM, 9 AM, 12 PM, 3 PM, 6 PM, 9 PM)
+            // Display label evenly every 3 hours (12 AM, 3 AM, 6 AM, 9 AM, 12 PM, 3 PM, 6 PM, 9 PM)
+            // Omitting count - 1 (11 PM) prevents it from squashing directly over 9 PM
             val pt = hourlyPoints[i]
-            if (i % 3 == 0 || i == count - 1) {
+            if (i % 3 == 0) {
                 val cx = padL + i * stepX + stepX / 2f
                 val label = pt.hourLabel
                 canvas.drawText(label, cx, baselineY, timeTextPaint)
