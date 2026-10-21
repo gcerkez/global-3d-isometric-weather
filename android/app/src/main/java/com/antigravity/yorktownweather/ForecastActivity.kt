@@ -1,6 +1,5 @@
 package com.antigravity.yorktownweather
 
-import android.animation.LayoutTransition
 import android.animation.ObjectAnimator
 import android.app.Activity
 import android.content.Context
@@ -8,13 +7,17 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.transition.ChangeBounds
+import android.transition.Fade
 import android.transition.TransitionManager
+import android.transition.TransitionSet
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
 import android.widget.*
 import kotlinx.coroutines.*
 import org.json.JSONObject
@@ -93,34 +96,26 @@ class ForecastActivity : Activity() {
     private lateinit var rangeFeelsView: TextView
     private lateinit var precipSummaryView: TextView
 
-    private lateinit var graphTitleView: TextView
-    private lateinit var forecastGraph: ForecastGraphView
-    private lateinit var scrubberReadoutView: TextView
-
-    private lateinit var btnModePrecip: Button
-    private lateinit var btnModeTemp: Button
-    private lateinit var btnModeWind: Button
-
-    // Metric Grid Views
-    private lateinit var metricPrecipVal: TextView
-    private lateinit var metricPrecipSub: TextView
-    private lateinit var metricSunVal: TextView
-    private lateinit var metricSunSub: TextView
-    private lateinit var metricWindVal: TextView
-    private lateinit var metricWindSub: TextView
-    private lateinit var metricUvVal: TextView
-    private lateinit var metricUvSub: TextView
-
-    // 7-Day Cards Container
+    // 7-Day Cards Container & State
     private lateinit var weeklyListContainer: LinearLayout
     private class DayRowHolder(
         val panel: LinearLayout,
         val tvDay: TextView,
         val chevron: TextView,
-        val bodyContainer: FrameLayout
+        val bodyContainer: FrameLayout,
+        val graph: ForecastGraphView,
+        val btnPrecip: Button,
+        val btnTemp: Button,
+        val btnWind: Button
+    )
+    private data class DayExpandedComponents(
+        val view: View,
+        val graph: ForecastGraphView,
+        val btnPrecip: Button,
+        val btnTemp: Button,
+        val btnWind: Button
     )
     private val dayRowHolders = mutableListOf<DayRowHolder>()
-    private var expandedCardView: View? = null
 
     private var forecastDays: List<DayForecast> = emptyList()
     private var selectedDayIndex: Int = 0
@@ -358,16 +353,13 @@ class ForecastActivity : Activity() {
         weeklyListContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            layoutTransition = LayoutTransition().apply {
-                enableTransitionType(LayoutTransition.CHANGING)
-            }
         }
         card.addView(weeklyListContainer)
 
         return card
     }
 
-    private fun buildExpandedDayComponent(day: DayForecast): View {
+    private fun buildExpandedDayComponent(day: DayForecast): DayExpandedComponents {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             val padH = dp(10)
@@ -390,14 +382,14 @@ class ForecastActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
         }
 
-        graphTitleView = TextView(this).apply {
+        val tvGraphTitle = TextView(this).apply {
             text = "Hourly Breakdown • ${day.dayOfWeek}"
             textSize = 12.5f
             setTextColor(Color.WHITE)
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f)
         }
-        headerRow.addView(graphTitleView)
+        headerRow.addView(tvGraphTitle)
 
         // Segmented Button Toggle Group (Angular Material Button Toggle / PrimeUI SelectButton)
         val pillBar = LinearLayout(this).apply {
@@ -405,43 +397,26 @@ class ForecastActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
         }
 
-        btnModePrecip = makeMetricPillButton("🌧️ Precip", active = (currentGraphMode == ForecastGraphView.MODE_PRECIPITATION)) {
+        val bPrecip = makeMetricPillButton("🌧️ Precip", active = (currentGraphMode == ForecastGraphView.MODE_PRECIPITATION)) {
             switchGraphMode(ForecastGraphView.MODE_PRECIPITATION)
         }
-        pillBar.addView(btnModePrecip)
+        pillBar.addView(bPrecip)
 
-        btnModeTemp = makeMetricPillButton("🌡️ Temp", active = (currentGraphMode == ForecastGraphView.MODE_TEMPERATURE)) {
+        val bTemp = makeMetricPillButton("🌡️ Temp", active = (currentGraphMode == ForecastGraphView.MODE_TEMPERATURE)) {
             switchGraphMode(ForecastGraphView.MODE_TEMPERATURE)
         }
-        pillBar.addView(btnModeTemp)
+        pillBar.addView(bTemp)
 
-        btnModeWind = makeMetricPillButton("💨 Wind", active = (currentGraphMode == ForecastGraphView.MODE_WIND)) {
+        val bWind = makeMetricPillButton("💨 Wind", active = (currentGraphMode == ForecastGraphView.MODE_WIND)) {
             switchGraphMode(ForecastGraphView.MODE_WIND)
         }
-        pillBar.addView(btnModeWind)
+        pillBar.addView(bWind)
 
         headerRow.addView(pillBar)
         container.addView(headerRow)
 
-        // Custom 24-Hour Graph Canvas
-        forecastGraph = ForecastGraphView(this).apply {
-            tempUnit = this@ForecastActivity.tempUnit
-            windUnit = this@ForecastActivity.windUnit
-            precipitationUnit = this@ForecastActivity.precipUnit
-            hourlyPoints = day.hourlyPoints
-            graphMode = currentGraphMode
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(190)).apply {
-                topMargin = dp(8)
-            }
-            onHourScrubbed = { pt ->
-                pt?.let {
-                    scrubberReadoutView.text = "${it.hourLabel} • ${it.emoji} ${it.conditionText} • 💧 ${it.precipProb}% • ${formatTemperature(it.temp)}"
-                }
-            }
-        }
-        container.addView(forecastGraph)
-
-        scrubberReadoutView = TextView(this).apply {
+        // Scrubber Readout View
+        val tvScrubber = TextView(this).apply {
             text = "👆 Drag horizontally across the graph to inspect hourly precipitation & conditions."
             textSize = 10f
             setTextColor(Color.parseColor("#94a3b8"))
@@ -453,7 +428,25 @@ class ForecastActivity : Activity() {
                 topMargin = dp(6)
             }
         }
-        container.addView(scrubberReadoutView)
+
+        // Custom 24-Hour Graph Canvas
+        val graphView = ForecastGraphView(this).apply {
+            tempUnit = this@ForecastActivity.tempUnit
+            windUnit = this@ForecastActivity.windUnit
+            precipitationUnit = this@ForecastActivity.precipUnit
+            hourlyPoints = day.hourlyPoints
+            graphMode = currentGraphMode
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(190)).apply {
+                topMargin = dp(8)
+            }
+            onHourScrubbed = { pt ->
+                pt?.let {
+                    tvScrubber.text = "${it.hourLabel} • ${it.emoji} ${it.conditionText} • 💧 ${it.precipProb}% • ${formatTemperature(it.temp)}"
+                }
+            }
+        }
+        container.addView(graphView)
+        container.addView(tvScrubber)
 
         // Day's 4 Key Metric Tiles (Material Sub-Cards)
         val precipAmtStr = if (precipUnit == "mm") "${String.format("%.1f", day.precipSum)} mm" else "${String.format("%.2f", day.precipSum)} in"
@@ -476,14 +469,10 @@ class ForecastActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         }
-        val (tilePrecip, vPrecipVal, vPrecipSub) = makeMetricTile("🌧️ PRECIPITATION", precipAmtStr, "Peak chance: ${day.precipProbMax}%")
-        metricPrecipVal = vPrecipVal
-        metricPrecipSub = vPrecipSub
+        val (tilePrecip, _, _) = makeMetricTile("🌧️ PRECIPITATION", precipAmtStr, "Peak chance: ${day.precipProbMax}%")
         row1.addView(tilePrecip)
 
-        val (tileSun, vSunVal, vSunSub) = makeMetricTile("🌅 SUN CYCLE", day.sunrise, "Sunset: ${day.sunset}")
-        metricSunVal = vSunVal
-        metricSunSub = vSunSub
+        val (tileSun, _, _) = makeMetricTile("🌅 SUN CYCLE", day.sunrise, "Sunset: ${day.sunset}")
         row1.addView(tileSun)
         metricsBox.addView(row1)
 
@@ -493,20 +482,16 @@ class ForecastActivity : Activity() {
                 topMargin = dp(6)
             }
         }
-        val (tileWind, vWindVal, vWindSub) = makeMetricTile("💨 WIND & GUSTS", "${day.windSpeedMax.roundToInt()} $windUnit", "Max sustained gusts")
-        metricWindVal = vWindVal
-        metricWindSub = vWindSub
+        val (tileWind, _, _) = makeMetricTile("💨 WIND & GUSTS", "${day.windSpeedMax.roundToInt()} $windUnit", "Max sustained gusts")
         row2.addView(tileWind)
 
-        val (tileUv, vUvVal, vUvSub) = makeMetricTile("☀️ UV & HUMIDITY", "${String.format("%.1f", day.uvIndexMax)} $uvLabel", "Avg Humidity: $avgHum%")
-        metricUvVal = vUvVal
-        metricUvSub = vUvSub
+        val (tileUv, _, _) = makeMetricTile("☀️ UV & HUMIDITY", "${String.format("%.1f", day.uvIndexMax)} $uvLabel", "Avg Humidity: $avgHum%")
         row2.addView(tileUv)
         metricsBox.addView(row2)
 
         container.addView(metricsBox)
 
-        return container
+        return DayExpandedComponents(container, graphView, bPrecip, bTemp, bWind)
     }
 
     private fun makeMetricPillButton(label: String, active: Boolean, onClick: () -> Unit): Button {
@@ -546,13 +531,12 @@ class ForecastActivity : Activity() {
 
     private fun switchGraphMode(mode: Int) {
         currentGraphMode = mode
-        if (::forecastGraph.isInitialized) {
-            forecastGraph.graphMode = mode
-        }
-        if (::btnModePrecip.isInitialized && ::btnModeTemp.isInitialized && ::btnModeWind.isInitialized) {
-            updatePillState(btnModePrecip, mode == ForecastGraphView.MODE_PRECIPITATION)
-            updatePillState(btnModeTemp, mode == ForecastGraphView.MODE_TEMPERATURE)
-            updatePillState(btnModeWind, mode == ForecastGraphView.MODE_WIND)
+        for (holder in dayRowHolders) {
+            holder.graph.graphMode = mode
+            updatePillState(holder.btnPrecip, mode == ForecastGraphView.MODE_PRECIPITATION)
+            updatePillState(holder.btnTemp, mode == ForecastGraphView.MODE_TEMPERATURE)
+            updatePillState(holder.btnWind, mode == ForecastGraphView.MODE_WIND)
+            holder.graph.invalidate()
         }
     }
 
@@ -628,51 +612,39 @@ class ForecastActivity : Activity() {
         precipSummaryView.text = rainChip
     }
 
-    private fun updateExpandedDayData(day: DayForecast) {
-        if (::graphTitleView.isInitialized) {
-            graphTitleView.text = "Hourly Breakdown • ${day.dayOfWeek}"
-        }
-        if (::forecastGraph.isInitialized) {
-            forecastGraph.hourlyPoints = day.hourlyPoints
-            forecastGraph.invalidate()
-        }
-        if (::scrubberReadoutView.isInitialized) {
-            scrubberReadoutView.text = "👆 Drag horizontally across the graph to inspect hourly precipitation & conditions."
-        }
-        val precipAmtStr = if (precipUnit == "mm") "${String.format("%.1f", day.precipSum)} mm" else "${String.format("%.2f", day.precipSum)} in"
-        if (::metricPrecipVal.isInitialized) metricPrecipVal.text = precipAmtStr
-        if (::metricPrecipSub.isInitialized) metricPrecipSub.text = "Peak chance: ${day.precipProbMax}%"
-        if (::metricSunVal.isInitialized) metricSunVal.text = day.sunrise
-        if (::metricSunSub.isInitialized) metricSunSub.text = "Sunset: ${day.sunset}"
-        if (::metricWindVal.isInitialized) metricWindVal.text = "${day.windSpeedMax.roundToInt()} $windUnit"
-
-        val uvLabel = when {
-            day.uvIndexMax < 3.0 -> "Low"
-            day.uvIndexMax < 6.0 -> "Moderate"
-            day.uvIndexMax < 8.0 -> "High"
-            else -> "Very High"
-        }
-        val avgHum = if (day.hourlyPoints.isNotEmpty()) (day.hourlyPoints.map { it.humidity }.average()).roundToInt() else 50
-        if (::metricUvVal.isInitialized) metricUvVal.text = "${String.format("%.1f", day.uvIndexMax)} $uvLabel"
-        if (::metricUvSub.isInitialized) metricUvSub.text = "Avg Humidity: $avgHum%"
-    }
-
     private fun selectDayRow(newIndex: Int) {
-        if (newIndex !in forecastDays.indices || newIndex == selectedDayIndex) return
+        if (newIndex !in forecastDays.indices) return
+
+        val transition = TransitionSet().apply {
+            ordering = TransitionSet.ORDERING_TOGETHER
+            addTransition(ChangeBounds())
+            addTransition(Fade())
+            duration = 240
+            interpolator = DecelerateInterpolator(1.5f)
+        }
+        TransitionManager.beginDelayedTransition(weeklyListContainer, transition)
+
+        if (newIndex == selectedDayIndex) {
+            val h = dayRowHolders[selectedDayIndex]
+            h.panel.background = makeCardBackground(Color.parseColor("#0e1726"), Color.parseColor("#1e293b"), dp(12))
+            h.tvDay.setTextColor(Color.WHITE)
+            h.chevron.animate().rotation(0f).setDuration(200).start()
+            h.chevron.setTextColor(Color.parseColor("#64748b"))
+            h.bodyContainer.visibility = View.GONE
+            selectedDayIndex = -1
+            return
+        }
+
         val oldIndex = selectedDayIndex
         selectedDayIndex = newIndex
 
-        // Smooth transition on weeklyListContainer without removing or rebuilding child views
-        TransitionManager.beginDelayedTransition(weeklyListContainer)
-
-        // 1. Collapse previous active panel
+        // 1. Collapse previous active panel smoothly
         if (oldIndex in dayRowHolders.indices) {
             val oldH = dayRowHolders[oldIndex]
             oldH.panel.background = makeCardBackground(Color.parseColor("#0e1726"), Color.parseColor("#1e293b"), dp(12))
             oldH.tvDay.setTextColor(Color.WHITE)
-            oldH.chevron.rotation = 0f
+            oldH.chevron.animate().rotation(0f).setDuration(200).start()
             oldH.chevron.setTextColor(Color.parseColor("#64748b"))
-            oldH.bodyContainer.removeAllViews()
             oldH.bodyContainer.visibility = View.GONE
         }
 
@@ -681,17 +653,15 @@ class ForecastActivity : Activity() {
             val newH = dayRowHolders[newIndex]
             newH.panel.background = makeCardBackground(Color.parseColor("#122034"), Color.parseColor("#38bdf8"), dp(14), strokeWidth = dp(1.5f))
             newH.tvDay.setTextColor(Color.parseColor("#ffd166"))
-            newH.chevron.rotation = 180f
+            newH.chevron.animate().rotation(180f).setDuration(200).start()
             newH.chevron.setTextColor(Color.parseColor("#38bdf8"))
 
-            val day = forecastDays[newIndex]
-            if (expandedCardView == null) {
-                expandedCardView = buildExpandedDayComponent(day)
-            } else {
-                (expandedCardView?.parent as? ViewGroup)?.removeView(expandedCardView)
-                updateExpandedDayData(day)
-            }
-            newH.bodyContainer.addView(expandedCardView)
+            newH.graph.graphMode = currentGraphMode
+            updatePillState(newH.btnPrecip, currentGraphMode == ForecastGraphView.MODE_PRECIPITATION)
+            updatePillState(newH.btnTemp, currentGraphMode == ForecastGraphView.MODE_TEMPERATURE)
+            updatePillState(newH.btnWind, currentGraphMode == ForecastGraphView.MODE_WIND)
+            newH.graph.invalidate()
+
             newH.bodyContainer.visibility = View.VISIBLE
         }
 
@@ -702,7 +672,6 @@ class ForecastActivity : Activity() {
     private fun populateWeeklyList() {
         weeklyListContainer.removeAllViews()
         dayRowHolders.clear()
-        expandedCardView = null
 
         val weekMinTemp = forecastDays.minOf { it.tempMin }.toFloat()
         val weekMaxTemp = forecastDays.maxOf { it.tempMax }.toFloat()
@@ -732,7 +701,6 @@ class ForecastActivity : Activity() {
                 val padH = dp(12)
                 val padV = dp(11)
                 setPadding(padH, padV, padH, padV)
-                applyPressAnimation(this)
                 setOnClickListener {
                     performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                     selectDayRow(i)
@@ -832,14 +800,23 @@ class ForecastActivity : Activity() {
                 visibility = if (isExpanded) View.VISIBLE else View.GONE
             }
 
-            if (isExpanded) {
-                expandedCardView = buildExpandedDayComponent(day)
-                bodyContainer.addView(expandedCardView)
-            }
+            val expandedComp = buildExpandedDayComponent(day)
+            bodyContainer.addView(expandedComp.view)
 
             panel.addView(bodyContainer)
 
-            dayRowHolders.add(DayRowHolder(panel, tvDay, chevron, bodyContainer))
+            dayRowHolders.add(
+                DayRowHolder(
+                    panel = panel,
+                    tvDay = tvDay,
+                    chevron = chevron,
+                    bodyContainer = bodyContainer,
+                    graph = expandedComp.graph,
+                    btnPrecip = expandedComp.btnPrecip,
+                    btnTemp = expandedComp.btnTemp,
+                    btnWind = expandedComp.btnWind
+                )
+            )
             weeklyListContainer.addView(panel)
         }
     }

@@ -278,13 +278,15 @@ class ForecastActivityMockDeviceTest {
 
                 // 2. Verify Day 0 (TODAY) is expanded on launch and contains ForecastGraphView
                 val initialGraphs = findAllViewsOfType(rootView, ForecastGraphView::class.java)
-                assertEquals("Initially, 1 ForecastGraphView must be present inside the expanded day", 1, initialGraphs.size)
+                    .filter { it.isShown }
+                assertEquals("Initially, 1 ForecastGraphView must be visible inside the expanded day", 1, initialGraphs.size)
 
                 val day0Title = allTextViews.firstOrNull { it.text == "TODAY" }
                 assertNotNull("TODAY header row must exist", day0Title)
 
                 // 3. Find another day row (e.g. WED, THU, etc.) and tap its header to expand it
-                val otherDayTitle = allTextViews.firstOrNull { it.text != "TODAY" && it.text.length == 3 }
+                val validDayNames = setOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
+                val otherDayTitle = allTextViews.firstOrNull { it.text.toString() in validDayNames }
                 assertNotNull("Another day header must exist", otherDayTitle)
 
                 val headerRow = otherDayTitle!!.parent as View
@@ -292,6 +294,7 @@ class ForecastActivityMockDeviceTest {
 
                 // 4. Verify graph view is now revealed under the clicked day
                 val updatedGraphs = findAllViewsOfType(rootView, ForecastGraphView::class.java)
+                    .filter { it.isShown }
                 assertEquals("After expanding another day, 1 ForecastGraphView must be revealed under that day", 1, updatedGraphs.size)
             }
         }

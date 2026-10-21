@@ -19,9 +19,11 @@ Release **v0.0.5** is a major architectural refactor transitioning the entire ap
 
 ### 2. Elimination of Day Row Expansion Flicker Bug (Web & Native Android)
 - **Web App**: With React state (`selectedDayIdx`), selecting a day toggles the active accordion panel without unmounting or re-rendering unaffected day rows.
-- **Native Android (`ForecastActivity.kt`)**: Previously, tapping a day row called `renderForecastData()` which executed `weeklyListContainer.removeAllViews()`, causing all 7 day panels to collapse, measure to 0 height, and re-inflate, creating a jarring blank flash.
-  - Implemented `DayRowHolder` pattern: All 7 rows are created once during initial data load.
-  - Implemented `selectDayRow(index)`: Smoothly expands/collapses the target day's `FrameLayout` body container and rotates chevrons via `TransitionManager.beginDelayedTransition` without removing any child views. A single reusable `expandedCardView` is reparented and updated in-place (`updateExpandedDayData()`) with zero flash or blanking.
+- **Native Android (`ForecastActivity.kt`)**: Previously, tapping a day row caused a double-collapse animation glitch:
+  - Eliminated conflicting `LayoutTransition` on `weeklyListContainer` that was firing separate child removal animations.
+  - Pre-assembled self-contained `DayRowHolder` instances for all 7 days with their own `ForecastGraphView` and metric tiles, eliminating all dynamic view removal, detachment, and re-parenting.
+  - Implemented unified `TransitionSet(ORDERING_TOGETHER)` with `ChangeBounds()` and `Fade()`, synchronizing the collapse of the previously opened row and the expansion of the new row into a single 240ms motion with zero double-collapse.
+  - Removed touch-down scale squishing on the header row to preserve crisp layout geometry.
 
 ### 3. Authentic Homescreen Widget Overlay in 3D Preview (Tab 0)
 - In the Android app, Tab 0 ("3D Preview") now displays the exact authentic homescreen widget overlay matching `widget_isometric_weather.xml`:
@@ -63,7 +65,7 @@ Users can now choose from 5 meteorological data providers:
 
 ### SHA256 Checksums
 ```text
-5c806b3d2e4d702598ce6b8ff46413f5c2d791b4b15e1c774aa7e84a0864c3f9  global-3d-isometric-weather-v0.0.5.apk
+435a104de3d4ee5c060965b56c63284a377b74eb979ec4d721f131e309d0d540  global-3d-isometric-weather-v0.0.5.apk
 1ba936c71b3e6d6a2c1f9dab69e06200fd58aed97414d154744aa269d7914602  global-3d-isometric-weather-v0.0.5.plasmoid
 dc82bf53e0e4eb4924c59217ea67c0dc03b951c113dfa96d5b0886a4f115ff4f  global-3d-isometric-weather-web-android-v0.0.5.zip
 ```
