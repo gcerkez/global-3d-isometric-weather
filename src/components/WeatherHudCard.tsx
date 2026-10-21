@@ -9,7 +9,9 @@ interface WeatherHudCardProps {
   onSearchCity: (query: string) => void;
   onAutoLoc: () => void;
   onOpenForecast: () => void;
-  tempUnit: 'F' | 'C';
+  onOpenRadar?: () => void;
+  onOpenSettings?: () => void;
+  tempUnit: 'F' | 'C' | 'BOTH';
   onToggleTempUnit: () => void;
   currentProvider: WeatherProviderId;
   onProviderChange: (provider: WeatherProviderId) => void;
@@ -24,6 +26,8 @@ export const WeatherHudCard: React.FC<WeatherHudCardProps> = ({
   onSearchCity,
   onAutoLoc,
   onOpenForecast,
+  onOpenRadar,
+  onOpenSettings,
   tempUnit,
   onToggleTempUnit,
   currentProvider,
@@ -131,8 +135,36 @@ export const WeatherHudCard: React.FC<WeatherHudCardProps> = ({
           }}
           data-testid="hud-forecast-btn"
         >
-          📅 7-Day Forecast
+          📅 7-Day
         </button>
+        {onOpenRadar && (
+          <button
+            type="button"
+            className="pill pill-interactive pill-radar"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenRadar();
+            }}
+            title="Open Interactive Doppler Weather Radar"
+            data-testid="hud-radar-btn"
+          >
+            📡 Radar
+          </button>
+        )}
+        {onOpenSettings && (
+          <button
+            type="button"
+            className="pill pill-interactive pill-settings"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenSettings();
+            }}
+            title="Open Configuration & Settings"
+            data-testid="hud-settings-btn"
+          >
+            ⚙️ Settings
+          </button>
+        )}
       </div>
 
       {/* Weather Provider Selector Bar */}

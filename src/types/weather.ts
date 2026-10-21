@@ -60,3 +60,46 @@ export interface WeatherTelemetry {
   provider: WeatherProviderId;
   lastUpdated: number;
 }
+
+export interface WeatherAlert {
+  id: string;
+  event: string;
+  severity: 'Extreme' | 'Severe' | 'Moderate' | 'Minor';
+  urgency?: string;
+  headline: string;
+  description: string;
+  instruction?: string;
+  onset?: string;
+  expires?: string;
+  senderName?: string;
+  source: 'NOAA_NWS' | 'WMO_METEOROLOGICAL' | 'SIMULATION';
+}
+
+export interface RadarFrame {
+  time: number; // Unix timestamp (seconds)
+  path: string; // e.g. "/v2/radar/..."
+  isNowcast: boolean;
+}
+
+export interface RadarMetadata {
+  host: string;
+  past: RadarFrame[];
+  nowcast: RadarFrame[];
+  generated: number;
+}
+
+export interface AppSettings {
+  tempUnit: 'F' | 'C' | 'BOTH';
+  windUnit: 'mph' | 'kmh' | 'kn' | 'ms';
+  precipUnit: 'in' | 'mm';
+  timeFormat: '12h' | '24h';
+  provider: WeatherProviderId;
+  apiKeys: Partial<Record<WeatherProviderId, string>>;
+  dioramaTheme: string;
+  timeMode: string; // 'realtime' | 'day' | 'sunset' | 'night'
+  radarColorScheme: number; // 1 = original, 2 = universal blue, 4 = the weather channel, 6 = nexrad
+  radarOpacity: number; // 0.2 to 1.0
+  alertsEnabled: boolean;
+  notificationsEnabled: boolean;
+  soundEnabled: boolean;
+}

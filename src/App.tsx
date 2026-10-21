@@ -1,10 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { WeatherTelemetry, WeatherProviderId } from './types/weather';
+import {
+  WeatherTelemetry,
+  WeatherProviderId,
+  AppSettings,
+  WeatherAlert,
+} from './types/weather';
 import { WeatherService } from './services/weather/WeatherService';
+import { alertService } from './services/alerts/AlertService';
 import { IsometricEngine } from './engine/IsometricEngine';
 import { WeatherCanvas } from './components/WeatherCanvas';
 import { WeatherHudCard } from './components/WeatherHudCard';
 import { ForecastModal } from './components/ForecastModal';
+import { RadarModal } from './components/RadarModal';
+import { AlertDetailsModal } from './components/AlertDetailsModal';
+import { WeatherAlertsBanner } from './components/WeatherAlertsBanner';
+import { SettingsModal } from './components/SettingsModal';
 
 const CITY_THEME_MAP: Record<string, string> = {
   yorktown: 'yorktown',
@@ -47,21 +57,60 @@ const CITY_THEME_MAP: Record<string, string> = {
 
 export const App: React.FC = () => {
   const [telemetry, setTelemetry] = useState<WeatherTelemetry | null>(null);
-  const [dioramaTheme, setDioramaTheme] = useState<string>('yorktown');
+  const [activeAlerts, setActiveAlerts] = useState<WeatherAlert[]>([]);
+  const [selectedAlert, setSelectedAlert] = useState<WeatherAlert | null>(null);
+
+  // Modals state
   const [isForecastOpen, setIsForecastOpen] = useState<boolean>(false);
-  const [tempUnit, setTempUnit] = useState<'F' | 'C'>('F');
-  const [timeMode, setTimeMode] = useState<string>('realtime');
+  const [isRadarOpen, setIsRadarOpen] = useState<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+
+  // Geolocation & Coordinates
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number; name: string }>({
     lat: 37.2388,
     lon: -76.5097,
     name: 'Yorktown, VA',
   });
 
-  const weatherService = WeatherService.getInstance();
-  const [currentProvider, setCurrentProvider] = useState<WeatherProviderId>(
-    weatherService.getProvider()
-  );
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => {
+    return typeof window !== 'undefined' && 'Notification' in window
+      ? Notification.permission
+      : 'default';
+  });
 
+  // App Settings state (persisted across sessions via localStorage)
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    const savedTheme = (typeof window !== 'undefined' && localStorage.getItem('diorama_theme')) || 'yorktown';
+    const savedProvider = ((typeof window !== 'undefined' && localStorage.getItem('weather_provider')) as WeatherProviderId) || 'open-meteo';
+    const savedTempUnit = ((typeof window !== 'undefined' && localStorage.getItem('temp_unit')) as 'F' | 'C' | 'BOTH') || 'BOTH';
+    const savedWindUnit = ((typeof window !== 'undefined' && localStorage.getItem('wind_unit')) as 'mph' | 'kmh' | 'kn' | 'ms') || 'mph';
+    const savedPrecipUnit = ((typeof window !== 'undefined' && localStorage.getItem('precip_unit')) as 'in' | 'mm') || 'in';
+    const savedTimeFormat = ((typeof window !== 'undefined' && localStorage.getItem('time_format')) as '12h' | '24h') || '12h';
+    const savedTimeMode = (typeof window !== 'undefined' && localStorage.getItem('time_mode')) || 'realtime';
+    const savedRadarScheme = Number((typeof window !== 'undefined' && localStorage.getItem('radar_scheme')) || '1');
+    const savedRadarOpacity = Number((typeof window !== 'undefined' && localStorage.getItem('radar_opacity')) || '0.75');
+    const savedAlertsEnabled = (typeof window !== 'undefined' && localStorage.getItem('alerts_enabled')) !== 'false';
+    const savedNotifs = (typeof window !== 'undefined' && localStorage.getItem('notifications_enabled')) === 'true';
+    const savedSound = (typeof window !== 'undefined' && localStorage.getItem('sound_enabled')) === 'true';
+
+    return {
+      tempUnit: savedTempUnit,
+      windUnit: savedWindUnit,
+      precipUnit: savedPrecipUnit,
+      timeFormat: savedTimeFormat,
+      provider: savedProvider,
+      apiKeys: {},
+      dioramaTheme: savedTheme,
+      timeMode: savedTimeMode,
+      radarColorScheme: savedRadarScheme,
+      radarOpacity: savedRadarOpacity,
+      alertsEnabled: savedAlertsEnabled,
+      notificationsEnabled: savedNotifs,
+      soundEnabled: savedSound,
+    };
+  });
+
+  const weatherService = WeatherService.getInstance();
   const engineRef = useRef<IsometricEngine | null>(null);
 
   const refreshWeather = useCallback(
@@ -69,7 +118,7 @@ export const App: React.FC = () => {
       lat: number = locationCoords.lat,
       lon: number = locationCoords.lon,
       name: string = locationCoords.name,
-      provider: WeatherProviderId = currentProvider
+      provider: WeatherProviderId = settings.provider
     ) => {
       try {
         const data = await weatherService.fetchWeather(lat, lon, name, provider);
@@ -89,11 +138,22 @@ export const App: React.FC = () => {
             sevenDayDetailed: data.sevenDayDetailed,
           });
         }
+
+        // Fetch active severe weather alerts
+        const alerts = await alertService.fetchAlerts(lat, lon, data);
+        setActiveAlerts(alerts);
+
+        if (settings.notificationsEnabled && alerts.length > 0) {
+          const topAlert = alerts[0];
+          if (topAlert.severity === 'Extreme' || topAlert.severity === 'Severe') {
+            alertService.dispatchBrowserNotification(topAlert);
+          }
+        }
       } catch (err) {
         console.error('[App] Failed to load weather:', err);
       }
     },
-    [locationCoords, currentProvider, weatherService]
+    [locationCoords, settings.provider, settings.notificationsEnabled, weatherService]
   );
 
   useEffect(() => {
@@ -102,21 +162,60 @@ export const App: React.FC = () => {
 
   const handleEngineReady = (engine: IsometricEngine) => {
     engineRef.current = engine;
-    engine.setDioramaTheme(dioramaTheme);
+    engine.setDioramaTheme(settings.dioramaTheme);
     refreshWeather();
   };
 
-  const handleThemeChange = (newTheme: string) => {
-    setDioramaTheme(newTheme);
-    if (engineRef.current) {
-      engineRef.current.setDioramaTheme(newTheme);
-    }
-  };
+  const handleUpdateSettings = (partial: Partial<AppSettings>) => {
+    setSettings((prev) => {
+      const next = { ...prev, ...partial };
 
-  const handleProviderChange = (newProvider: WeatherProviderId) => {
-    setCurrentProvider(newProvider);
-    weatherService.setProvider(newProvider);
-    refreshWeather(locationCoords.lat, locationCoords.lon, locationCoords.name, newProvider);
+      if (partial.dioramaTheme !== undefined) {
+        localStorage.setItem('diorama_theme', partial.dioramaTheme);
+        if (engineRef.current) engineRef.current.setDioramaTheme(partial.dioramaTheme);
+      }
+      if (partial.timeMode !== undefined) {
+        localStorage.setItem('time_mode', partial.timeMode);
+        if (engineRef.current) {
+          engineRef.current.state.timeMode = partial.timeMode;
+          engineRef.current.refreshAll();
+        }
+      }
+      if (partial.provider !== undefined && partial.provider !== prev.provider) {
+        localStorage.setItem('weather_provider', partial.provider);
+        weatherService.setProvider(partial.provider);
+        refreshWeather(locationCoords.lat, locationCoords.lon, locationCoords.name, partial.provider);
+      }
+      if (partial.tempUnit !== undefined) {
+        localStorage.setItem('temp_unit', partial.tempUnit);
+      }
+      if (partial.windUnit !== undefined) {
+        localStorage.setItem('wind_unit', partial.windUnit);
+      }
+      if (partial.precipUnit !== undefined) {
+        localStorage.setItem('precip_unit', partial.precipUnit);
+      }
+      if (partial.timeFormat !== undefined) {
+        localStorage.setItem('time_format', partial.timeFormat);
+      }
+      if (partial.radarColorScheme !== undefined) {
+        localStorage.setItem('radar_scheme', String(partial.radarColorScheme));
+      }
+      if (partial.radarOpacity !== undefined) {
+        localStorage.setItem('radar_opacity', String(partial.radarOpacity));
+      }
+      if (partial.alertsEnabled !== undefined) {
+        localStorage.setItem('alerts_enabled', String(partial.alertsEnabled));
+      }
+      if (partial.notificationsEnabled !== undefined) {
+        localStorage.setItem('notifications_enabled', String(partial.notificationsEnabled));
+      }
+      if (partial.soundEnabled !== undefined) {
+        localStorage.setItem('sound_enabled', String(partial.soundEnabled));
+      }
+
+      return next;
+    });
   };
 
   const handleSearchCity = async (query: string) => {
@@ -145,10 +244,10 @@ export const App: React.FC = () => {
           }
         }
         if (matchedTheme) {
-          handleThemeChange(matchedTheme);
+          handleUpdateSettings({ dioramaTheme: matchedTheme });
         }
 
-        refreshWeather(newCoords.lat, newCoords.lon, newCoords.name, currentProvider);
+        refreshWeather(newCoords.lat, newCoords.lon, newCoords.name, settings.provider);
       }
     } catch (err) {
       console.error('[App] Geocoding search failed:', err);
@@ -164,7 +263,7 @@ export const App: React.FC = () => {
           try {
             const revUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
             const res = await fetch(revUrl, {
-              headers: { 'User-Agent': 'Global3DIsometricWeather/0.0.5' },
+              headers: { 'User-Agent': 'Global3DIsometricWeather/0.0.6' },
             });
             const data = await res.json();
             const cityName =
@@ -177,11 +276,11 @@ export const App: React.FC = () => {
             const fullName = `${cityName}${state}`;
             const newCoords = { lat, lon, name: fullName };
             setLocationCoords(newCoords);
-            refreshWeather(lat, lon, fullName, currentProvider);
+            refreshWeather(lat, lon, fullName, settings.provider);
           } catch {
             const newCoords = { lat, lon, name: 'Current Location' };
             setLocationCoords(newCoords);
-            refreshWeather(lat, lon, 'Current Location', currentProvider);
+            refreshWeather(lat, lon, 'Current Location', settings.provider);
           }
         },
         (err) => {
@@ -193,17 +292,22 @@ export const App: React.FC = () => {
 
   const handleCycleTimeMode = () => {
     const modes = ['realtime', 'day', 'sunset', 'night'];
-    const curIdx = modes.indexOf(timeMode);
+    const curIdx = modes.indexOf(settings.timeMode);
     const nextMode = modes[(curIdx + 1) % modes.length];
-    setTimeMode(nextMode);
-    if (engineRef.current) {
-      engineRef.current.state.timeMode = nextMode;
-      engineRef.current.refreshAll();
-    }
+    handleUpdateSettings({ timeMode: nextMode });
   };
 
   const toggleTempUnit = () => {
-    setTempUnit((prev) => (prev === 'F' ? 'C' : 'F'));
+    const next = settings.tempUnit === 'F' ? 'C' : settings.tempUnit === 'C' ? 'BOTH' : 'F';
+    handleUpdateSettings({ tempUnit: next });
+  };
+
+  const handleRequestNotifications = async () => {
+    const perm = await alertService.requestNotificationPermission();
+    setNotificationPermission(perm);
+    if (perm === 'granted') {
+      handleUpdateSettings({ notificationsEnabled: true });
+    }
   };
 
   return (
@@ -214,27 +318,73 @@ export const App: React.FC = () => {
         onRefreshClick={() => refreshWeather()}
       />
 
-      <WeatherHudCard
-        telemetry={telemetry}
-        dioramaTheme={dioramaTheme}
-        onThemeChange={handleThemeChange}
-        onSearchCity={handleSearchCity}
-        onAutoLoc={handleAutoLoc}
-        onOpenForecast={() => setIsForecastOpen(true)}
-        tempUnit={tempUnit}
-        onToggleTempUnit={toggleTempUnit}
-        currentProvider={currentProvider}
-        onProviderChange={handleProviderChange}
-        timeMode={timeMode}
-        onCycleTimeMode={handleCycleTimeMode}
-      />
+      <div className="hud-column">
+        <WeatherHudCard
+          telemetry={telemetry}
+          dioramaTheme={settings.dioramaTheme}
+          onThemeChange={(th) => handleUpdateSettings({ dioramaTheme: th })}
+          onSearchCity={handleSearchCity}
+          onAutoLoc={handleAutoLoc}
+          onOpenForecast={() => setIsForecastOpen(true)}
+          onOpenRadar={() => setIsRadarOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          tempUnit={settings.tempUnit}
+          onToggleTempUnit={toggleTempUnit}
+          currentProvider={settings.provider}
+          onProviderChange={(p) => handleUpdateSettings({ provider: p })}
+          timeMode={settings.timeMode}
+          onCycleTimeMode={handleCycleTimeMode}
+        />
 
+        {settings.alertsEnabled && (
+          <WeatherAlertsBanner
+            alerts={activeAlerts}
+            onSelectAlert={(al) => setSelectedAlert(al)}
+          />
+        )}
+      </div>
+
+      {/* 7-Day Outlook Modal */}
       <ForecastModal
         isOpen={isForecastOpen}
         onClose={() => setIsForecastOpen(false)}
         telemetry={telemetry}
-        tempUnit={tempUnit}
+        tempUnit={settings.tempUnit === 'C' ? 'C' : 'F'}
         onToggleTempUnit={toggleTempUnit}
+      />
+
+      {/* Interactive Doppler Weather Radar Modal */}
+      <RadarModal
+        isOpen={isRadarOpen}
+        onClose={() => setIsRadarOpen(false)}
+        lat={locationCoords.lat}
+        lon={locationCoords.lon}
+        locationName={locationCoords.name}
+        colorScheme={settings.radarColorScheme}
+        opacity={settings.radarOpacity}
+        onChangeColorScheme={(sc) => handleUpdateSettings({ radarColorScheme: sc })}
+        onChangeOpacity={(op) => handleUpdateSettings({ radarOpacity: op })}
+      />
+
+      {/* Weather Alert Details Modal */}
+      <AlertDetailsModal
+        isOpen={!!selectedAlert}
+        onClose={() => setSelectedAlert(null)}
+        alert={selectedAlert}
+      />
+
+      {/* Full Configuration & Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onUpdateSettings={handleUpdateSettings}
+        onSearchCity={handleSearchCity}
+        onAutoLoc={handleAutoLoc}
+        currentLocationName={locationCoords.name}
+        currentCoords={{ lat: locationCoords.lat, lon: locationCoords.lon }}
+        onRequestNotifications={handleRequestNotifications}
+        notificationPermission={notificationPermission}
       />
     </div>
   );
