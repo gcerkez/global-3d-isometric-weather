@@ -37,6 +37,21 @@ export const WeatherCanvas: React.FC<WeatherCanvasProps> = ({
       },
     });
 
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      const search = window.location.search;
+      const paramStr = hash.includes('?') ? hash.split('?')[1] : (search ? search.substring(1) : '');
+      if (paramStr) {
+        const params = new URLSearchParams(paramStr);
+        const pZoom = parseFloat(params.get('zoom') || '');
+        const pPanX = parseFloat(params.get('panX') || '');
+        const pPanY = parseFloat(params.get('panY') || '');
+        if (!isNaN(pZoom) && pZoom > 0) engine.state.cameraZoom = pZoom;
+        if (!isNaN(pPanX)) engine.state.cameraPanX = pPanX;
+        if (!isNaN(pPanY)) engine.state.cameraPanY = pPanY;
+      }
+    }
+
     engineRef.current = engine;
     (window as unknown as { isoEngine: IsometricEngine }).isoEngine = engine;
 
@@ -50,7 +65,7 @@ export const WeatherCanvas: React.FC<WeatherCanvasProps> = ({
     };
   }, []);
 
-  const handleCamera = (action: 'zoom_in' | 'zoom_out' | 'pan_left' | 'pan_right' | 'reset') => {
+  const handleCamera = (action: 'zoom_in' | 'zoom_out' | 'pan_left' | 'pan_right' | 'pan_up' | 'pan_down' | 'reset') => {
     if (engineRef.current) {
       engineRef.current.adjustCamera(action);
     }
@@ -89,11 +104,27 @@ export const WeatherCanvas: React.FC<WeatherCanvasProps> = ({
           </button>
           <button
             type="button"
+            onClick={() => handleCamera('pan_up')}
+            title="Pan Up"
+            data-testid="cam-pan-up"
+          >
+            ▲
+          </button>
+          <button
+            type="button"
             onClick={() => handleCamera('reset')}
             title="Center View"
             data-testid="cam-reset"
           >
             🎯
+          </button>
+          <button
+            type="button"
+            onClick={() => handleCamera('pan_down')}
+            title="Pan Down"
+            data-testid="cam-pan-down"
+          >
+            ▼
           </button>
           <button
             type="button"

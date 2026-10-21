@@ -54,13 +54,18 @@ Eliminated raw HTML settings pages in favor of an integrated, 6-tab React config
 - **📡 Doppler Radar Preferences**: Default radar color palette and tile opacity settings.
 - **🚨 Severe Alerts & Notifications**: Severe weather monitoring toggle, desktop push notification permission manager, and auditory chime toggles.
 
-- **Standalone 3D Viewport Isolation (`#preview`)**:
+- **Standalone 3D Viewport Isolation (`#preview`) & Real-Time Framing Synchronization**:
   - Eliminated duplicate overlay overlap in the Android 3D preview configurator tab. Previously, the desktop HUD overlay rendered in the embedded WebView beneath Android's native widget HUD overlay.
   - Introduced dedicated `#preview` route and `hideControls` mode in `App.tsx` and `WeatherCanvas.tsx`: in preview mode, all desktop HUD cards, alert banners, and camera controls are omitted so only the clean 3D isometric diorama renders behind the authentic native Android widget overlay.
+  - **Live Real-Time Framing Controls**: The preview in Tab 0 now acts as the immediate real-time source of truth when pressing camera movement buttons (`[－]`, `[＋]`, `[◀]`, `[▲]`, `[🎯]`, `[▼]`, `[▶]`) and quick zoom preset chips:
+    - Added `setCameraFraming(zoom, panX, panY)` in `IsometricEngine.ts` to directly set exact coordinate framing.
+    - Added vertical panning (`cameraPanY`, `shiftY = (cameraPanY / 384.0) * h`) with full projection parity matching `IsometricWeatherWidgetProvider.kt`.
+    - Implemented `pan_up` and `pan_down` actions in `IsometricEngine.adjustCamera()`.
+    - Passed initial framing parameters (`&zoom=...&panX=...&panY=...`) in the preview route URL so the preview immediately reflects saved preferences on startup with zero lag or desynchronization.
 
 ### 5. Expanded UI Spec Test Suite (Vitest + React Testing Library + Robolectric)
-- **12 Test Suites / 61 Tests (100% Passing)**:
-  - `WeatherCanvas.spec.tsx`: Validates `WeatherCanvas` control omission in `hideControls` mode and verifies that `#preview` loads the standalone 3D diorama canvas with zero desktop HUD overlays.
+- **12 Test Suites / 62 Tests (100% Passing)**:
+  - `WeatherCanvas.spec.tsx`: Validates `WeatherCanvas` all 7 camera controls (zoom in/out, pan left/right/up/down, reset), real-time framing adjustment, control omission in `hideControls` mode, and verifies that `#preview` loads the standalone 3D diorama canvas with accurate query param framing and zero desktop HUD overlays.
   - `AlertService.spec.ts`: Validates NOAA NWS GeoJSON parsing, WMO code fallback detection, and notification deduplication.
   - `WeatherAlerts.spec.tsx`: Validates `WeatherAlertsBanner` severity sorting, counter badge, and `AlertDetailsModal` emergency statements.
   - `RadarModal.spec.tsx`: Validates canvas rendering, playback pause/play toggle, timeline scrubbing, zoom buttons, and palette selectors.
@@ -68,7 +73,7 @@ Eliminated raw HTML settings pages in favor of an integrated, 6-tab React config
   - `SettingsModal.spec.tsx`: Validates tab navigation, city searches, GPS autolocate, provider selection, and API key persistence.
   - `RadarService.spec.ts`: Validates Web Mercator tile projection, RainViewer URL formatting, and cache management.
   - `ForecastActivityMockDeviceTest.kt`: Validates native Android 7-day forecast rendering, range bars, graph metric switches, and Live Doppler Radar card embedding.
-  - `MainActivityVisualMockDeviceTest.kt`: Validates all 6 Android configuration tabs including Live Radar tab.
+  - `MainActivityVisualMockDeviceTest.kt`: Validates all 6 Android configuration tabs including Live Radar tab and camera controls.
   - Existing suites for `WeatherService`, `DayForecastRow`, `HourlyBreakdownChart`, `WeatherHudCard`, and `WeatherProviderSelector`.
 
 ### 6. Multi-Platform Build & Packaging

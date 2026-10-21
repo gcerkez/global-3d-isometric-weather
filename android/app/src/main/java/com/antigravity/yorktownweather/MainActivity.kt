@@ -308,14 +308,19 @@ class MainActivity : Activity() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
                     syncSettingsToWebView()
+                    view?.postDelayed({ syncSettingsToWebView() }, 250)
+                    view?.postDelayed({ syncSettingsToWebView() }, 750)
                 }
             }
             setBackgroundColor(Color.parseColor("#0d1b2a"))
             val curLat = prefs.getFloat("latitude", 37.2388f)
             val curLon = prefs.getFloat("longitude", -76.5097f)
             val curLoc = prefs.getString("locationName", "Yorktown, VA") ?: "Yorktown, VA"
+            val zoom = prefs.getFloat("widgetZoom", 1.0f)
+            val offsetX = prefs.getFloat("widgetOffsetX", 0.0f)
+            val offsetY = prefs.getFloat("widgetOffsetY", 0.0f)
             val encodedName = android.net.Uri.encode(curLoc)
-            loadUrl("file:///android_asset/web/index.html#preview?lat=$curLat&lon=$curLon&name=$encodedName")
+            loadUrl("file:///android_asset/web/index.html#preview?lat=$curLat&lon=$curLon&name=$encodedName&zoom=$zoom&panX=$offsetX&panY=$offsetY")
         }
         previewFrame.addView(
             webView,
@@ -567,7 +572,10 @@ class MainActivity : Activity() {
                     .putFloat("widgetOffsetY", offsetY)
                     .apply()
                 val jsAct = if (act == "center") "reset" else act
-                webView.evaluateJavascript("if (window.isoEngine) window.isoEngine.adjustCamera('$jsAct');", null)
+                webView.evaluateJavascript(
+                    "if (window.isoEngine) { if (window.isoEngine.setCameraFraming) { window.isoEngine.setCameraFraming($zoom, $offsetX, $offsetY); } else { window.isoEngine.adjustCamera('$jsAct'); } }",
+                    null
+                )
                 updateFramingStats()
                 applyAndRefreshWidgets("Camera framing adjusted")
             }.apply {
@@ -605,7 +613,12 @@ class MainActivity : Activity() {
         for ((pName, pZoom) in zoomPresets) {
             val chip = makeStyledButton(pName) {
                 prefs.edit().putFloat("widgetZoom", pZoom).apply()
-                webView.evaluateJavascript("if (window.isoEngine) { window.isoEngine.state.cameraZoom = $pZoom; window.isoEngine.refreshAll(); }", null)
+                val offsetX = prefs.getFloat("widgetOffsetX", 0.0f)
+                val offsetY = prefs.getFloat("widgetOffsetY", 0.0f)
+                webView.evaluateJavascript(
+                    "if (window.isoEngine) { if (window.isoEngine.setCameraFraming) { window.isoEngine.setCameraFraming($pZoom, $offsetX, $offsetY); } else { window.isoEngine.state.cameraZoom = $pZoom; window.isoEngine.refreshAll(); } }",
+                    null
+                )
                 updateFramingStats()
                 applyAndRefreshWidgets("Zoom set to ${(pZoom * 100).toInt()}%")
             }.apply {
@@ -1422,10 +1435,14 @@ class MainActivity : Activity() {
                 window.isoEngine.state.timeMode = '$tMode';
                 window.isoEngine.state.weatherOverride = '$wMode';
                 window.isoEngine.state.particleIntensity = $pDensity;
-                window.isoEngine.state.cameraZoom = $zoom;
-                window.isoEngine.state.cameraPanX = $offsetX;
-                window.isoEngine.state.cameraPanY = $offsetY;
-                window.isoEngine.refreshAll();
+                if (window.isoEngine.setCameraFraming) {
+                    window.isoEngine.setCameraFraming($zoom, $offsetX, $offsetY);
+                } else {
+                    window.isoEngine.state.cameraZoom = $zoom;
+                    window.isoEngine.state.cameraPanX = $offsetX;
+                    window.isoEngine.state.cameraPanY = $offsetY;
+                    window.isoEngine.refreshAll();
+                }
             }
         """.trimIndent()
         webView.evaluateJavascript(js, null)

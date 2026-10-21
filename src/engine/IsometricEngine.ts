@@ -91,7 +91,7 @@ export class IsometricEngine {
     this.state.dioramaTheme = theme;
   }
 
-  public adjustCamera(action: 'zoom_in' | 'zoom_out' | 'pan_left' | 'pan_right' | 'reset'): void {
+  public adjustCamera(action: 'zoom_in' | 'zoom_out' | 'pan_left' | 'pan_right' | 'pan_up' | 'pan_down' | 'reset'): void {
     switch (action) {
       case 'zoom_in':
         this.state.cameraZoom = Math.min(2.40, this.state.cameraZoom * 1.15);
@@ -105,11 +105,32 @@ export class IsometricEngine {
       case 'pan_right':
         this.state.cameraPanX = Math.min(180, this.state.cameraPanX + 28);
         break;
+      case 'pan_up':
+        this.state.cameraPanY = Math.max(-180, this.state.cameraPanY - 24);
+        break;
+      case 'pan_down':
+        this.state.cameraPanY = Math.min(180, this.state.cameraPanY + 24);
+        break;
       case 'reset':
         this.state.cameraZoom = 1.0;
         this.state.cameraPanX = 0.0;
+        this.state.cameraPanY = 0.0;
         break;
     }
+    this.refreshAll();
+  }
+
+  public setCameraFraming(zoom: number, panX: number, panY: number): void {
+    if (!isNaN(zoom) && zoom > 0) {
+      this.state.cameraZoom = Math.max(0.65, Math.min(2.40, zoom));
+    }
+    if (!isNaN(panX)) {
+      this.state.cameraPanX = Math.max(-180, Math.min(180, panX));
+    }
+    if (!isNaN(panY)) {
+      this.state.cameraPanY = Math.max(-180, Math.min(180, panY));
+    }
+    this.refreshAll();
   }
 
   public updateTelemetry(telemetry: Partial<EngineState>): void {
@@ -303,8 +324,9 @@ export class IsometricEngine {
     }
 
     const shiftX = (this.state.cameraPanX / 688.0) * w;
+    const shiftY = (this.state.cameraPanY / 384.0) * h;
     const dx = (w - dw) / 2 + shiftX;
-    const dy = (h - dh) / 2;
+    const dy = (h - dh) / 2 + shiftY;
 
     ctx.save();
     const pivotX = dx + dw / 2;
