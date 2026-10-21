@@ -97,9 +97,21 @@ export const App: React.FC = () => {
     };
   };
 
+  const isPreviewLocation = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    return (
+      window.location.hash.startsWith('#preview') ||
+      window.location.search.includes('view=preview') ||
+      window.location.search.includes('preview=1') ||
+      document.body.classList.contains('preview-canvas-only')
+    );
+  };
+
   const [isStandaloneRadar, setIsStandaloneRadar] = useState<boolean>(() => {
     return typeof window !== 'undefined' && (window.location.hash.startsWith('#radar') || window.location.search.includes('view=radar'));
   });
+
+  const [isStandalonePreview, setIsStandalonePreview] = useState<boolean>(() => isPreviewLocation());
 
   // Geolocation & Coordinates
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number; name: string }>(() => {
@@ -109,6 +121,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     const handleHash = () => {
       setIsStandaloneRadar(window.location.hash.startsWith('#radar') || window.location.search.includes('view=radar'));
+      setIsStandalonePreview(isPreviewLocation());
       const parsed = parseCoordsFromLocation();
       setLocationCoords(parsed);
     };
@@ -384,6 +397,19 @@ export const App: React.FC = () => {
           onChangeColorScheme={(sc) => handleUpdateSettings({ radarColorScheme: sc })}
           onChangeOpacity={(op) => handleUpdateSettings({ radarOpacity: op })}
           height="calc(100vh - 130px)"
+        />
+      </div>
+    );
+  }
+
+  if (isStandalonePreview) {
+    return (
+      <div className="widget-frame preview-mode" data-testid="app-preview-root">
+        <WeatherCanvas
+          locationName={telemetry ? telemetry.locationName : locationCoords.name}
+          onEngineReady={handleEngineReady}
+          onRefreshClick={() => refreshWeather()}
+          hideControls={true}
         />
       </div>
     );

@@ -313,7 +313,11 @@ class MainActivity : Activity() {
                 }
             }
             setBackgroundColor(Color.parseColor("#0d1b2a"))
-            loadUrl("file:///android_asset/web/index.html")
+            val curLat = prefs.getFloat("latitude", 37.2388f)
+            val curLon = prefs.getFloat("longitude", -76.5097f)
+            val curLoc = prefs.getString("locationName", "Yorktown, VA") ?: "Yorktown, VA"
+            val encodedName = android.net.Uri.encode(curLoc)
+            loadUrl("file:///android_asset/web/index.html#preview?lat=$curLat&lon=$curLon&name=$encodedName")
         }
         previewFrame.addView(
             webView,
@@ -1553,8 +1557,11 @@ class MainActivity : Activity() {
         val wProvider = prefs.getString("weatherProvider", "open-meteo") ?: "open-meteo"
 
         val js = """
+            document.body.classList.add('preview-canvas-only');
             const hud = document.getElementById('hudCard');
             if (hud) hud.style.display = 'none';
+            const hudCol = document.querySelector('.hud-column');
+            if (hudCol) hudCol.style.display = 'none';
             const cam = document.querySelector('.camera-pill');
             if (cam) cam.style.display = 'none';
             const refreshBtn = document.querySelector('.refresh-btn-floating');

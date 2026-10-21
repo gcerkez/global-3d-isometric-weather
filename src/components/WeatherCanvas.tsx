@@ -6,6 +6,7 @@ interface WeatherCanvasProps {
   onHudUpdate?: (state: EngineState) => void;
   onRefreshClick?: () => void;
   locationName: string;
+  hideControls?: boolean;
 }
 
 export const WeatherCanvas: React.FC<WeatherCanvasProps> = ({
@@ -13,6 +14,7 @@ export const WeatherCanvas: React.FC<WeatherCanvasProps> = ({
   onHudUpdate,
   onRefreshClick,
   locationName,
+  hideControls = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<IsometricEngine | null>(null);
@@ -59,64 +61,70 @@ export const WeatherCanvas: React.FC<WeatherCanvasProps> = ({
       <canvas id="isoCanvas" ref={canvasRef} data-testid="iso-canvas" />
 
       {/* Camera Controls */}
-      <div className="camera-pill" data-testid="camera-pill">
-        <button
-          type="button"
-          onClick={() => handleCamera('zoom_out')}
-          title="Zoom Out"
-          data-testid="cam-zoom-out"
-        >
-          ➖
-        </button>
-        <button
-          type="button"
-          onClick={() => handleCamera('zoom_in')}
-          title="Zoom In"
-          data-testid="cam-zoom-in"
-        >
-          ➕
-        </button>
-        <button
-          type="button"
-          onClick={() => handleCamera('pan_left')}
-          title="Pan Left"
-          data-testid="cam-pan-left"
-        >
-          ◀
-        </button>
-        <button
-          type="button"
-          onClick={() => handleCamera('reset')}
-          title="Center View"
-          data-testid="cam-reset"
-        >
-          🎯
-        </button>
-        <button
-          type="button"
-          onClick={() => handleCamera('pan_right')}
-          title="Pan Right"
-          data-testid="cam-pan-right"
-        >
-          ▶
-        </button>
-      </div>
+      {!hideControls && (
+        <div className="camera-pill" data-testid="camera-pill">
+          <button
+            type="button"
+            onClick={() => handleCamera('zoom_out')}
+            title="Zoom Out"
+            data-testid="cam-zoom-out"
+          >
+            ➖
+          </button>
+          <button
+            type="button"
+            onClick={() => handleCamera('zoom_in')}
+            title="Zoom In"
+            data-testid="cam-zoom-in"
+          >
+            ➕
+          </button>
+          <button
+            type="button"
+            onClick={() => handleCamera('pan_left')}
+            title="Pan Left"
+            data-testid="cam-pan-left"
+          >
+            ◀
+          </button>
+          <button
+            type="button"
+            onClick={() => handleCamera('reset')}
+            title="Center View"
+            data-testid="cam-reset"
+          >
+            🎯
+          </button>
+          <button
+            type="button"
+            onClick={() => handleCamera('pan_right')}
+            title="Pan Right"
+            data-testid="cam-pan-right"
+          >
+            ▶
+          </button>
+        </div>
+      )}
 
       {/* Transparent red refresh button at bottom right */}
-      <button
-        type="button"
-        className="refresh-btn-floating"
-        onClick={onRefreshClick}
-        title="Manual Refresh Weather"
-        data-testid="manual-refresh-btn"
-      >
-        ↻
-      </button>
+      {!hideControls && (
+        <button
+          type="button"
+          className="refresh-btn-floating"
+          onClick={onRefreshClick}
+          title="Manual Refresh Weather"
+          data-testid="manual-refresh-btn"
+        >
+          ↻
+        </button>
+      )}
 
       {/* Location Badge */}
-      <div className="location-badge" data-testid="location-badge">
-        {locationName} • 3D Isometric
-      </div>
+      {!hideControls && (
+        <div className="location-badge" data-testid="location-badge">
+          {locationName} • 3D Isometric
+        </div>
+      )}
     </div>
   );
 };

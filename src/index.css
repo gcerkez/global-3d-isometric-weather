@@ -43,6 +43,27 @@ canvas#isoCanvas {
   display: block;
 }
 
+/* ==========================================================================
+   Standalone 3D Viewport / Preview Mode (Android Homescreen Widget Preview)
+   ========================================================================== */
+.widget-frame.preview-mode .hud-column,
+.widget-frame.preview-mode .hud-card,
+.widget-frame.preview-mode .camera-pill,
+.widget-frame.preview-mode .refresh-btn-floating,
+.widget-frame.preview-mode .location-badge,
+.widget-frame.preview-mode .alerts-banner,
+body.preview-canvas-only .hud-column,
+body.preview-canvas-only .hud-card,
+body.preview-canvas-only .camera-pill,
+body.preview-canvas-only .refresh-btn-floating,
+body.preview-canvas-only .location-badge,
+body.preview-canvas-only .alerts-banner {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+
 /* Glassmorphic HUD Card */
 .hud-card {
   position: absolute;
